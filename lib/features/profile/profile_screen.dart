@@ -14,6 +14,12 @@ class ProfileScreen extends StatelessWidget {
     final plus = b['is_plus_available'] == true;
     final status = '${b['status'] ?? 'trial'}';
     final plan = '${b['plan'] ?? 'plus'}';
+    final summary = controller.summary;
+    final suitableColors = List<String>.from(summary['suitable_colors'] as List? ?? const []);
+    final avoidColors = List<String>.from(summary['avoid_colors'] as List? ?? const []);
+    final silhouettes = List<String>.from(summary['suitable_silhouettes'] as List? ?? const []);
+    final items = List<String>.from(summary['recommended_items'] as List? ?? const []);
+    final styleLines = List<String>.from(summary['style_direction_human'] as List? ?? const []);
 
     return SafeArea(
       child: ListView(
@@ -71,6 +77,34 @@ class ProfileScreen extends StatelessWidget {
           const SizedBox(height: 14),
           SoftCard(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Стиль‑профиль',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+                ),
+                const SizedBox(height: 10),
+                _LineBlock(title: 'Подходящие цвета', items: suitableColors),
+                const SizedBox(height: 10),
+                _LineBlock(title: 'Избегать', items: avoidColors),
+                const SizedBox(height: 10),
+                _LineBlock(title: 'Силуэты', items: silhouettes),
+                const SizedBox(height: 10),
+                _LineBlock(title: 'Вещи', items: items),
+                const SizedBox(height: 10),
+                _LineBlock(title: 'Стили', items: styleLines),
+                const SizedBox(height: 12),
+                PrimaryButton(
+                  label: controller.isLoading ? 'Генерируем…' : 'Visual Analysis',
+                  icon: Icons.image_outlined,
+                  onPressed: controller.isLoading ? null : () => controller.openVisualAnalysis(context),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          SoftCard(
+            child: Column(
               children: [
                 ListTile(
                   contentPadding: EdgeInsets.zero,
@@ -112,6 +146,27 @@ class ProfileScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _LineBlock extends StatelessWidget {
+  const _LineBlock({required this.title, required this.items});
+  final String title;
+  final List<String> items;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return Text('$title: —', style: const TextStyle(color: AppColors.muted));
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+        const SizedBox(height: 4),
+        Text(items.take(8).join(', ')),
+      ],
     );
   }
 }

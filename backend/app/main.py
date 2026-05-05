@@ -2,9 +2,11 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
 
+import os
+
 import bcrypt
 import jwt
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, status
+from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import delete, func, select
@@ -13,14 +15,24 @@ from sqlalchemy.orm import Session
 from . import business
 from .config import get_jwt_expires_hours, get_jwt_secret
 from .db import SessionLocal
-from .schemas.photo_analysis import build_profile_json_after_analysis, mock_photo_analysis_v1
+from .schemas.photo_analysis import build_profile_json_after_analysis
+from .services.style_analysis_service import analyze_photo as analyze_photo_ai
 from .models import (
+  FitProfile,
+  MetricEvent,
+  Outfit,
+  Product,
+  RecommendationEventV2,
   Recommendation,
   RecommendationEvent,
   SavedRecommendation,
   StyleProfile,
+  TasteProfile,
   User,
 )
+from .services.visual_analysis_service import generate_style_visual
+from .services.recommendation_engine import generate_feed, score_product, ensure_taste_profile
+from .services.outfit_service import generate_outfits
 
 app = FastAPI(title="Modish API", version="0.9.0-pre")
 auth_scheme = HTTPBearer(auto_error=False)
@@ -59,6 +71,60 @@ class GenerateRequest(BaseModel):
 class StyleProfilePatchRequest(BaseModel):
   profile_json: dict[str, Any] | None = None
   style_target: str | None = None
+
+
+class UserPreferencesPatchRequest(BaseModel):
+  height: int = Field(ge=50, le=250)
+  weight: int | None = Field(default=None, ge=20, le=400)
+  fit_preference: str = Field(pattern="^(slim|regular|oversized)$")
+
+
+class ProductIn(BaseModel):
+  external_id: str
+  source: str
+  title: str
+  brand: str
+  category: str
+  subcategory: str | None = None
+  price: int = Field(ge=0)
+  currency: str = "RUB"
+  image_url: str
+  product_url: str
+  available_sizes: list[str] = Field(default_factory=list)
+  colors: list[str] = Field(default_factory=list)
+  fit: str | None = None
+  silhouette: str | None = None
+  style_tags: list[str] = Field(default_factory=list)
+  is_active: bool = True
+
+
+class EventRequest(BaseModel):
+  event_type: str = Field(
+    pattern="^(view|skip|dislike|like|save|unsave|open_product|buy_click)$"
+  )
+  product_id: str | None = None
+  outfit_id: str | None = None
+  meta: dict[str, Any] | None = None
+
+
+class FitProfilePatchRequest(BaseModel):
+  height: int = Field(ge=50, le=250)
+  weight: int | None = Field(default=None, ge=20, le=400)
+  gender_target: str = Field(pattern="^(menswear|womenswear|unisex)$")
+  clothing_size: str = Field(min_length=1, max_length=16)
+  budget_min: int = Field(default=0, ge=0)
+  budget_max: int = Field(default=10000, ge=0)
+
+
+class TasteProfilePatchRequest(BaseModel):
+  price_min: int = Field(default=0, ge=0)
+  price_max: int = Field(default=10000, ge=0)
+  preferred_fit: str = Field(pattern="^(slim|regular|oversized)$")
+
+
+class MetricEventRequest(BaseModel):
+  name: str = Field(pattern="^[a-z_]{3,64}$")
+  meta: dict[str, Any] | None = None
 
 
 def get_db():
@@ -130,8 +196,85 @@ def _as_user_payload(user: User) -> dict[str, Any]:
     "email": user.email,
     "plan": user.plan,
     "subscription_status": user.subscription_status,
+    "height_cm": user.height_cm,
+    "weight_kg": user.weight_kg,
+    "fit_preference": user.fit_preference,
     "trial_started_at": user.trial_started_at.isoformat(),
     "trial_ends_at": user.trial_ends_at.isoformat(),
+  }
+
+
+def _product_to_api(p: Product) -> dict[str, Any]:
+  return {
+    "id": p.id,
+    "external_id": p.external_id,
+    "source": p.source,
+    "title": p.title,
+    "brand": p.brand,
+    "category": p.category,
+    "subcategory": p.subcategory,
+    "price": p.price,
+    "currency": p.currency,
+    "image_url": p.image_url,
+    "product_url": p.product_url,
+    "available_sizes": p.available_sizes or [],
+    "colors": p.colors or [],
+    "fit": p.fit,
+    "silhouette": p.silhouette,
+    "style_tags": p.style_tags or [],
+    "is_active": bool(p.is_active),
+  }
+
+
+def _fit_to_api(fp: FitProfile) -> dict[str, Any]:
+  return {
+    "height": fp.height_cm,
+    "weight": fp.weight_kg,
+    "gender_target": fp.gender_target,
+    "clothing_size": fp.clothing_size,
+    "body_proportions": fp.body_proportions,
+    "contrast_level": fp.contrast_level,
+    "color_palette": fp.color_palette or [],
+    "avoid_colors": fp.avoid_colors or [],
+    "recommended_silhouettes": fp.recommended_silhouettes or [],
+    "avoid_silhouettes": fp.avoid_silhouettes or [],
+    "recommended_fit": fp.recommended_fit,
+    "avoid_fit": fp.avoid_fit or [],
+    "style_constraints": fp.style_constraints or {},
+    "budget_min": fp.budget_min,
+    "budget_max": fp.budget_max,
+    "updated_at": fp.updated_at.isoformat(),
+  }
+
+
+def _taste_to_api(tp: TasteProfile) -> dict[str, Any]:
+  return {
+    "liked_categories": tp.liked_categories or [],
+    "disliked_categories": tp.disliked_categories or [],
+    "liked_colors": tp.liked_colors or [],
+    "disliked_colors": tp.disliked_colors or [],
+    "liked_brands": tp.liked_brands or [],
+    "disliked_brands": tp.disliked_brands or [],
+    "liked_styles": tp.liked_styles or [],
+    "disliked_styles": tp.disliked_styles or [],
+    "price_range": {"min": tp.price_min, "max": tp.price_max},
+    "preferred_fit": tp.preferred_fit,
+    "updated_at": tp.updated_at.isoformat(),
+  }
+
+
+def _outfit_to_api(o: Outfit, products: dict[str, Any] | None = None) -> dict[str, Any]:
+  items = dict(o.items_json or {})
+  return {
+    "id": o.id,
+    "items": items,
+    "products": products or {},
+    "total_price": o.total_price,
+    "style_direction": o.style_direction,
+    "reason": o.reason,
+    "score": o.score,
+    "is_saved": bool(o.is_saved),
+    "created_at": o.created_at.isoformat(),
   }
 
 
@@ -216,6 +359,9 @@ def register(payload: AuthRequest, db: Session = Depends(get_db)) -> TokenRespon
     trial_ends_at=now + timedelta(days=14),
     plan="plus",
     subscription_status="trial",
+    height_cm=170,
+    weight_kg=None,
+    fit_preference="regular",
   )
   db.add(user)
   db.flush()
@@ -257,13 +403,564 @@ def users_me(
   return _as_user_payload(user)
 
 
+@app.get("/products")
+def products_list(
+  limit: int = 50,
+  offset: int = 0,
+  category: str | None = None,
+  db: Session = Depends(get_db),
+) -> list[dict[str, Any]]:
+  q = select(Product).where(Product.is_active == 1)
+  if category:
+    q = q.where(Product.category == category)
+  q = q.order_by(Product.created_at.desc()).offset(max(0, offset)).limit(min(200, max(1, limit)))
+  rows = db.execute(q).scalars().all()
+  return [_product_to_api(p) for p in rows]
+
+
+@app.get("/products/{product_id}")
+def products_get(product_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
+  p = db.execute(select(Product).where(Product.id == product_id)).scalar_one_or_none()
+  if p is None:
+    raise HTTPException(status_code=404, detail="Product not found")
+  return _product_to_api(p)
+
+
+@app.post("/admin/products/import")
+def admin_products_import(
+  items: list[ProductIn],
+  db: Session = Depends(get_db),
+  authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+  admin_token = (os.getenv("ADMIN_TOKEN") or "").strip()
+  if not admin_token:
+    raise HTTPException(status_code=503, detail="ADMIN_TOKEN is not configured")
+  if authorization != f"Bearer {admin_token}":
+    raise HTTPException(status_code=401, detail="Admin token required")
+  now = datetime.now(timezone.utc)
+  created = 0
+  updated = 0
+  for it in items:
+    existing = db.execute(
+      select(Product).where(Product.external_id == it.external_id, Product.source == it.source)
+    ).scalar_one_or_none()
+    payload = it.model_dump()
+    if existing is None:
+      p = Product(
+        id=str(uuid4()),
+        external_id=payload["external_id"],
+        source=payload["source"],
+        title=payload["title"],
+        brand=payload["brand"],
+        category=payload["category"],
+        subcategory=payload.get("subcategory"),
+        price=int(payload["price"]),
+        currency=payload.get("currency") or "RUB",
+        image_url=payload["image_url"],
+        product_url=payload["product_url"],
+        available_sizes=payload.get("available_sizes") or [],
+        colors=payload.get("colors") or [],
+        fit=payload.get("fit"),
+        silhouette=payload.get("silhouette"),
+        style_tags=payload.get("style_tags") or [],
+        is_active=1 if payload.get("is_active", True) else 0,
+        created_at=now,
+        updated_at=now,
+      )
+      db.add(p)
+      created += 1
+    else:
+      existing.title = payload["title"]
+      existing.brand = payload["brand"]
+      existing.category = payload["category"]
+      existing.subcategory = payload.get("subcategory")
+      existing.price = int(payload["price"])
+      existing.currency = payload.get("currency") or "RUB"
+      existing.image_url = payload["image_url"]
+      existing.product_url = payload["product_url"]
+      existing.available_sizes = payload.get("available_sizes") or []
+      existing.colors = payload.get("colors") or []
+      existing.fit = payload.get("fit")
+      existing.silhouette = payload.get("silhouette")
+      existing.style_tags = payload.get("style_tags") or []
+      existing.is_active = 1 if payload.get("is_active", True) else 0
+      existing.updated_at = now
+      updated += 1
+  db.commit()
+  return {"created": created, "updated": updated}
+
+
+@app.post("/admin/catalog/demo-seed")
+def admin_catalog_demo_seed(
+  db: Session = Depends(get_db),
+  authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+  """
+  Быстрый seed каталога для демо (100–300 товаров).
+  В проде: удалить или защитить админ-ролью.
+  """
+  now = datetime.now(timezone.utc)
+  admin_token = (os.getenv("ADMIN_TOKEN") or "").strip()
+  if not admin_token:
+    raise HTTPException(status_code=503, detail="ADMIN_TOKEN is not configured")
+  if authorization != f"Bearer {admin_token}":
+    raise HTTPException(status_code=401, detail="Admin token required")
+  source = "demo"
+  categories = [
+    ("футболки", ["white", "black", "navy", "gray"]),
+    ("джинсы", ["indigo", "black", "navy"]),
+    ("брюки", ["graphite", "black", "navy"]),
+    ("куртки", ["black", "navy", "olive"]),
+    ("обувь", ["white", "black", "brown"]),
+  ]
+  sizes = ["XS", "S", "M", "L", "XL"]
+  brands = ["BasicLab", "CityWear", "Nord", "Mono", "Everyday"]
+  created = 0
+  for ci, (cat, cols) in enumerate(categories):
+    for i in range(60):  # 5*60=300
+      external_id = f"{cat}-{i}"
+      exists = db.execute(
+        select(Product).where(Product.external_id == external_id, Product.source == source)
+      ).scalar_one_or_none()
+      if exists:
+        continue
+      brand = brands[(i + ci) % len(brands)]
+      color = cols[i % len(cols)]
+      price = 990 + (i % 15) * 150
+      p = Product(
+        id=str(uuid4()),
+        external_id=external_id,
+        source=source,
+        title=f"{cat.capitalize()} {brand} #{i+1}",
+        brand=brand,
+        category=cat,
+        subcategory=None,
+        price=price,
+        currency="RUB",
+        image_url="https://picsum.photos/seed/modish/600/600",
+        product_url="https://example.com/product",
+        available_sizes=sizes,
+        colors=[color],
+        fit=None,
+        silhouette=None,
+        style_tags=["minimal"],
+        is_active=1,
+        created_at=now,
+        updated_at=now,
+      )
+      db.add(p)
+      created += 1
+  db.commit()
+  return {"created": created}
+
+
+@app.get("/feed")
+def feed(
+  limit: int = 30,
+  db: Session = Depends(get_db),
+  credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+) -> list[dict[str, Any]]:
+  user = _user_from_token(credentials, db)
+  scored = generate_feed(db, user, limit=limit)
+  out: list[dict[str, Any]] = []
+  for s in scored:
+    out.append(
+      {
+        "product": _product_to_api(s.product),
+        "final_score": s.final_score,
+        "breakdown": s.breakdown,
+        "reason": s.reason,
+      }
+    )
+  return out
+
+
+@app.post("/recommendations/events")
+def recommendations_events(
+  payload: EventRequest,
+  db: Session = Depends(get_db),
+  credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+) -> dict[str, Any]:
+  user = _user_from_token(credentials, db)
+  weights = {
+    "view": 0,
+    "skip": -1,
+    "dislike": -3,
+    "like": 2,
+    "save": 4,
+    "unsave": -4,
+    "open_product": 5,
+    "buy_click": 8,
+  }
+  weight = weights[payload.event_type]
+  if payload.product_id is None and payload.outfit_id is None:
+    raise HTTPException(status_code=400, detail="product_id or outfit_id required")
+
+  # Idempotency for save/unsave on products
+  if payload.product_id and payload.event_type in ("save", "unsave"):
+    last = db.execute(
+      select(RecommendationEventV2.event_type)
+      .where(
+        RecommendationEventV2.user_id == user.id,
+        RecommendationEventV2.product_id == payload.product_id,
+        RecommendationEventV2.event_type.in_(["save", "unsave"]),
+      )
+      .order_by(RecommendationEventV2.created_at.desc())
+      .limit(1)
+    ).scalar_one_or_none()
+    if last == payload.event_type:
+      # no-op
+      return {
+        "status": "ok",
+        "event_type": payload.event_type,
+        "weight": 0,
+        "total_events": int(
+          db.execute(
+            select(func.count())
+            .select_from(RecommendationEventV2)
+            .where(RecommendationEventV2.user_id == user.id)
+          ).scalar_one()
+          or 0
+        ),
+        "milestone_reached": False,
+        "outfits_generated": 0,
+        "idempotent": True,
+      }
+
+  # Save event
+  ev = RecommendationEventV2(
+    id=str(uuid4()),
+    user_id=user.id,
+    product_id=payload.product_id,
+    outfit_id=payload.outfit_id,
+    event_type=payload.event_type,
+    event_weight=weight,
+    meta_json=payload.meta or {},
+    created_at=datetime.now(timezone.utc),
+  )
+  db.add(ev)
+
+  # Update TasteProfile (very first iteration)
+  tp = ensure_taste_profile(db, user.id)
+  if payload.product_id:
+    p = db.execute(select(Product).where(Product.id == payload.product_id)).scalar_one_or_none()
+    if p:
+      cat = (p.category or "").strip().lower()
+      brand = (p.brand or "").strip().lower()
+      cols = [str(c).strip().lower() for c in (p.colors or []) if str(c).strip()]
+      styles = [str(t).strip().lower() for t in (p.style_tags or []) if str(t).strip()]
+
+      def add_unique(lst: list[str], v: str) -> None:
+        if v and v not in lst:
+          lst.append(v)
+
+      if payload.event_type in ("like", "save", "open_product", "buy_click"):
+        add_unique(tp.liked_categories, cat)
+        add_unique(tp.liked_brands, brand)
+        for c in cols[:3]:
+          add_unique(tp.liked_colors, c)
+        for t in styles[:3]:
+          add_unique(tp.liked_styles, t)
+      elif payload.event_type in ("dislike", "skip"):
+        add_unique(tp.disliked_categories, cat)
+        add_unique(tp.disliked_brands, brand)
+        for c in cols[:3]:
+          add_unique(tp.disliked_colors, c)
+        for t in styles[:3]:
+          add_unique(tp.disliked_styles, t)
+      tp.updated_at = datetime.now(timezone.utc)
+
+  db.commit()
+  # Milestone: after 20–30 actions, generate 3 outfits once
+  total = db.execute(
+    select(func.count()).select_from(RecommendationEventV2).where(RecommendationEventV2.user_id == user.id)
+  ).scalar_one()
+  total = int(total or 0)
+  milestone = total in (20, 30)
+  generated = 0
+  if milestone:
+    existing = db.execute(select(Outfit).where(Outfit.user_id == user.id)).scalars().first()
+    if existing is None:
+      items = generate_outfits(db, user, count=3)
+      db.commit()
+      generated = len(items)
+  return {
+    "status": "ok",
+    "event_type": payload.event_type,
+    "weight": weight,
+    "total_events": total,
+    "milestone_reached": milestone,
+    "outfits_generated": generated,
+  }
+
+
+@app.get("/profile/brief")
+def profile_brief(
+  db: Session = Depends(get_db),
+  credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+) -> dict[str, Any]:
+  user = _user_from_token(credentials, db)
+  fp = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
+  tp = ensure_taste_profile(db, user.id)
+  events = db.execute(
+    select(func.count()).select_from(RecommendationEventV2).where(RecommendationEventV2.user_id == user.id)
+  ).scalar_one()
+  events = int(events or 0)
+  saved = db.execute(
+    select(func.count()).select_from(RecommendationEventV2).where(
+      RecommendationEventV2.user_id == user.id,
+      RecommendationEventV2.event_type == "save",
+    )
+  ).scalar_one()
+  saved = int(saved or 0)
+  return {
+    "fit_profile": _fit_to_api(fp) if fp else None,
+    "taste_profile": _taste_to_api(tp),
+    "stats": {"events": events, "saved": saved},
+    "next": "keep_swiping" if events < 20 else "check_outfits",
+  }
+
+
+@app.post("/metrics/events")
+def metrics_events(
+  payload: MetricEventRequest,
+  db: Session = Depends(get_db),
+  credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+) -> dict[str, Any]:
+  user = _user_from_token(credentials, db)
+  ev = MetricEvent(
+    id=str(uuid4()),
+    user_id=user.id,
+    name=payload.name,
+    meta_json=payload.meta or {},
+    created_at=datetime.now(timezone.utc),
+  )
+  db.add(ev)
+  db.commit()
+  return {"status": "ok"}
+
+
+@app.get("/saved-products")
+def saved_products(
+  limit: int = 50,
+  db: Session = Depends(get_db),
+  credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+) -> list[dict[str, Any]]:
+  user = _user_from_token(credentials, db)
+  rows = db.execute(
+    select(RecommendationEventV2, Product)
+    .join(Product, Product.id == RecommendationEventV2.product_id)
+    .where(
+      RecommendationEventV2.user_id == user.id,
+      RecommendationEventV2.event_type.in_(["save", "unsave"]),
+      RecommendationEventV2.product_id.is_not(None),
+    )
+    .order_by(RecommendationEventV2.created_at.desc())
+    .limit(min(200, max(1, limit)))
+  ).all()
+  seen: set[str] = set()
+  out: list[dict[str, Any]] = []
+  for ev, p in rows:
+    if p.id in seen:
+      continue
+    seen.add(p.id)
+    # newest event wins; include only currently saved
+    if ev.event_type == "save":
+      out.append(
+        {
+          "saved_at": ev.created_at.isoformat(),
+          "product": _product_to_api(p),
+        }
+      )
+  return out
+
+
+@app.patch("/users/me/preferences")
+def users_me_preferences_patch(
+  payload: UserPreferencesPatchRequest,
+  db: Session = Depends(get_db),
+  credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+) -> dict[str, Any]:
+  user = _user_from_token(credentials, db)
+  user.height_cm = int(payload.height)
+  user.weight_kg = int(payload.weight) if payload.weight is not None else None
+  user.fit_preference = payload.fit_preference
+  user.updated_at = datetime.now(timezone.utc)
+  db.commit()
+  return _as_user_payload(user)
+
+
+@app.get("/fit-profile/me")
+def fit_profile_me(
+  db: Session = Depends(get_db),
+  credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+) -> dict[str, Any]:
+  user = _user_from_token(credentials, db)
+  fp = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
+  if fp is None:
+    now = datetime.now(timezone.utc)
+    fp = FitProfile(
+      id=str(uuid4()),
+      user_id=user.id,
+      height_cm=user.height_cm,
+      weight_kg=user.weight_kg,
+      gender_target="unisex",
+      clothing_size="M",
+      body_proportions="",
+      contrast_level="",
+      color_palette=[],
+      avoid_colors=[],
+      recommended_silhouettes=[],
+      avoid_silhouettes=[],
+      recommended_fit=user.fit_preference,
+      avoid_fit=[],
+      style_constraints={},
+      budget_min=0,
+      budget_max=10000,
+      created_at=now,
+      updated_at=now,
+    )
+    db.add(fp)
+    db.commit()
+  return _fit_to_api(fp)
+
+
+@app.patch("/fit-profile/me")
+def fit_profile_patch(
+  payload: FitProfilePatchRequest,
+  db: Session = Depends(get_db),
+  credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+) -> dict[str, Any]:
+  user = _user_from_token(credentials, db)
+  fp = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
+  now = datetime.now(timezone.utc)
+  if fp is None:
+    fp = FitProfile(
+      id=str(uuid4()),
+      user_id=user.id,
+      height_cm=payload.height,
+      weight_kg=payload.weight,
+      gender_target=payload.gender_target,
+      clothing_size=payload.clothing_size,
+      body_proportions="",
+      contrast_level="",
+      color_palette=[],
+      avoid_colors=[],
+      recommended_silhouettes=[],
+      avoid_silhouettes=[],
+      recommended_fit=user.fit_preference,
+      avoid_fit=[],
+      style_constraints={},
+      budget_min=payload.budget_min,
+      budget_max=payload.budget_max,
+      created_at=now,
+      updated_at=now,
+    )
+    db.add(fp)
+  else:
+    fp.height_cm = payload.height
+    fp.weight_kg = payload.weight
+    fp.gender_target = payload.gender_target
+    fp.clothing_size = payload.clothing_size
+    fp.budget_min = payload.budget_min
+    fp.budget_max = payload.budget_max
+    fp.updated_at = now
+  db.commit()
+  return _fit_to_api(fp)
+
+
+@app.get("/taste-profile/me")
+def taste_profile_me(
+  db: Session = Depends(get_db),
+  credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+) -> dict[str, Any]:
+  user = _user_from_token(credentials, db)
+  tp = ensure_taste_profile(db, user.id)
+  db.commit()
+  return _taste_to_api(tp)
+
+
+@app.patch("/taste-profile/me")
+def taste_profile_patch(
+  payload: TasteProfilePatchRequest,
+  db: Session = Depends(get_db),
+  credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+) -> dict[str, Any]:
+  user = _user_from_token(credentials, db)
+  tp = ensure_taste_profile(db, user.id)
+  tp.price_min = payload.price_min
+  tp.price_max = payload.price_max
+  tp.preferred_fit = payload.preferred_fit
+  tp.updated_at = datetime.now(timezone.utc)
+  db.commit()
+  return _taste_to_api(tp)
+
+
+@app.post("/outfits/generate")
+def outfits_generate(
+  count: int = 3,
+  db: Session = Depends(get_db),
+  credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+) -> list[dict[str, Any]]:
+  user = _user_from_token(credentials, db)
+  items = generate_outfits(db, user, count=count)
+  db.commit()
+  out: list[dict[str, Any]] = []
+  for o in items:
+    products: dict[str, Any] = {}
+    for slot, pid in (o.items_json or {}).items():
+      p = db.execute(select(Product).where(Product.id == str(pid))).scalar_one_or_none()
+      if p is not None:
+        products[str(slot)] = _product_to_api(p)
+    out.append(_outfit_to_api(o, products))
+  return out
+
+
+@app.get("/outfits")
+def outfits_list(
+  db: Session = Depends(get_db),
+  credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+) -> list[dict[str, Any]]:
+  user = _user_from_token(credentials, db)
+  rows = db.execute(
+    select(Outfit).where(Outfit.user_id == user.id).order_by(Outfit.created_at.desc()).limit(50)
+  ).scalars().all()
+  out: list[dict[str, Any]] = []
+  for o in rows:
+    products: dict[str, Any] = {}
+    for slot, pid in (o.items_json or {}).items():
+      p = db.execute(select(Product).where(Product.id == str(pid))).scalar_one_or_none()
+      if p is not None:
+        products[str(slot)] = _product_to_api(p)
+    out.append(_outfit_to_api(o, products))
+  return out
+
+
+@app.post("/outfits/save")
+def outfits_save(
+  outfit_id: str,
+  db: Session = Depends(get_db),
+  credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+) -> dict[str, Any]:
+  user = _user_from_token(credentials, db)
+  o = db.execute(
+    select(Outfit).where(Outfit.id == outfit_id, Outfit.user_id == user.id)
+  ).scalar_one_or_none()
+  if o is None:
+    raise HTTPException(status_code=404, detail="Outfit not found")
+  o.is_saved = 1
+  o.updated_at = datetime.now(timezone.utc)
+  db.commit()
+  return {"status": "ok", "outfit_id": outfit_id}
+
+
 @app.get("/billing/status")
 def billing_status(
   db: Session = Depends(get_db),
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> dict[str, Any]:
   user = _user_from_token(credentials, db)
-  return business.billing_status_payload(user)
+  return business.billing_status_payload(db, user)
 
 
 @app.get("/style-profile/me")
@@ -350,12 +1047,15 @@ async def analyze(
     raise HTTPException(status_code=403, detail=str(e)) from e
   await _read_upload_limited(photo, MAX_PHOTO_BYTES)
   profile = db.execute(select(StyleProfile).where(StyleProfile.user_id == user.id)).scalar_one()
-  analysis = mock_photo_analysis_v1()
+  try:
+    analysis = await analyze_photo_ai(photo)
+  except RuntimeError as e:
+    raise HTTPException(status_code=502, detail=str(e)) from e
   profile.profile_json = build_profile_json_after_analysis(
     analysis,
-    source="photo_analysis_v1_mock",
+    source="photo_analysis_v2_openai",
   )
-  profile.confidence_score = analysis.confidence_score
+  profile.confidence_score = 0.75
   profile.updated_at = datetime.now(timezone.utc)
   limits.photo_analysis_used += 1
   limits.updated_at = datetime.now(timezone.utc)
@@ -487,7 +1187,7 @@ def recommendations_feedback(
   ).scalar_one_or_none()
   if recommendation is None or recommendation.user_id != user.id:
     raise HTTPException(status_code=404, detail="Карточка не найдена")
-  weight = {"like": 1, "dislike": -2, "save": 3, "unsave": -1, "view_details": 0}[payload.event_type]
+  weight = {"like": 2, "dislike": -2, "save": 3, "unsave": -1, "view_details": 0}[payload.event_type]
   tags = recommendation.tags_json or {}
   db.add(
     RecommendationEvent(
@@ -530,3 +1230,20 @@ def recommendations_feedback(
     business.rebuild_user_summary(db, user.id)
     db.commit()
   return {"status": "ok", "event_type": payload.event_type}
+
+
+@app.post("/visual-analysis")
+async def visual_analysis(
+  db: Session = Depends(get_db),
+  credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+) -> dict[str, Any]:
+  user = _user_from_token(credentials, db)
+  profile = db.execute(select(StyleProfile).where(StyleProfile.user_id == user.id)).scalar_one()
+  analysis = profile.profile_json.get("analysis") if isinstance(profile.profile_json, dict) else None
+  if not isinstance(analysis, dict) or not analysis:
+    raise HTTPException(status_code=400, detail="Сначала выполните анализ стиля по фото.")
+  try:
+    image_url = await generate_style_visual(analysis)
+  except RuntimeError as e:
+    raise HTTPException(status_code=502, detail=str(e)) from e
+  return {"image_url": image_url, "type": "style_visual"}

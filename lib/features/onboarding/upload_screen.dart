@@ -20,6 +20,10 @@ class UploadScreen extends StatefulWidget {
 class _UploadScreenState extends State<UploadScreen> {
   final picker = ImagePicker();
   String? _localError;
+  final _height = TextEditingController(text: '170');
+  final _size = TextEditingController(text: 'M');
+  final _budgetMax = TextEditingController(text: '10000');
+  String _genderTarget = 'unisex';
 
   @override
   void initState() {
@@ -29,6 +33,9 @@ class _UploadScreenState extends State<UploadScreen> {
 
   @override
   void dispose() {
+    _height.dispose();
+    _size.dispose();
+    _budgetMax.dispose();
     widget.controller.removeListener(_onCtrl);
     super.dispose();
   }
@@ -44,7 +51,7 @@ class _UploadScreenState extends State<UploadScreen> {
         return;
       }
     }
-    widget.controller.setPhotoPath(path);
+    widget.controller.addPhotoPath(path);
     setState(() {});
   }
 
@@ -117,16 +124,16 @@ class _UploadScreenState extends State<UploadScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (path != null && !kIsWeb)
+                  if (c.photoPaths.isNotEmpty && !kIsWeb)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(16),
                       child: Image.file(
-                        File(path),
+                        File(c.photoPaths.first),
                         height: 220,
                         fit: BoxFit.cover,
                       ),
                     )
-                  else if (path != null && kIsWeb)
+                  else if (c.photoPaths.isNotEmpty && kIsWeb)
                     const Padding(
                       padding: EdgeInsets.all(16),
                       child: Text('Превью выбрано (web)'),
@@ -148,6 +155,22 @@ class _UploadScreenState extends State<UploadScreen> {
                     ),
                   ],
                   const SizedBox(height: 16),
+                  if (c.photoPaths.length > 1)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: c.photoPaths
+                            .map(
+                              (p) => Chip(
+                                label: Text(p.split(RegExp(r'[/\\]')).last),
+                                onDeleted: c.isLoading ? null : () => c.removePhotoPath(p),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ),
                   Row(
                     children: [
                       Expanded(
@@ -167,13 +190,13 @@ class _UploadScreenState extends State<UploadScreen> {
                       ),
                     ],
                   ),
-                  if (path != null) ...[
+                  if (c.photoPaths.isNotEmpty) ...[
                     const SizedBox(height: 10),
                     TextButton(
                       onPressed: c.isLoading
                           ? null
                           : () {
-                              c.setPhotoPath(null);
+                              c.photoPaths.toList().forEach(c.removePhotoPath);
                               setState(() => _localError = null);
                             },
                       child: const Text('Удалить фото'),
@@ -183,10 +206,91 @@ class _UploadScreenState extends State<UploadScreen> {
               ),
             ),
             const SizedBox(height: 14),
+            SoftCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Параметры (быстро)',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _height,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Рост (см)',
+                            prefixIcon: Icon(Icons.height),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: _size,
+                          decoration: const InputDecoration(
+                            labelText: 'Размер',
+                            prefixIcon: Icon(Icons.straighten),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _budgetMax,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Бюджет до (₽)',
+                      prefixIcon: Icon(Icons.payments_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('Мужское'),
+                        selected: _genderTarget == 'menswear',
+                        onSelected: (_) => setState(() => _genderTarget = 'menswear'),
+                      ),
+                      ChoiceChip(
+                        label: const Text('Женское'),
+                        selected: _genderTarget == 'womenswear',
+                        onSelected: (_) => setState(() => _genderTarget = 'womenswear'),
+                      ),
+                      ChoiceChip(
+                        label: const Text('Универсальное'),
+                        selected: _genderTarget == 'unisex',
+                        onSelected: (_) => setState(() => _genderTarget = 'unisex'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
             PrimaryButton(
               label: 'Начать анализ',
               icon: Icons.auto_awesome,
-              onPressed: path != null && !c.isLoading ? c.analyze : null,
+              onPressed: c.photoPaths.isNotEmpty && !c.isLoading
+                  ? () async {
+                      final h = int.tryParse(_height.text.trim()) ?? 170;
+                      final bMax = int.tryParse(_budgetMax.text.trim()) ?? 10000;
+                      await c.updateFitProfile(
+                        height: h,
+                        genderTarget: _genderTarget,
+                        clothingSize: _size.text.trim().isEmpty ? 'M' : _size.text.trim(),
+                        budgetMin: 0,
+                        budgetMax: bMax,
+                      );
+                      await c.analyze();
+                    }
+                  : null,
             ),
             if (_localError != null) ...[
               const SizedBox(height: 12),

@@ -3,6 +3,8 @@ import '../../app.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/modish_widgets.dart';
 import 'models.dart';
+import '../products/models.dart' as prod;
+import '../products/product_detail_screen.dart';
 
 class FeedScreen extends StatelessWidget {
   const FeedScreen({super.key, required this.controller});
@@ -10,7 +12,7 @@ class FeedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final outfit = controller.currentOutfit;
+    final card = controller.currentProduct;
     return SafeArea(
       child: Column(
         children: [
@@ -23,39 +25,38 @@ class FeedScreen extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Свайп влево — не нравится · вправо — нравится',
+            'Свайп влево — пропустить · вправо — нравится',
             style: TextStyle(fontSize: 12, color: AppColors.muted),
           ),
           const SizedBox(height: 10),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: outfit == null
+              child: card == null
                   ? _EmptyFeed(controller: controller)
-                  : _SwipeCard(controller: controller, outfit: outfit),
+                  : _SwipeProductCard(controller: controller, card: card),
             ),
           ),
-          if (outfit != null)
+          if (card != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 18),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton.filledTonal(
-                    onPressed: () =>
-                        controller.sendFeedback(outfit.id, 'dislike'),
+                    onPressed: () => controller.sendProductEvent(context, card.product.id, 'skip'),
                     icon: const Icon(Icons.close),
                   ),
                   IconButton.filledTonal(
-                    onPressed: () => controller.sendFeedback(outfit.id, 'save'),
+                    onPressed: () => controller.sendProductEvent(context, card.product.id, 'save'),
                     icon: const Icon(Icons.bookmark_border),
                   ),
                   IconButton.filledTonal(
-                    onPressed: () => openDetails(context, outfit, controller),
+                    onPressed: () => _openProduct(context, card, controller),
                     icon: const Icon(Icons.info_outline),
                   ),
                   IconButton.filledTonal(
-                    onPressed: () => controller.sendFeedback(outfit.id, 'like'),
+                    onPressed: () => controller.sendProductEvent(context, card.product.id, 'like'),
                     icon: const Icon(Icons.favorite_border),
                   ),
                 ],
@@ -84,7 +85,7 @@ class _EmptyFeed extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Сгенерируйте новую пачку (до 10 образов за раз). Лимит Plus — 5 пачек в месяц.',
+              'Импортируйте каталог и откройте ленту товаров.',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.muted, fontSize: 14),
             ),
@@ -92,9 +93,9 @@ class _EmptyFeed extends StatelessWidget {
             FilledButton.icon(
               onPressed: controller.isLoading
                   ? null
-                  : () => controller.generateOutfits(scenario: 'daily'),
-              icon: const Icon(Icons.auto_awesome),
-              label: const Text('Сгенерировать пачку'),
+                  : () => controller.refreshRemoteData(),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Обновить'),
             ),
             if (controller.error != null) ...[
               const SizedBox(height: 12),
@@ -111,10 +112,10 @@ class _EmptyFeed extends StatelessWidget {
   }
 }
 
-class _SwipeCard extends StatelessWidget {
-  const _SwipeCard({required this.controller, required this.outfit});
+class _SwipeProductCard extends StatelessWidget {
+  const _SwipeProductCard({required this.controller, required this.card});
   final AppController controller;
-  final Outfit outfit;
+  final prod.FeedCard card;
 
   @override
   Widget build(BuildContext context) {
@@ -122,27 +123,31 @@ class _SwipeCard extends StatelessWidget {
       onHorizontalDragEnd: (details) {
         final v = details.primaryVelocity ?? 0;
         if (v > 280) {
-          controller.sendFeedback(outfit.id, 'like');
+          controller.sendProductEvent(context, card.product.id, 'like');
         } else if (v < -280) {
-          controller.sendFeedback(outfit.id, 'dislike');
+          controller.sendProductEvent(context, card.product.id, 'skip');
         }
       },
-      child: _CardView(outfit: outfit),
+      child: _ProductCardView(card: card),
     );
   }
 }
 
-class _CardView extends StatelessWidget {
-  const _CardView({required this.outfit});
-  final Outfit outfit;
+class _ProductCardView extends StatelessWidget {
+  const _ProductCardView({required this.card});
+  final prod.FeedCard card;
 
   @override
   Widget build(BuildContext context) {
+    final p = card.product;
+    final palette = p.colors.isNotEmpty
+        ? p.colors.take(4).map(prod.colorFromName).toList()
+        : const [Color(0xFF142238), Colors.white, Color(0xFFCFCBC5)];
     return SoftCard(
       child: ListView(
         children: [
           Text(
-            outfit.title,
+            p.title.isEmpty ? 'Товар' : p.title,
             style: const TextStyle(
               fontFamily: 'Georgia',
               fontSize: 34,
@@ -151,46 +156,43 @@ class _CardView extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            outfit.description,
+            '${p.brand} · ${p.price} ${p.currency}',
             style: const TextStyle(color: AppColors.muted),
           ),
           const SizedBox(height: 6),
           Text(
-            'Ситуация: ${outfit.occasion}',
+            'Категория: ${p.category}',
             style: const TextStyle(color: AppColors.muted, fontSize: 13),
           ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
-            children: outfit.colors
+            children: palette
                 .map((e) => CircleAvatar(backgroundColor: e, radius: 12))
                 .toList(),
           ),
           const SizedBox(height: 16),
-          ...outfit.items.entries.map(
-            (entry) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 60,
-                    child: Text(
-                      '${entry.key}:',
-                      style: const TextStyle(color: AppColors.muted),
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      entry.value,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          Text(
+            card.reason,
+            style: const TextStyle(height: 1.35),
           ),
+          const SizedBox(height: 12),
+          if (p.imageUrl.isNotEmpty)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.network(p.imageUrl, height: 220, fit: BoxFit.cover),
+            ),
         ],
       ),
     );
   }
+}
+
+void _openProduct(BuildContext context, prod.FeedCard card, AppController controller) {
+  controller.sendProductEvent(context, card.product.id, 'open_product');
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => ProductDetailScreen(controller: controller, card: card),
+    ),
+  );
 }

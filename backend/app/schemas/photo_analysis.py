@@ -1,4 +1,7 @@
-"""Структурированный результат фото-анализа (ТЗ §15.1), версия схемы v1."""
+"""Структурированный результат фото-анализа (ОДЕЖДА), версия схемы v2.
+
+v2 — строгий формат результата анализа для рекомендаций одежды.
+"""
 
 from __future__ import annotations
 
@@ -8,46 +11,33 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
-class PhotoAnalysisV1(BaseModel):
-  """Поля, которые ожидает клиент после AI; мок заполняет те же ключи."""
+class PhotoAnalysisV2(BaseModel):
+  """Строгий формат результата анализа фото (по ТЗ)."""
 
-  body_type: str = Field(description="rectangle|triangle|...")
-  color_temperature: str = Field(description="cool|warm|neutral")
-  contrast_level: str = Field(description="low|medium|high")
-  face_shape: str = Field(description="oval|round|...")
-  recommended_colors: list[str] = Field(default_factory=list)
+  color_palette: list[str] = Field(default_factory=list)
   avoid_colors: list[str] = Field(default_factory=list)
-  recommended_fits: list[str] = Field(default_factory=list)
-  avoid_fits: list[str] = Field(default_factory=list)
-  style_summary: str = ""
-  confidence_score: float = Field(default=0.74, ge=0.0, le=1.0)
+  contrast_level: str = ""
+  body_proportions: str = ""
+  recommended_silhouettes: list[str] = Field(default_factory=list)
+  avoid_silhouettes: list[str] = Field(default_factory=list)
+  recommended_items: list[str] = Field(default_factory=list)
+  avoid_items: list[str] = Field(default_factory=list)
+  style_directions: list[str] = Field(default_factory=list)
+  summary: str = ""
 
 
-def mock_photo_analysis_v1() -> PhotoAnalysisV1:
-  return PhotoAnalysisV1(
-    body_type="rectangle",
-    color_temperature="cool",
-    contrast_level="medium",
-    face_shape="oval",
-    recommended_colors=["navy", "gray", "white", "burgundy"],
-    avoid_colors=["neon_yellow", "warm_orange"],
-    recommended_fits=["straight", "structured", "minimal"],
-    avoid_fits=["too_baggy", "shapeless"],
-    style_summary=(
-      "Пользователю подойдут спокойные чистые сочетания, прямые силуэты и минималистичные образы."
-    ),
-    confidence_score=0.74,
-  )
-
-
-def build_profile_json_after_analysis(analysis: PhotoAnalysisV1, *, source: str) -> dict[str, Any]:
+def build_profile_json_after_analysis(analysis: dict[str, Any] | PhotoAnalysisV2, *, source: str) -> dict[str, Any]:
   """Единый формат profile_json после анализа фото."""
   now = datetime.now(timezone.utc).isoformat()
+  if isinstance(analysis, PhotoAnalysisV2):
+    analysis_json = analysis.model_dump()
+  else:
+    analysis_json = dict(analysis)
   return {
     "version": 1,
     "source": source,
     "analyzed_at": now,
-    "analysis": analysis.model_dump(),
+    "analysis": analysis_json,
   }
 
 

@@ -12,6 +12,7 @@ class AnalysisScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final progress = (controller.analysisProgress / 100).clamp(0.0, 1.0);
     final pct = controller.analysisProgress;
+    final uploaded = pct >= 100;
     return MobileViewport(
       minimalBackdrop: true,
       child: SafeArea(
@@ -34,6 +35,12 @@ class AnalysisScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 40),
+              _Steps(
+                uploaded: uploaded,
+                analyzing: uploaded,
+                ready: false,
+              ),
+              const SizedBox(height: 18),
               ClipRRect(
                 borderRadius: BorderRadius.circular(999),
                 child: LinearProgressIndicator(
@@ -57,7 +64,7 @@ class AnalysisScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                pct >= 100 ? 'Отправляем фото на сервер…' : 'Оцениваем силуэт и палитру…',
+                pct >= 100 ? 'Фото загружено · анализируем на сервере…' : 'Загружаем фото…',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 15,
@@ -69,6 +76,37 @@ class AnalysisScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _Steps extends StatelessWidget {
+  const _Steps({required this.uploaded, required this.analyzing, required this.ready});
+  final bool uploaded;
+  final bool analyzing;
+  final bool ready;
+
+  Widget _row(String label, bool done) {
+    return Row(
+      children: [
+        Icon(done ? Icons.check_circle : Icons.radio_button_unchecked, size: 18, color: AppColors.accent),
+        const SizedBox(width: 8),
+        Text(label, style: const TextStyle(color: AppColors.muted)),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _row('загружено', uploaded),
+        const SizedBox(height: 6),
+        _row('анализируется', analyzing),
+        const SizedBox(height: 6),
+        _row('готово', ready),
+      ],
     );
   }
 }

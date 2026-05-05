@@ -43,3 +43,19 @@ def get_jwt_expires_hours() -> int:
 def allow_dev_analyze_bypass() -> bool:
   """Локальная отладка: не блокировать /analyze из‑за trial/Plus (только если явно включено в .env)."""
   return os.getenv("ALLOW_DEV_ANALYZE", "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def get_openai_api_key() -> str:
+  return require_env("OPENAI_API_KEY")
+
+
+def get_style_analysis_model() -> str:
+  return os.getenv("STYLE_ANALYSIS_MODEL", "gpt-4.1-mini").strip() or "gpt-4.1-mini"
+
+
+def get_visual_analysis_text_model() -> str:
+  return os.getenv("VISUAL_ANALYSIS_TEXT_MODEL", "gpt-4.1-mini").strip() or "gpt-4.1-mini"
+
+
+def get_visual_analysis_image_model() -> str:
+  return os.getenv("VISUAL_ANALYSIS_IMAGE_MODEL", "gpt-image-2").strip() or "gpt-image-2"

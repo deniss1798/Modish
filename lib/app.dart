@@ -14,6 +14,10 @@ import 'features/recommendations/feed_screen.dart';
 import 'features/recommendations/models.dart';
 import 'features/recommendations/recommendations_screen.dart';
 import 'features/recommendations/saved_screen.dart';
+import 'features/visual/visual_analysis_screen.dart';
+import 'features/products/models.dart' as prod;
+import 'features/outfits/outfits_screen.dart';
+import 'features/onboarding/result_screen.dart';
 
 /// Учитывает новый формат profile_json с вложенным `analysis` и старый плоский.
 bool _profileHasAnalysis(Map<String, dynamic> pj) {
@@ -111,6 +115,7 @@ class AppController extends ChangeNotifier {
   String styleTarget = 'menswear';
   String? token;
   String? selectedPhotoPath;
+  final photoPaths = <String>[];
   bool isLoading = false;
   String? error;
   int analysisProgress = 0;
@@ -119,10 +124,17 @@ class AppController extends ChangeNotifier {
   final _detailViewSent = <String>{};
   List<Outfit> feed = [];
   List<Map<String, dynamic>> savedRows = [];
+  List<prod.FeedCard> productFeed = [];
+  List<Map<String, dynamic>> savedProductRows = [];
+  List<Map<String, dynamic>> outfits = [];
   Map<String, dynamic> summary = {};
   Map<String, dynamic> billing = {};
+  String? visualImageUrl;
+  Map<String, dynamic> fitProfile = {};
+  Map<String, dynamic> tasteProfile = {};
 
   Outfit? get currentOutfit => feed.isEmpty ? null : feed.first;
+  prod.FeedCard? get currentProduct => productFeed.isEmpty ? null : productFeed.first;
 
   Future<void> boot() async {
     await Future<void>.delayed(const Duration(milliseconds: 200));
@@ -166,6 +178,10 @@ class AppController extends ChangeNotifier {
       final t = await api.register(email, password);
       token = t;
       await TokenStorage.write(t);
+      // metrics
+      try {
+        await api.metricsEvent('user_registered');
+      } catch (_) {}
       stage = AppStage.upload;
     });
   }
@@ -195,8 +211,12 @@ class AppController extends ChangeNotifier {
         analysisProgress = i * 25;
         notifyListeners();
       }
+      // 100% — фото загружено, дальше реальный анализ на сервере
       await api.setStyleTarget(styleTarget);
       await api.analyzeStyleProfile(selectedPhotoPath!);
+      try {
+        await api.metricsEvent('photo_uploaded');
+      } catch (_) {}
       await refreshRemoteData();
       stage = AppStage.home;
       tab = 0;
@@ -217,9 +237,30 @@ class AppController extends ChangeNotifier {
       feed = [];
     }
     try {
+      final rows = await api.productFeed(limit: 30);
+      productFeed = rows.map(prod.FeedCard.fromApi).toList();
+    } catch (_) {
+      productFeed = [];
+    }
+    if (productFeed.isNotEmpty) {
+      try {
+        await api.metricsEvent('feed_opened');
+      } catch (_) {}
+    }
+    try {
       summary = await api.summary();
     } catch (_) {
       summary = {};
+    }
+    try {
+      fitProfile = await api.fitProfileMe();
+    } catch (_) {
+      fitProfile = {};
+    }
+    try {
+      tasteProfile = await api.tasteProfileMe();
+    } catch (_) {
+      tasteProfile = {};
     }
     try {
       savedRows = await api.savedRecommendations();
@@ -227,9 +268,19 @@ class AppController extends ChangeNotifier {
       savedRows = [];
     }
     try {
+      savedProductRows = await api.savedProducts();
+    } catch (_) {
+      savedProductRows = [];
+    }
+    try {
       billing = await api.billingStatus();
     } catch (_) {
       billing = {};
+    }
+    try {
+      outfits = await api.outfitsList();
+    } catch (_) {
+      outfits = [];
     }
     savedIds
       ..clear()
@@ -258,6 +309,25 @@ class AppController extends ChangeNotifier {
 
   void setPhotoPath(String? path) {
     selectedPhotoPath = path;
+    photoPaths
+      ..clear()
+      ..addAll(path == null ? const [] : [path]);
+    notifyListeners();
+  }
+
+  void addPhotoPath(String path) {
+    if (photoPaths.contains(path)) return;
+    if (photoPaths.length >= 3) return;
+    photoPaths.add(path);
+    selectedPhotoPath ??= path;
+    notifyListeners();
+  }
+
+  void removePhotoPath(String path) {
+    photoPaths.remove(path);
+    if (selectedPhotoPath == path) {
+      selectedPhotoPath = photoPaths.isEmpty ? null : photoPaths.first;
+    }
     notifyListeners();
   }
 
@@ -273,12 +343,115 @@ class AppController extends ChangeNotifier {
     token = null;
     feed = [];
     savedRows = [];
+    productFeed = [];
+    savedProductRows = [];
+    outfits = [];
     summary = {};
     billing = {};
+    visualImageUrl = null;
+    fitProfile = {};
+    tasteProfile = {};
     savedIds.clear();
     _detailViewSent.clear();
     stage = AppStage.auth;
     notifyListeners();
+  }
+
+  Future<void> sendProductEvent(BuildContext context, String productId, String eventType) async {
+    await _run(() async {
+      final res = await api.recordRecommendationEvent(eventType: eventType, productId: productId);
+      try {
+        final name = switch (eventType) {
+          'like' => 'product_liked',
+          'save' => 'product_saved',
+          'open_product' => 'product_opened',
+          _ => null,
+        };
+        if (name != null) {
+          await api.metricsEvent(name);
+        }
+      } catch (_) {}
+      if (res['milestone_reached'] == true && context.mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => ResultScreen(controller: this)),
+        );
+      }
+      if (eventType == 'save') {
+        // оптимистично: просто перезагрузим
+      }
+      if (eventType == 'like' || eventType == 'dislike' || eventType == 'skip') {
+        productFeed = productFeed.where((c) => c.product.id != productId).toList();
+      }
+      await refreshRemoteData();
+    });
+  }
+
+  Future<void> updateFitProfile({
+    required int height,
+    int? weight,
+    required String genderTarget,
+    required String clothingSize,
+    required int budgetMin,
+    required int budgetMax,
+  }) async {
+    await _run(() async {
+      fitProfile = await api.fitProfilePatch(
+        height: height,
+        weight: weight,
+        genderTarget: genderTarget,
+        clothingSize: clothingSize,
+        budgetMin: budgetMin,
+        budgetMax: budgetMax,
+      );
+      await refreshRemoteData();
+    });
+  }
+
+  Future<void> updateTasteProfile({
+    required int priceMin,
+    required int priceMax,
+    required String preferredFit,
+  }) async {
+    await _run(() async {
+      tasteProfile = await api.tasteProfilePatch(
+        priceMin: priceMin,
+        priceMax: priceMax,
+        preferredFit: preferredFit,
+      );
+      await refreshRemoteData();
+    });
+  }
+
+  Future<void> generateOutfitsV2({int count = 3}) async {
+    await _run(() async {
+      outfits = await api.outfitsGenerate(count: count);
+      try {
+        await api.metricsEvent('outfit_generated', meta: {'count': count});
+      } catch (_) {}
+      await refreshRemoteData();
+    });
+  }
+
+  Future<void> saveOutfit(String outfitId) async {
+    await _run(() async {
+      await api.outfitsSave(outfitId);
+      await refreshRemoteData();
+    });
+  }
+
+  Future<void> openVisualAnalysis(BuildContext context) async {
+    await _run(() async {
+      final res = await api.visualAnalysis();
+      final url = res['image_url'];
+      if (url is String && url.isNotEmpty) {
+        visualImageUrl = url;
+      }
+      if (context.mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => VisualAnalysisScreen(controller: this)),
+        );
+      }
+    });
   }
 
   Future<void> recordViewDetails(String recommendationId) async {
@@ -349,7 +522,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final pages = [
       FeedScreen(controller: controller),
-      RecommendationsScreen(controller: controller),
+      OutfitsScreen(controller: controller),
       SavedScreen(controller: controller),
       ProfileScreen(controller: controller),
     ];
@@ -368,9 +541,9 @@ class HomeScreen extends StatelessWidget {
               label: 'Подборка',
             ),
             NavigationDestination(
-              icon: Icon(Icons.auto_awesome_outlined),
-              selectedIcon: Icon(Icons.auto_awesome),
-              label: 'Рекомендации',
+              icon: Icon(Icons.style_outlined),
+              selectedIcon: Icon(Icons.style),
+              label: 'Образы',
             ),
             NavigationDestination(
               icon: Icon(Icons.bookmark_border),

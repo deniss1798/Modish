@@ -149,6 +149,117 @@ class ApiClient {
     return Map<String, dynamic>.from(response.data as Map);
   }
 
+  Future<List<Map<String, dynamic>>> productFeed({int limit = 30}) async {
+    final response = await _dio.get('/feed', queryParameters: {'limit': limit});
+    final list = (response.data as List).cast<Map<String, dynamic>>();
+    return list;
+  }
+
+  Future<Map<String, dynamic>> recordRecommendationEvent({
+    required String eventType,
+    String? productId,
+    String? outfitId,
+    Map<String, dynamic>? meta,
+  }) async {
+    final response = await _dio.post(
+      '/recommendations/events',
+      data: {
+        'event_type': eventType,
+        'product_id': productId,
+        'outfit_id': outfitId,
+        'meta': meta ?? {},
+      },
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  Future<void> metricsEvent(String name, {Map<String, dynamic>? meta}) async {
+    await _dio.post('/metrics/events', data: {'name': name, 'meta': meta ?? {}});
+  }
+
+  Future<Map<String, dynamic>> profileBrief() async {
+    final response = await _dio.get('/profile/brief');
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  Future<List<Map<String, dynamic>>> savedProducts() async {
+    final response = await _dio.get('/saved-products');
+    final list = (response.data as List).cast<Map<String, dynamic>>();
+    return list;
+  }
+
+  Future<Map<String, dynamic>> fitProfileMe() async {
+    final response = await _dio.get('/fit-profile/me');
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  Future<Map<String, dynamic>> fitProfilePatch({
+    required int height,
+    int? weight,
+    required String genderTarget,
+    required String clothingSize,
+    required int budgetMin,
+    required int budgetMax,
+  }) async {
+    final response = await _dio.patch(
+      '/fit-profile/me',
+      data: {
+        'height': height,
+        'weight': weight,
+        'gender_target': genderTarget,
+        'clothing_size': clothingSize,
+        'budget_min': budgetMin,
+        'budget_max': budgetMax,
+      },
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  Future<Map<String, dynamic>> tasteProfileMe() async {
+    final response = await _dio.get('/taste-profile/me');
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  Future<Map<String, dynamic>> tasteProfilePatch({
+    required int priceMin,
+    required int priceMax,
+    required String preferredFit,
+  }) async {
+    final response = await _dio.patch(
+      '/taste-profile/me',
+      data: {
+        'price_min': priceMin,
+        'price_max': priceMax,
+        'preferred_fit': preferredFit,
+      },
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  Future<List<Map<String, dynamic>>> outfitsList() async {
+    final response = await _dio.get('/outfits');
+    final list = (response.data as List).cast<Map<String, dynamic>>();
+    return list;
+  }
+
+  Future<List<Map<String, dynamic>>> outfitsGenerate({int count = 3}) async {
+    final response = await _dio.post(
+      '/outfits/generate',
+      queryParameters: {'count': count},
+    );
+    final list = (response.data as List).cast<Map<String, dynamic>>();
+    return list;
+  }
+
+  Future<void> outfitsSave(String outfitId) async {
+    await _dio.post('/outfits/save', queryParameters: {'outfit_id': outfitId});
+  }
+
+  Future<Map<String, dynamic>> visualAnalysis() async {
+    final response = await _dio.post('/visual-analysis');
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
   /// Сообщение об ошибке для UI.
   static String formatError(Object e) {
     if (e is DioException) {

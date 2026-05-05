@@ -20,6 +20,7 @@ from .models import (
 )
 from .config import allow_dev_analyze_bypass
 from .schemas.photo_analysis import extract_analysis_section
+from .services.recommendation_service import generate_recommendations
 
 MAX_PHOTO_BYTES = 5 * 1024 * 1024
 PLUS_MONTHLY_PHOTO_ANALYSES = 1
@@ -170,18 +171,20 @@ def rebuild_user_summary(db: Session, user_id: str) -> UserRecommendationSummary
   ).scalar_one()
   event_count = int(event_count or 0)
 
-  suitable_colors = list(dict.fromkeys((a.get("recommended_colors") or []) + (pos.get("color") or [])))
+  suitable_colors = list(dict.fromkeys((a.get("color_palette") or []) + (pos.get("color") or [])))
   avoid_colors = list(dict.fromkeys((a.get("avoid_colors") or []) + (neg.get("color") or [])))
   if not suitable_colors:
     suitable_colors = ["navy", "graphite", "white", "burgundy"]
   if not avoid_colors:
     avoid_colors = ["neon_yellow", "warm_orange"]
   suitable_silhouettes = list(
-    dict.fromkeys((a.get("recommended_fits") or []) + (pos.get("silhouette") or []))
+    dict.fromkeys((a.get("recommended_silhouettes") or []) + (pos.get("silhouette") or []))
   )
-  avoid_silhouettes = list(dict.fromkeys(neg.get("silhouette") or []))
+  avoid_silhouettes = list(dict.fromkeys((a.get("avoid_silhouettes") or []) + (neg.get("silhouette") or [])))
 
   recommended_items: list[str] = []
+  for it in a.get("recommended_items") or []:
+    recommended_items.append(str(it).replace("_", " "))
   for it in pos.get("item_type") or []:
     recommended_items.append(it.replace("_", " "))
   if not recommended_items:
@@ -196,6 +199,13 @@ def rebuild_user_summary(db: Session, user_id: str) -> UserRecommendationSummary
     "Судя по анализу и вашим реакциям, вам вероятно ближе спокойные базовые образы.",
     "Вероятно, вам лучше подходят чистые сочетания без лишних деталей.",
   ]
+  if a.get("style_directions"):
+    try:
+      dirs = [str(x) for x in (a.get("style_directions") or []) if str(x).strip()]
+      if dirs:
+        style_direction_human.append(f"Направления стиля по анализу: {', '.join(dirs[:4])}.")
+    except Exception:
+      pass
   if pos.get("style"):
     style_direction_human.append(
       f"Устойчиво положительные отклики по стилям: {', '.join(pos['style'][:4])}."
@@ -205,6 +215,13 @@ def rebuild_user_summary(db: Session, user_id: str) -> UserRecommendationSummary
     "Лучше использовать осторожно слишком яркие цвета у лица.",
     "Перегруженные образы вы чаще отклоняете.",
   ]
+  if a.get("avoid_items"):
+    try:
+      bad = [str(x) for x in (a.get("avoid_items") or []) if str(x).strip()]
+      if bad:
+        avoid_patterns_human.append(f"Избегать: {', '.join(bad[:4])}.")
+    except Exception:
+      pass
   if neg.get("style"):
     avoid_patterns_human.append(
       f"Реже заходят направления: {', '.join(neg['style'][:4])}."
@@ -218,7 +235,7 @@ def rebuild_user_summary(db: Session, user_id: str) -> UserRecommendationSummary
   if neg.get("color"):
     reactions_insights.append("Яркие оттенки вы отклоняете чаще среднего.")
 
-  conf = float(a.get("confidence_score") or profile.confidence_score or 0.65)
+  conf = float(profile.confidence_score or 0.65)
   conf = min(0.95, max(0.35, conf + min(0.1, event_count * 0.005)))
 
   summary_json = {
@@ -277,7 +294,7 @@ def summary_to_api(summary: UserRecommendationSummary, profile: StyleProfile) ->
   }
   if not base["suitable_colors"] and profile.profile_json:
     a = extract_analysis_section(profile.profile_json)
-    base["suitable_colors"] = list(a.get("recommended_colors") or [])
+    base["suitable_colors"] = list(a.get("color_palette") or [])
     base["avoid_colors"] = list(a.get("avoid_colors") or [])
   return base
 
@@ -437,56 +454,27 @@ def generate_outfit_recommendations(
   count: int,
   scenario: str,
 ) -> list[Recommendation]:
-  templates = outfit_templates_ru()
-  count = min(OUTFITS_PER_BATCH, max(1, count))
-  now = datetime.now(timezone.utc)
-  created: list[Recommendation] = []
-  for i in range(count):
-    t = templates[i % len(templates)]
-    content = {
-      "items": t["items"],
-      "why_it_fits": [
-        "спокойный контраст",
-        "чистый силуэт",
-        "легко повторить в реальной жизни",
-      ],
-      "alternatives": [
-        "лонгслив можно заменить на белую футболку",
-        "кроссовки можно заменить на лоферы",
-        "жакет можно заменить на тёмную overshirt",
-      ],
-    }
-    tags = {
-      "styles": t["styles"],
-      "colors": t["colors"],
-      "silhouettes": t["silhouettes"],
-      "occasion": scenario_occasion(scenario),
-      "item_types": t["item_types"],
-    }
-    rec = Recommendation(
-      id=str(uuid4()),
-      user_id=user_id,
-      type="outfit",
-      title=t["title"],
-      description=t["description"],
-      content_json=content,
-      tags_json=tags,
-      status="active",
-      created_at=now,
-      updated_at=now,
-    )
-    db.add(rec)
-    created.append(rec)
-  db.flush()
-  return created
+  # Новый путь: рекомендации зависят от style_profile.analysis
+  profile = db.execute(select(StyleProfile).where(StyleProfile.user_id == user_id)).scalar_one()
+  return generate_recommendations(db, profile, count=count, scenario=scenario)
 
 
-def billing_status_payload(user: User) -> dict[str, Any]:
+def billing_status_payload(db: Session, user: User) -> dict[str, Any]:
   now = datetime.now(timezone.utc)
   plus = is_plus_available(user, now)
+  limits = get_or_refresh_limits(db, user.id)
   return {
     "plan": user.plan,
     "status": user.subscription_status,
     "trial_ends_at": user.trial_ends_at.isoformat(),
     "is_plus_available": plus,
+    # Дополнительные поля не ломают существующий клиент
+    "limits": {
+      "photo_analysis_used": limits.photo_analysis_used,
+      "photo_analysis_limit": PLUS_MONTHLY_PHOTO_ANALYSES,
+      "recommendation_batches_used": limits.recommendation_batches_used,
+      "recommendation_batches_limit": PLUS_MONTHLY_GENERATION_BATCHES,
+      "period_start": limits.period_start.isoformat(),
+      "period_end": limits.period_end.isoformat(),
+    },
   }
