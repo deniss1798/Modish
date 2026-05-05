@@ -115,7 +115,7 @@ class AppController extends ChangeNotifier {
   AppStage stage = AppStage.splash;
   /// 0 Подборка, 1 Рекомендации, 2 Сохранённое, 3 Профиль (п.2 ТЗ)
   int tab = 0;
-  String email = 'alexandra@example.com';
+  String email = '';
   String styleTarget = 'menswear';
   String? token;
   String? selectedPhotoPath;

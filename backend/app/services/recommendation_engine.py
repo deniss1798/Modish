@@ -18,6 +18,7 @@ class ScoredProduct:
   final_score: float
   breakdown: dict[str, float]
   reason: str
+  reasons: list[str]
 
 
 def _norm_list(values: Any) -> list[str]:
@@ -79,18 +80,23 @@ def score_product(db: Session, user: User, product: Product) -> ScoredProduct:
 
   p_colors = set(_norm_list(product.colors))
   p_sil = (product.silhouette or "").strip().lower()
+  reasons: list[str] = []
 
   fit_points = 0.0
   # colors
   if palette and (palette & p_colors):
     fit_points += 20.0
+    reasons.append("Цвет входит в вашу палитру")
   if avoid_colors and (avoid_colors & p_colors):
     fit_points -= 30.0
+    reasons.append("Цвет совпадает с тем, что лучше избегать")
   # silhouette
   if rec_sil and p_sil and p_sil in rec_sil:
     fit_points += 20.0
+    reasons.append("Силуэт подходит вашему профилю")
   if bad_sil and p_sil and p_sil in bad_sil:
     fit_points -= 30.0
+    reasons.append("Силуэт в списке нежелательных")
   # size availability
   if product.available_sizes:
     if fit is None:
@@ -99,6 +105,8 @@ def score_product(db: Session, user: User, product: Product) -> ScoredProduct:
       size = (fit.clothing_size or "").strip().upper()
       sizes = {str(x).strip().upper() for x in (product.available_sizes or []) if str(x).strip()}
       fit_points += 15.0 if (not size or size in sizes) else 0.0
+      if size and size in sizes:
+        reasons.append("Есть ваш размер")
   fit_score = max(0.0, min(100.0, 50.0 + fit_points)) / 100.0
 
   # Taste score from weights (fall back to legacy lists if empty)
@@ -118,6 +126,8 @@ def score_product(db: Session, user: User, product: Product) -> ScoredProduct:
   taste_points = 0.0
   if taste.category_weights:
     taste_points += float(w(taste.category_weights, cat))
+    if w(taste.category_weights, cat) >= 6:
+      reasons.append("Вы часто выбираете эту категорию")
   else:
     if cat and cat in set(_norm_list(taste.liked_categories)):
       taste_points += 15.0
@@ -126,6 +136,8 @@ def score_product(db: Session, user: User, product: Product) -> ScoredProduct:
 
   if taste.brand_weights:
     taste_points += float(w(taste.brand_weights, brand))
+    if w(taste.brand_weights, brand) >= 6:
+      reasons.append("Вам часто нравится этот бренд")
   else:
     if brand and brand in set(_norm_list(taste.liked_brands)):
       taste_points += 15.0
@@ -135,6 +147,8 @@ def score_product(db: Session, user: User, product: Product) -> ScoredProduct:
   if taste.color_weights:
     for c in p_colors:
       taste_points += float(w(taste.color_weights, c))
+      if w(taste.color_weights, c) >= 6:
+        reasons.append("Вы часто выбираете похожие цвета")
   else:
     if p_colors and (set(_norm_list(taste.liked_colors)) & p_colors):
       taste_points += 10.0
@@ -144,6 +158,8 @@ def score_product(db: Session, user: User, product: Product) -> ScoredProduct:
   if taste.style_weights:
     for t in style_tags:
       taste_points += float(w(taste.style_weights, t))
+      if w(taste.style_weights, t) >= 6:
+        reasons.append("Вы часто выбираете похожие стили")
   else:
     if style_tags and (set(_norm_list(taste.liked_styles)) & style_tags):
       taste_points += 8.0
@@ -160,8 +176,12 @@ def score_product(db: Session, user: User, product: Product) -> ScoredProduct:
     budget_max = min(budget_max, int(fit.budget_max))
   if product.price > budget_max:
     price_score = 0.4
+    reasons.append("Цена выше вашего бюджета")
   elif product.price < taste.price_min:
     price_score = 0.7
+    reasons.append("Цена ниже вашего типичного диапазона")
+  else:
+    reasons.append("Цена в рамках бюджета")
 
   availability_score = 1.0 if (product.image_url and product.product_url and product.available_sizes) else 0.4
   freshness_score = 1.0  # placeholder: can decay by age later
@@ -174,7 +194,13 @@ def score_product(db: Session, user: User, product: Product) -> ScoredProduct:
     + availability_score * 0.05
   )
 
-  reason = "Подходит по палитре/силуэту и вашим предпочтениям."
+  uniq: list[str] = []
+  seen: set[str] = set()
+  for r in reasons:
+    if r not in seen:
+      seen.add(r)
+      uniq.append(r)
+  reason = "Подходит по профилю и вашим предпочтениям."
   breakdown = {
     "fit_score": fit_score,
     "taste_score": taste_score,
@@ -182,7 +208,13 @@ def score_product(db: Session, user: User, product: Product) -> ScoredProduct:
     "freshness_score": freshness_score,
     "availability_score": availability_score,
   }
-  return ScoredProduct(product=product, final_score=float(final), breakdown=breakdown, reason=reason)
+  return ScoredProduct(
+    product=product,
+    final_score=float(final),
+    breakdown=breakdown,
+    reason=reason,
+    reasons=uniq[:8],
+  )
 
 
 def generate_feed(

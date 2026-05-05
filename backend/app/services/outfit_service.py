@@ -61,7 +61,13 @@ def generate_outfits(db: Session, user: User, *, count: int = 3) -> list[Outfit]
       rows.sort(key=lambda p: int(bool(set(_norm_list(p.colors)) & set(palette))), reverse=True)
     return rows[:20]
 
-  tops = candidates("футболки") or candidates("tshirts") or candidates("tops")
+  tops = (
+    candidates("футболки")
+    or candidates("рубашки")
+    or candidates("shirts")
+    or candidates("tshirts")
+    or candidates("tops")
+  )
   bottoms = candidates("джинсы") or candidates("jeans") or candidates("брюки") or candidates("trousers")
   shoes_list = candidates("обувь") or candidates("shoes")
 

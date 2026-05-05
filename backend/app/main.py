@@ -13,6 +13,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from . import business
+from .catalog_normalize import normalize_category, normalize_product_colors
 from .config import get_jwt_expires_hours, get_jwt_secret
 from .db import SessionLocal
 from .schemas.photo_analysis import build_profile_json_after_analysis
@@ -28,6 +29,7 @@ from .models import (
   SavedRecommendation,
   StyleProfile,
   TasteProfile,
+  UserProductState,
   User,
 )
 from .services.visual_analysis_service import generate_style_visual
@@ -91,10 +93,19 @@ class ProductIn(BaseModel):
   image_url: str
   product_url: str
   available_sizes: list[str] = Field(default_factory=list)
+  available_sizes_detailed: list[dict[str, Any]] = Field(default_factory=list)
+  size_system: str | None = None
   colors: list[str] = Field(default_factory=list)
+  color_family: str | None = None
+  material: str | None = None
+  season: str | None = None
+  occasion: str | None = None
+  gender_target: str | None = None
   fit: str | None = None
   silhouette: str | None = None
   style_tags: list[str] = Field(default_factory=list)
+  image_quality_score: float | None = None
+  is_available: bool = True
   is_active: bool = True
 
 
@@ -218,10 +229,20 @@ def _product_to_api(p: Product) -> dict[str, Any]:
     "image_url": p.image_url,
     "product_url": p.product_url,
     "available_sizes": p.available_sizes or [],
+    "available_sizes_detailed": p.available_sizes_detailed or [],
+    "size_system": p.size_system,
     "colors": p.colors or [],
+    "color_family": p.color_family,
+    "material": p.material,
+    "season": p.season,
+    "occasion": p.occasion,
+    "gender_target": p.gender_target,
     "fit": p.fit,
     "silhouette": p.silhouette,
     "style_tags": p.style_tags or [],
+    "image_quality_score": p.image_quality_score,
+    "is_available": bool(p.is_available),
+    "last_checked_at": p.last_checked_at.isoformat() if p.last_checked_at else None,
     "is_active": bool(p.is_active),
   }
 
@@ -475,17 +496,27 @@ def admin_products_import(
         source=payload["source"],
         title=payload["title"],
         brand=payload["brand"],
-        category=payload["category"],
+        category=normalize_category(payload["category"]),
         subcategory=payload.get("subcategory"),
         price=int(payload["price"]),
         currency=payload.get("currency") or "RUB",
         image_url=payload["image_url"],
         product_url=payload["product_url"],
         available_sizes=payload.get("available_sizes") or [],
-        colors=payload.get("colors") or [],
+        available_sizes_detailed=payload.get("available_sizes_detailed") or [],
+        size_system=payload.get("size_system"),
+        colors=normalize_product_colors(payload.get("colors") or []),
+        color_family=payload.get("color_family"),
+        material=payload.get("material"),
+        season=payload.get("season"),
+        occasion=payload.get("occasion"),
+        gender_target=payload.get("gender_target"),
         fit=payload.get("fit"),
         silhouette=payload.get("silhouette"),
         style_tags=payload.get("style_tags") or [],
+        image_quality_score=payload.get("image_quality_score"),
+        is_available=1 if payload.get("is_available", True) else 0,
+        last_checked_at=now,
         is_active=1 if payload.get("is_active", True) else 0,
         created_at=now,
         updated_at=now,
@@ -495,17 +526,27 @@ def admin_products_import(
     else:
       existing.title = payload["title"]
       existing.brand = payload["brand"]
-      existing.category = payload["category"]
+      existing.category = normalize_category(payload["category"])
       existing.subcategory = payload.get("subcategory")
       existing.price = int(payload["price"])
       existing.currency = payload.get("currency") or "RUB"
       existing.image_url = payload["image_url"]
       existing.product_url = payload["product_url"]
       existing.available_sizes = payload.get("available_sizes") or []
-      existing.colors = payload.get("colors") or []
+      existing.available_sizes_detailed = payload.get("available_sizes_detailed") or []
+      existing.size_system = payload.get("size_system")
+      existing.colors = normalize_product_colors(payload.get("colors") or [])
+      existing.color_family = payload.get("color_family")
+      existing.material = payload.get("material")
+      existing.season = payload.get("season")
+      existing.occasion = payload.get("occasion")
+      existing.gender_target = payload.get("gender_target")
       existing.fit = payload.get("fit")
       existing.silhouette = payload.get("silhouette")
       existing.style_tags = payload.get("style_tags") or []
+      existing.image_quality_score = payload.get("image_quality_score")
+      existing.is_available = 1 if payload.get("is_available", True) else 0
+      existing.last_checked_at = now
       existing.is_active = 1 if payload.get("is_active", True) else 0
       existing.updated_at = now
       updated += 1
@@ -556,14 +597,14 @@ def admin_catalog_demo_seed(
         source=source,
         title=f"{cat.capitalize()} {brand} #{i+1}",
         brand=brand,
-        category=cat,
+        category=normalize_category(cat),
         subcategory=None,
         price=price,
         currency="RUB",
         image_url="https://picsum.photos/seed/modish/600/600",
         product_url="https://example.com/product",
         available_sizes=sizes,
-        colors=[color],
+        colors=normalize_product_colors([color]),
         fit=None,
         silhouette=None,
         style_tags=["minimal"],
@@ -584,27 +625,17 @@ def feed(
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> list[dict[str, Any]]:
   user = _user_from_token(credentials, db)
-  interacted = set(
+  now = datetime.now(timezone.utc)
+  hidden_ids = set(
     db.execute(
-      select(RecommendationEventV2.product_id).where(
-        RecommendationEventV2.user_id == user.id,
-        RecommendationEventV2.product_id.is_not(None),
-        RecommendationEventV2.event_type.in_(
-          [
-            "view",
-            "skip",
-            "dislike",
-            "like",
-            "save",
-            "unsave",
-            "open_product",
-            "buy_click",
-          ]
-        ),
+      select(UserProductState.product_id).where(
+        UserProductState.user_id == user.id,
+        UserProductState.hidden_until.is_not(None),
+        UserProductState.hidden_until > now,
       )
     ).scalars()
   )
-  scored = generate_feed(db, user, limit=limit, exclude_product_ids=set(map(str, interacted)))
+  scored = generate_feed(db, user, limit=limit, exclude_product_ids=set(map(str, hidden_ids)))
   out: list[dict[str, Any]] = []
   for s in scored:
     out.append(
@@ -613,6 +644,7 @@ def feed(
         "final_score": s.final_score,
         "breakdown": s.breakdown,
         "reason": s.reason,
+        "reasons": s.reasons,
       }
     )
   return out
@@ -638,6 +670,52 @@ def recommendations_events(
   weight = weights[payload.event_type]
   if payload.product_id is None and payload.outfit_id is None:
     raise HTTPException(status_code=400, detail="product_id or outfit_id required")
+
+  # Update user->product state (soft hiding rules)
+  if payload.product_id:
+    now = datetime.now(timezone.utc)
+    st = db.execute(
+      select(UserProductState).where(
+        UserProductState.user_id == user.id,
+        UserProductState.product_id == payload.product_id,
+      )
+    ).scalar_one_or_none()
+    if st is None:
+      st = UserProductState(
+        id=str(uuid4()),
+        user_id=user.id,
+        product_id=payload.product_id,
+        hidden_until=None,
+        last_seen_at=None,
+        event_strength=0,
+        created_at=now,
+        updated_at=now,
+      )
+      db.add(st)
+      db.flush()
+    st.last_seen_at = now if payload.event_type in ("view", "open_product") else st.last_seen_at
+    st.event_strength = int(st.event_strength or 0) + int(weight or 0)
+
+    # Hide rules per spec:
+    # view/open_product -> do not hide
+    # skip -> hide temporarily
+    # dislike -> hide long
+    # like -> do not hide (but avoid immediate repeat)
+    # save/buy_click -> remove from main feed
+    if payload.event_type == "skip":
+      st.hidden_until = now + timedelta(hours=24)
+    elif payload.event_type == "dislike":
+      st.hidden_until = now + timedelta(days=30)
+    elif payload.event_type == "like":
+      st.hidden_until = now + timedelta(hours=6)
+    elif payload.event_type == "save":
+      st.hidden_until = now + timedelta(days=3650)
+    elif payload.event_type == "buy_click":
+      st.hidden_until = now + timedelta(days=3650)
+    elif payload.event_type == "unsave":
+      # allow back to feed after short cooldown
+      st.hidden_until = now + timedelta(hours=6)
+    st.updated_at = now
 
   # Idempotency for save/unsave on products
   if payload.product_id and payload.event_type in ("save", "unsave"):

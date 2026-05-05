@@ -121,10 +121,20 @@ class Product(Base):
   image_url: Mapped[str] = mapped_column(Text)
   product_url: Mapped[str] = mapped_column(Text)
   available_sizes: Mapped[list[str]] = mapped_column(JSON, default=list)
+  available_sizes_detailed: Mapped[list[dict]] = mapped_column(JSON, default=list)
+  size_system: Mapped[str | None] = mapped_column(String(32), nullable=True)
   colors: Mapped[list[str]] = mapped_column(JSON, default=list)
+  color_family: Mapped[str | None] = mapped_column(String(32), nullable=True)
+  material: Mapped[str | None] = mapped_column(String(64), nullable=True)
+  season: Mapped[str | None] = mapped_column(String(32), nullable=True)
+  occasion: Mapped[str | None] = mapped_column(String(32), nullable=True)
+  gender_target: Mapped[str | None] = mapped_column(String(32), nullable=True)
   fit: Mapped[str | None] = mapped_column(String(32), nullable=True)
   silhouette: Mapped[str | None] = mapped_column(String(64), nullable=True)
   style_tags: Mapped[list[str]] = mapped_column(JSON, default=list)
+  image_quality_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+  is_available: Mapped[bool] = mapped_column(Integer, default=1)  # sqlite-compatible bool
+  last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
   is_active: Mapped[bool] = mapped_column(Integer, default=1)  # sqlite-compatible bool
   created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
   updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
@@ -212,3 +222,16 @@ class MetricEvent(Base):
   name: Mapped[str] = mapped_column(String(64), index=True)
   meta_json: Mapped[dict] = mapped_column(JSON, default=dict)
   created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class UserProductState(Base):
+  __tablename__ = "user_product_states"
+  id: Mapped[str] = mapped_column(String(36), primary_key=True)
+  user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+  product_id: Mapped[str] = mapped_column(ForeignKey("products.id"), index=True)
+  hidden_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+  last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+  event_strength: Mapped[int] = mapped_column(Integer, default=0)
+  created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+  updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+  __table_args__ = (UniqueConstraint("user_id", "product_id", name="uq_user_product_state"),)
