@@ -16,7 +16,7 @@ from . import business
 from .config import get_jwt_expires_hours, get_jwt_secret
 from .db import SessionLocal
 from .schemas.photo_analysis import build_profile_json_after_analysis
-from .services.style_analysis_service import analyze_photo as analyze_photo_ai
+from .services.style_analysis_service import analyze_photo_bytes as analyze_photo_ai
 from .models import (
   FitProfile,
   MetricEvent,
@@ -248,15 +248,35 @@ def _fit_to_api(fp: FitProfile) -> dict[str, Any]:
 
 
 def _taste_to_api(tp: TasteProfile) -> dict[str, Any]:
+  def top_keys(d: dict[str, Any], *, sign: int, limit: int = 12) -> list[str]:
+    items: list[tuple[str, int]] = []
+    for k, v in (d or {}).items():
+      try:
+        iv = int(v)
+      except Exception:
+        continue
+      if sign > 0 and iv > 0:
+        items.append((str(k), iv))
+      if sign < 0 and iv < 0:
+        items.append((str(k), iv))
+    items.sort(key=lambda x: abs(x[1]), reverse=True)
+    return [k for k, _ in items[:limit]]
+
   return {
-    "liked_categories": tp.liked_categories or [],
-    "disliked_categories": tp.disliked_categories or [],
-    "liked_colors": tp.liked_colors or [],
-    "disliked_colors": tp.disliked_colors or [],
-    "liked_brands": tp.liked_brands or [],
-    "disliked_brands": tp.disliked_brands or [],
-    "liked_styles": tp.liked_styles or [],
-    "disliked_styles": tp.disliked_styles or [],
+    "liked_categories": top_keys(tp.category_weights or {}, sign=+1) or (tp.liked_categories or []),
+    "disliked_categories": top_keys(tp.category_weights or {}, sign=-1) or (tp.disliked_categories or []),
+    "liked_colors": top_keys(tp.color_weights or {}, sign=+1) or (tp.liked_colors or []),
+    "disliked_colors": top_keys(tp.color_weights or {}, sign=-1) or (tp.disliked_colors or []),
+    "liked_brands": top_keys(tp.brand_weights or {}, sign=+1) or (tp.liked_brands or []),
+    "disliked_brands": top_keys(tp.brand_weights or {}, sign=-1) or (tp.disliked_brands or []),
+    "liked_styles": top_keys(tp.style_weights or {}, sign=+1) or (tp.liked_styles or []),
+    "disliked_styles": top_keys(tp.style_weights or {}, sign=-1) or (tp.disliked_styles or []),
+    "weights": {
+      "categories": tp.category_weights or {},
+      "brands": tp.brand_weights or {},
+      "colors": tp.color_weights or {},
+      "styles": tp.style_weights or {},
+    },
     "price_range": {"min": tp.price_min, "max": tp.price_max},
     "preferred_fit": tp.preferred_fit,
     "updated_at": tp.updated_at.isoformat(),
@@ -329,8 +349,9 @@ def _seed_recommendations(db: Session, user_id: str) -> None:
   db.commit()
 
 
-async def _read_upload_limited(photo: UploadFile, max_bytes: int) -> None:
+async def _read_upload_bytes_limited(photo: UploadFile, max_bytes: int) -> bytes:
   total = 0
+  buf = bytearray()
   while True:
     chunk = await photo.read(65536)
     if not chunk:
@@ -338,6 +359,8 @@ async def _read_upload_limited(photo: UploadFile, max_bytes: int) -> None:
     total += len(chunk)
     if total > max_bytes:
       raise HTTPException(status_code=400, detail="Файл больше 5 MB")
+    buf.extend(chunk)
+  return bytes(buf)
 
 
 @app.get("/health")
@@ -561,7 +584,27 @@ def feed(
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> list[dict[str, Any]]:
   user = _user_from_token(credentials, db)
-  scored = generate_feed(db, user, limit=limit)
+  interacted = set(
+    db.execute(
+      select(RecommendationEventV2.product_id).where(
+        RecommendationEventV2.user_id == user.id,
+        RecommendationEventV2.product_id.is_not(None),
+        RecommendationEventV2.event_type.in_(
+          [
+            "view",
+            "skip",
+            "dislike",
+            "like",
+            "save",
+            "unsave",
+            "open_product",
+            "buy_click",
+          ]
+        ),
+      )
+    ).scalars()
+  )
+  scored = generate_feed(db, user, limit=limit, exclude_product_ids=set(map(str, interacted)))
   out: list[dict[str, Any]] = []
   for s in scored:
     out.append(
@@ -654,6 +697,38 @@ def recommendations_events(
         if v and v not in lst:
           lst.append(v)
 
+      def bump(d: dict, key: str, delta: int) -> None:
+        if not key:
+          return
+        cur = d.get(key, 0)
+        try:
+          cur = int(cur)
+        except Exception:
+          cur = 0
+        nxt = cur + int(delta)
+        # clamp to keep weights stable
+        if nxt > 50:
+          nxt = 50
+        if nxt < -50:
+          nxt = -50
+        d[key] = nxt
+
+      def prune(d: dict, limit: int = 200) -> None:
+        if not isinstance(d, dict) or len(d) <= limit:
+          return
+        # keep keys with highest absolute weights
+        items: list[tuple[str, int]] = []
+        for k, v in d.items():
+          try:
+            items.append((str(k), int(v)))
+          except Exception:
+            continue
+        items.sort(key=lambda x: abs(x[1]), reverse=True)
+        keep = {k for k, _ in items[:limit]}
+        drop = [k for k in list(d.keys()) if str(k) not in keep]
+        for k in drop:
+          d.pop(k, None)
+
       if payload.event_type in ("like", "save", "open_product", "buy_click"):
         add_unique(tp.liked_categories, cat)
         add_unique(tp.liked_brands, brand)
@@ -668,6 +743,19 @@ def recommendations_events(
           add_unique(tp.disliked_colors, c)
         for t in styles[:3]:
           add_unique(tp.disliked_styles, t)
+
+      # Weighted learning (new ядро)
+      delta = weight
+      bump(tp.category_weights, cat, delta)
+      bump(tp.brand_weights, brand, delta)
+      for c in cols[:3]:
+        bump(tp.color_weights, c, delta)
+      for t in styles[:3]:
+        bump(tp.style_weights, t, delta)
+      prune(tp.category_weights)
+      prune(tp.brand_weights)
+      prune(tp.color_weights)
+      prune(tp.style_weights)
       tp.updated_at = datetime.now(timezone.utc)
 
   db.commit()
@@ -1045,10 +1133,10 @@ async def analyze(
     limits = business.assert_can_analyze(db, user)
   except PermissionError as e:
     raise HTTPException(status_code=403, detail=str(e)) from e
-  await _read_upload_limited(photo, MAX_PHOTO_BYTES)
+  raw = await _read_upload_bytes_limited(photo, MAX_PHOTO_BYTES)
   profile = db.execute(select(StyleProfile).where(StyleProfile.user_id == user.id)).scalar_one()
   try:
-    analysis = await analyze_photo_ai(photo)
+    analysis = await analyze_photo_ai(content_type=ct, raw=raw)
   except RuntimeError as e:
     raise HTTPException(status_code=502, detail=str(e)) from e
   profile.profile_json = build_profile_json_after_analysis(

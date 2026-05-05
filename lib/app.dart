@@ -24,9 +24,13 @@ bool _profileHasAnalysis(Map<String, dynamic> pj) {
   final nested = pj['analysis'];
   if (nested is Map) {
     final n = Map<String, dynamic>.from(nested as Map);
-    return n.containsKey('recommended_colors') || n.containsKey('style_summary');
+    return n.containsKey('color_palette') ||
+        n.containsKey('recommended_silhouettes') ||
+        n.containsKey('summary');
   }
-  return pj.containsKey('recommended_colors') || pj.containsKey('style_summary');
+  return pj.containsKey('color_palette') ||
+      pj.containsKey('recommended_silhouettes') ||
+      pj.containsKey('summary');
 }
 
 class ModishBootstrap extends StatefulWidget {

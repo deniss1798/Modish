@@ -7,7 +7,7 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..models import FitProfile, Outfit, Product, StyleProfile, User
+from ..models import FitProfile, Outfit, Product, RecommendationEventV2, StyleProfile, User
 from ..schemas.photo_analysis import extract_analysis_section
 
 
@@ -36,24 +36,54 @@ def generate_outfits(db: Session, user: User, *, count: int = 3) -> list[Outfit]
   fit = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
   size = (fit.clothing_size or "").strip().upper() if fit else ""
 
-  def pick(category: str) -> Product | None:
+  # Don't use products the user already skipped/disliked
+  excluded = set(
+    db.execute(
+      select(RecommendationEventV2.product_id).where(
+        RecommendationEventV2.user_id == user.id,
+        RecommendationEventV2.product_id.is_not(None),
+        RecommendationEventV2.event_type.in_(["skip", "dislike"]),
+      )
+    ).scalars()
+  )
+  excluded = {str(x) for x in excluded if x}
+
+  def candidates(category: str) -> list[Product]:
     q = select(Product).where(Product.is_active == 1, Product.category == category)
     rows = db.execute(q.limit(200)).scalars().all()
+    if excluded:
+      rows = [p for p in rows if p.id not in excluded]
     # filter by size if possible
     if size:
       rows = [p for p in rows if not p.available_sizes or size in {str(x).upper() for x in p.available_sizes}]
     # prefer palette match
     if palette:
       rows.sort(key=lambda p: int(bool(set(_norm_list(p.colors)) & set(palette))), reverse=True)
-    return rows[0] if rows else None
+    return rows[:20]
 
-  top = pick("футболки") or pick("tshirts") or pick("tops")
-  bottom = pick("джинсы") or pick("jeans") or pick("брюки") or pick("trousers")
-  shoes = pick("обувь") or pick("shoes")
+  tops = candidates("футболки") or candidates("tshirts") or candidates("tops")
+  bottoms = candidates("джинсы") or candidates("jeans") or candidates("брюки") or candidates("trousers")
+  shoes_list = candidates("обувь") or candidates("shoes")
 
   created: list[Outfit] = []
   now = datetime.now(timezone.utc)
-  for _ in range(max(1, min(10, int(count)))):
+  need = max(1, min(10, int(count)))
+  seen: set[tuple[str | None, str | None, str | None]] = set()
+  ti = bi = si = 0
+  # generate unique combinations by cycling candidates
+  while len(created) < need and (tops or bottoms or shoes_list):
+    top = tops[ti % len(tops)] if tops else None
+    bottom = bottoms[bi % len(bottoms)] if bottoms else None
+    shoes = shoes_list[si % len(shoes_list)] if shoes_list else None
+    ti += 1
+    bi += 1 if ti % 2 == 0 else 0
+    si += 1 if ti % 3 == 0 else 0
+
+    key = (top.id if top else None, bottom.id if bottom else None, shoes.id if shoes else None)
+    if key in seen:
+      continue
+    seen.add(key)
+
     items: dict[str, Any] = {}
     total = 0
     if top:

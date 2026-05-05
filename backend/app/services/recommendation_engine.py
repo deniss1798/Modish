@@ -47,6 +47,10 @@ def ensure_taste_profile(db: Session, user_id: str) -> TasteProfile:
     disliked_brands=[],
     liked_styles=[],
     disliked_styles=[],
+    category_weights={},
+    brand_weights={},
+    color_weights={},
+    style_weights={},
     price_min=0,
     price_max=10_000,
     preferred_fit="regular",
@@ -97,20 +101,57 @@ def score_product(db: Session, user: User, product: Product) -> ScoredProduct:
       fit_points += 15.0 if (not size or size in sizes) else 0.0
   fit_score = max(0.0, min(100.0, 50.0 + fit_points)) / 100.0
 
+  # Taste score from weights (fall back to legacy lists if empty)
+  def w(d: Any, key: str) -> int:
+    if not isinstance(d, dict):
+      return 0
+    v = d.get(key)
+    try:
+      return int(v)
+    except Exception:
+      return 0
+
+  cat = (product.category or "").strip().lower()
+  brand = (product.brand or "").strip().lower()
+  style_tags = set(_norm_list(product.style_tags))
+
   taste_points = 0.0
-  if product.category and product.category.lower() in set(_norm_list(taste.liked_categories)):
-    taste_points += 15.0
-  if product.category and product.category.lower() in set(_norm_list(taste.disliked_categories)):
-    taste_points -= 20.0
-  if product.brand and product.brand.lower() in set(_norm_list(taste.liked_brands)):
-    taste_points += 15.0
-  if product.brand and product.brand.lower() in set(_norm_list(taste.disliked_brands)):
-    taste_points -= 20.0
-  if p_colors and (set(_norm_list(taste.liked_colors)) & p_colors):
-    taste_points += 10.0
-  if p_colors and (set(_norm_list(taste.disliked_colors)) & p_colors):
-    taste_points -= 15.0
-  taste_score = max(0.0, min(100.0, 50.0 + taste_points)) / 100.0
+  if taste.category_weights:
+    taste_points += float(w(taste.category_weights, cat))
+  else:
+    if cat and cat in set(_norm_list(taste.liked_categories)):
+      taste_points += 15.0
+    if cat and cat in set(_norm_list(taste.disliked_categories)):
+      taste_points -= 20.0
+
+  if taste.brand_weights:
+    taste_points += float(w(taste.brand_weights, brand))
+  else:
+    if brand and brand in set(_norm_list(taste.liked_brands)):
+      taste_points += 15.0
+    if brand and brand in set(_norm_list(taste.disliked_brands)):
+      taste_points -= 20.0
+
+  if taste.color_weights:
+    for c in p_colors:
+      taste_points += float(w(taste.color_weights, c))
+  else:
+    if p_colors and (set(_norm_list(taste.liked_colors)) & p_colors):
+      taste_points += 10.0
+    if p_colors and (set(_norm_list(taste.disliked_colors)) & p_colors):
+      taste_points -= 15.0
+
+  if taste.style_weights:
+    for t in style_tags:
+      taste_points += float(w(taste.style_weights, t))
+  else:
+    if style_tags and (set(_norm_list(taste.liked_styles)) & style_tags):
+      taste_points += 8.0
+    if style_tags and (set(_norm_list(taste.disliked_styles)) & style_tags):
+      taste_points -= 10.0
+
+  # squash into 0..1
+  taste_score = max(0.0, min(1.0, 0.5 + (taste_points / 60.0)))
 
   price_score = 1.0
   # budget / price range (taste + fit budget max)
@@ -144,8 +185,17 @@ def score_product(db: Session, user: User, product: Product) -> ScoredProduct:
   return ScoredProduct(product=product, final_score=float(final), breakdown=breakdown, reason=reason)
 
 
-def generate_feed(db: Session, user: User, *, limit: int = 30) -> list[ScoredProduct]:
+def generate_feed(
+  db: Session,
+  user: User,
+  *,
+  limit: int = 30,
+  exclude_product_ids: set[str] | None = None,
+) -> list[ScoredProduct]:
+  exclude_product_ids = exclude_product_ids or set()
   products = db.execute(select(Product).where(Product.is_active == 1).limit(500)).scalars().all()
+  if exclude_product_ids:
+    products = [p for p in products if p.id not in exclude_product_ids]
   scored = [score_product(db, user, p) for p in products]
   scored.sort(key=lambda x: x.final_score, reverse=True)
   return scored[: max(1, min(100, int(limit)))]

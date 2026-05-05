@@ -135,6 +135,7 @@ class TasteProfile(Base):
   __tablename__ = "taste_profiles"
   id: Mapped[str] = mapped_column(String(36), primary_key=True)
   user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), unique=True, index=True)
+  # Legacy lists (kept for migration compatibility)
   liked_categories: Mapped[list[str]] = mapped_column(JSON, default=list)
   disliked_categories: Mapped[list[str]] = mapped_column(JSON, default=list)
   liked_colors: Mapped[list[str]] = mapped_column(JSON, default=list)
@@ -143,6 +144,11 @@ class TasteProfile(Base):
   disliked_brands: Mapped[list[str]] = mapped_column(JSON, default=list)
   liked_styles: Mapped[list[str]] = mapped_column(JSON, default=list)
   disliked_styles: Mapped[list[str]] = mapped_column(JSON, default=list)
+  # New: weighted preferences
+  category_weights: Mapped[dict] = mapped_column(JSON, default=dict)
+  brand_weights: Mapped[dict] = mapped_column(JSON, default=dict)
+  color_weights: Mapped[dict] = mapped_column(JSON, default=dict)
+  style_weights: Mapped[dict] = mapped_column(JSON, default=dict)
   price_min: Mapped[int] = mapped_column(Integer, default=0)
   price_max: Mapped[int] = mapped_column(Integer, default=10_000)
   preferred_fit: Mapped[str] = mapped_column(String(32), default="regular")

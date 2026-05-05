@@ -5,7 +5,6 @@ import json
 from typing import Any
 
 import httpx
-from fastapi import UploadFile
 
 from ..config import get_openai_api_key, get_style_analysis_model
 
@@ -68,7 +67,7 @@ def _data_url(content_type: str, raw: bytes) -> str:
   return f"data:{content_type};base64,{b64}"
 
 
-async def analyze_photo(file: UploadFile) -> dict[str, Any]:
+async def analyze_photo_bytes(*, content_type: str, raw: bytes) -> dict[str, Any]:
   """
   Vision-анализ фото через OpenAI Responses API.
 
@@ -89,10 +88,10 @@ async def analyze_photo(file: UploadFile) -> dict[str, Any]:
   api_key = get_openai_api_key()
   model = get_style_analysis_model()
 
-  # Файл уже ограничен по размеру в handler'е; тут читаем содержимое.
-  content_type = (file.content_type or "image/jpeg").lower()
-  raw = await file.read()
-  image_url = _data_url(content_type, raw)
+  ct = (content_type or "image/jpeg").lower()
+  if not raw:
+    raise RuntimeError("Empty image bytes")
+  image_url = _data_url(ct, raw)
 
   payload: dict[str, Any] = {
     "model": model,
