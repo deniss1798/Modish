@@ -5,6 +5,7 @@ class Product {
     required this.id,
     required this.title,
     required this.brand,
+    required this.shopLabel,
     required this.category,
     required this.price,
     this.oldPrice,
@@ -21,6 +22,8 @@ class Product {
   final String id;
   final String title;
   final String brand;
+  /// Подпись витрины с бэкенда (Lamoda, бренд и т.д.), без URL.
+  final String shopLabel;
   final String category;
   final int price;
   final int? oldPrice;
@@ -40,11 +43,22 @@ class Product {
     return productUrl.trim();
   }
 
+  static String _shopLabelFromJson(Map<String, dynamic> json) {
+    final sl = (json['shop_label'] ?? json['shopLabel'] ?? '').toString().trim();
+    if (sl.isNotEmpty) return sl;
+    final b = (json['brand'] ?? '').toString().trim();
+    if (b.isNotEmpty) return b;
+    final src = (json['source'] ?? '').toString().trim();
+    if (src.isEmpty) return 'Магазин';
+    return src.replaceAll('_', ' ');
+  }
+
   factory Product.fromApi(Map<String, dynamic> json) {
     return Product(
       id: json['id'].toString(),
       title: (json['title'] ?? '').toString(),
       brand: (json['brand'] ?? '').toString(),
+      shopLabel: _shopLabelFromJson(json),
       category: (json['category'] ?? '').toString(),
       price: (json['price'] as num?)?.toInt() ?? 0,
       oldPrice: (json['old_price'] as num?)?.toInt(),

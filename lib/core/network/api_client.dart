@@ -287,7 +287,12 @@ class ApiClient {
       final data = e.response?.data;
       if (data is Map && data['detail'] != null) {
         final d = data['detail'];
-        if (d is String) return d;
+        if (d is String) {
+          if (d.contains('недоступен') || d.contains('недоступ')) {
+            return 'Товар временно недоступен';
+          }
+          return d;
+        }
         if (d is List && d.isNotEmpty && d.first is Map) {
           return '${(d.first as Map)['msg'] ?? d}';
         }

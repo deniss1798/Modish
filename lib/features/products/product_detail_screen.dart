@@ -158,8 +158,8 @@ class ProductDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Витрина: ${p.outboundUrl}',
-                    style: const TextStyle(color: AppColors.muted, fontSize: 11),
+                    'Магазин: ${p.shopLabel}',
+                    style: const TextStyle(color: AppColors.muted, fontSize: 13),
                   ),
                 ],
               ),
@@ -178,7 +178,7 @@ Future<void> _openAffiliateShop(BuildContext context, AppController controller, 
     if (url == null || url.isEmpty) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Нет ссылки магазина')),
+          const SnackBar(content: Text('Товар временно недоступен')),
         );
       }
       return;

@@ -3,7 +3,30 @@ from __future__ import annotations
 
 from typing import Any
 
+from ..catalog_normalize import normalize_category
 from ..models import Product
+
+# Человекочитаемые названия витрин (source code → подпись в приложении).
+_SHOP_LABEL_BY_SOURCE: dict[str, str] = {
+  "demo": "Демо",
+  "lamoda": "Lamoda",
+  "lamoda_ru": "Lamoda",
+  "wildberries": "Wildberries",
+  "wb": "Wildberries",
+  "admitad": "Партнёрский каталог",
+}
+
+
+def shop_label_for_product(p: Product) -> str:
+  code = (p.source or "").strip().lower()
+  if code in _SHOP_LABEL_BY_SOURCE:
+    return _SHOP_LABEL_BY_SOURCE[code]
+  brand = (p.brand or "").strip()
+  if brand:
+    return brand
+  if code:
+    return code.replace("_", " ").strip().title() or "Магазин"
+  return "Магазин"
 
 
 def product_to_api(p: Product) -> dict[str, Any]:
@@ -45,4 +68,5 @@ def product_to_api(p: Product) -> dict[str, Any]:
     "is_active": bool(p.is_active),
     "last_seen_in_feed_at": p.last_seen_in_feed_at.isoformat() if p.last_seen_in_feed_at else None,
     "is_deleted_from_feed": bool(p.is_deleted_from_feed),
+    "shop_label": shop_label_for_product(p),
   }

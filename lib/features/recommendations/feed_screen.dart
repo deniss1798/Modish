@@ -275,7 +275,7 @@ Future<void> _openAffiliateShop(BuildContext context, AppController controller, 
     if (url == null || url.isEmpty) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Нет ссылки магазина')),
+          const SnackBar(content: Text('Товар временно недоступен')),
         );
       }
       return;
