@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../app.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/modish_widgets.dart';
+import '../../core/widgets/product_image.dart';
 
 class OutfitsScreen extends StatefulWidget {
   const OutfitsScreen({super.key, required this.controller});
@@ -72,17 +73,98 @@ class _OutfitsScreenState extends State<OutfitsScreen> {
               final reason = (o['reason'] ?? '').toString();
               final total = (o['total_price'] ?? 0).toString();
               final saved = o['is_saved'] == true;
+              final raw = o['products'];
+              final pmap = raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
+              const slots = [
+                ('top', 'Верх'),
+                ('bottom', 'Низ'),
+                ('shoes', 'Обувь'),
+              ];
               return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.only(bottom: 12),
                 child: SoftCard(
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(title, style: const TextStyle(fontFamily: 'Georgia', fontSize: 20)),
-                    subtitle: Text('$reason\nИтого: $total'),
-                    trailing: IconButton(
-                      icon: Icon(saved ? Icons.bookmark : Icons.bookmark_border),
-                      onPressed: c.isLoading || saved ? null : () => c.saveOutfit('${o['id']}'),
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          for (final e in slots)
+                            Expanded(
+                              child: Padding(
+                                padding: EdgeInsets.only(
+                                  right: e.$1 == 'shoes' ? 0 : 8,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      e.$2,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: AppColors.muted,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    AspectRatio(
+                                      aspectRatio: 1,
+                                      child: ProductFillImage(
+                                        imageUrl: _slotImageUrl(pmap, e.$1),
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  title,
+                                  style: const TextStyle(
+                                    fontFamily: 'Georgia',
+                                    fontSize: 22,
+                                    height: 1.2,
+                                    color: AppColors.ink,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  reason,
+                                  style: const TextStyle(
+                                    color: AppColors.muted,
+                                    fontSize: 14,
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(saved ? Icons.bookmark : Icons.bookmark_border),
+                            onPressed: c.isLoading || saved ? null : () => c.saveOutfit('${o['id']}'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Итого: $total ₽',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -93,3 +175,9 @@ class _OutfitsScreenState extends State<OutfitsScreen> {
   }
 }
 
+String _slotImageUrl(Map<String, dynamic> products, String slot) {
+  final v = products[slot];
+  if (v is! Map) return '';
+  final m = Map<String, dynamic>.from(v);
+  return (m['image_url'] ?? '').toString();
+}

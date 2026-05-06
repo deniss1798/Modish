@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from hashlib import sha256
 from typing import Any
 from uuid import uuid4
 
@@ -35,6 +36,17 @@ from .models import (
 from .services.visual_analysis_service import generate_style_visual
 from .services.recommendation_engine import generate_feed, score_product, ensure_taste_profile
 from .services.outfit_service import generate_outfits
+
+
+def _demo_picsum_image_url(*, external_id: str, source: str = "demo") -> str:
+  """
+  Демо-картинки: только /id/{n}/w/h (стабильный путь без кириллицы и без длинных seed).
+  /seed/... с не-ASCII ломался в Flutter; часть /seed/ на Android тоже вела себя нестабильно.
+  """
+  digest = sha256(f"{source}:{external_id}".encode("utf-8")).hexdigest()
+  pic_id = 1 + (int(digest[:8], 16) % 999)
+  return f"https://picsum.photos/id/{pic_id}/600/800"
+
 
 app = FastAPI(title="Modish API", version="0.9.0-pre")
 auth_scheme = HTTPBearer(auto_error=False)
@@ -601,7 +613,7 @@ def admin_catalog_demo_seed(
         subcategory=None,
         price=price,
         currency="RUB",
-        image_url="https://picsum.photos/seed/modish/600/600",
+        image_url=_demo_picsum_image_url(external_id=external_id, source=source),
         product_url="https://example.com/product",
         available_sizes=sizes,
         colors=normalize_product_colors([color]),
@@ -616,6 +628,30 @@ def admin_catalog_demo_seed(
       created += 1
   db.commit()
   return {"created": created}
+
+
+@app.post("/admin/catalog/demo-rewrite-image-urls")
+def admin_demo_rewrite_image_urls(
+  db: Session = Depends(get_db),
+  authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+  """
+  Переписывает image_url у уже созданных demo-товаров на ASCII-only Picsum seed
+  (после старых сидов с кириллицей в пути URL картинки в приложении не открывались).
+  """
+  admin_token = (os.getenv("ADMIN_TOKEN") or "").strip()
+  if not admin_token:
+    raise HTTPException(status_code=503, detail="ADMIN_TOKEN is not configured")
+  if authorization != f"Bearer {admin_token}":
+    raise HTTPException(status_code=401, detail="Admin token required")
+  rows = db.execute(select(Product).where(Product.source == "demo")).scalars().all()
+  updated = 0
+  for p in rows:
+    p.image_url = _demo_picsum_image_url(external_id=p.external_id, source=p.source or "demo")
+    p.updated_at = datetime.now(timezone.utc)
+    updated += 1
+  db.commit()
+  return {"updated": updated}
 
 
 @app.get("/feed")

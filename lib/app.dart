@@ -341,6 +341,19 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void exitUploadFlow() {
+    // UploadScreen может быть корневым экраном (stage switch),
+    // поэтому Navigator.pop() не сработает. Возвращаем пользователя в Home/Profile,
+    // если он уже авторизован; иначе — на Auth.
+    if (token != null && token!.isNotEmpty) {
+      stage = AppStage.home;
+      tab = 3; // Профиль
+    } else {
+      stage = AppStage.auth;
+    }
+    notifyListeners();
+  }
+
   Future<void> logout() async {
     await TokenStorage.clear();
     api.clearToken();

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../app.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/modish_widgets.dart';
-import 'models.dart';
+import '../../core/widgets/product_image.dart';
 import 'models.dart' as prod;
 
 class ProductDetailScreen extends StatelessWidget {
@@ -42,11 +42,14 @@ class ProductDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (p.imageUrl.isNotEmpty)
-                    ClipRRect(
+                  SizedBox(
+                    height: 280,
+                    width: double.infinity,
+                    child: ProductFillImage(
+                      imageUrl: p.imageUrl,
                       borderRadius: BorderRadius.circular(18),
-                      child: Image.network(p.imageUrl, height: 260, fit: BoxFit.cover),
                     ),
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     p.title.isEmpty ? 'Товар' : p.title,

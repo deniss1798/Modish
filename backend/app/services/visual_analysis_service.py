@@ -6,7 +6,14 @@ from typing import Any
 
 import httpx
 
-from ..config import get_openai_api_key, get_visual_analysis_text_model, get_visual_analysis_image_model
+from ..config import (
+  get_ai_api_key,
+  get_ai_base_url,
+  get_ai_mode,
+  get_ai_responses_path,
+  get_visual_analysis_image_model,
+  get_visual_analysis_text_model,
+)
 
 
 def _build_prompt(analysis: dict[str, Any]) -> str:
@@ -39,10 +46,17 @@ async def generate_style_visual(analysis: dict[str, Any]) -> str:
   """
   Generates infographic image and returns a data URL: data:image/png;base64,...
   """
-  api_key = get_openai_api_key()
+  api_key = get_ai_api_key()
   text_model = get_visual_analysis_text_model()
   image_model = get_visual_analysis_image_model()
+  mode = get_ai_mode()
+  if mode != "responses":
+    raise RuntimeError(
+      "Image generation requires AI_MODE=responses (OpenAI Responses API + image_generation tool). "
+      "For DeepSeek временно используйте только текстовый/чат режим, либо вернитесь на OpenAI для этой части."
+    )
   prompt = _build_prompt(analysis)
+  base_url = get_ai_base_url().rstrip("/")
 
   payload: dict[str, Any] = {
     "model": text_model,
@@ -60,7 +74,7 @@ async def generate_style_visual(analysis: dict[str, Any]) -> str:
 
   async with httpx.AsyncClient(timeout=httpx.Timeout(90.0, connect=15.0)) as client:
     r = await client.post(
-      "https://api.openai.com/v1/responses",
+      f"{base_url}{get_ai_responses_path()}",
       headers=headers,
       content=json.dumps(payload),
     )

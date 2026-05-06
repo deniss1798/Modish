@@ -33,7 +33,7 @@ class Product {
       category: (json['category'] ?? '').toString(),
       price: (json['price'] as num?)?.toInt() ?? 0,
       currency: (json['currency'] ?? 'RUB').toString(),
-      imageUrl: (json['image_url'] ?? '').toString(),
+      imageUrl: (json['image_url'] ?? json['imageUrl'] ?? '').toString(),
       productUrl: (json['product_url'] ?? '').toString(),
       colors: List<String>.from((json['colors'] as List?) ?? const []),
       availableSizes: List<String>.from((json['available_sizes'] as List?) ?? const []),

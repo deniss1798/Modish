@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../app.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/modish_widgets.dart';
+import '../../core/widgets/product_image.dart';
 import 'models.dart';
 import '../products/models.dart' as prod;
 
@@ -181,28 +182,14 @@ class _SavedProducts extends StatelessWidget {
     return Column(
       children: rows.take(30).map((row) {
         final p = row['product'];
-        final product = p is Map<String, dynamic> ? prod.Product.fromApi(p) : prod.Product.fromApi({});
+        final product = p is Map ? prod.Product.fromApi(Map<String, dynamic>.from(p)) : prod.Product.fromApi({});
         final savedAt = (row['saved_at'] ?? '').toString();
+        final savedLabel = _formatSavedAt(savedAt);
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: SoftCard(
-            child: ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: product.imageUrl.isEmpty
-                    ? const SizedBox(width: 54, height: 54)
-                    : Image.network(product.imageUrl, width: 54, height: 54, fit: BoxFit.cover),
-              ),
-              title: Text(product.title.isEmpty ? 'Товар' : product.title),
-              subtitle: Text('${product.brand} · ${product.price} ${product.currency}\nСохранено: $savedAt'),
-              trailing: IconButton(
-                tooltip: 'Убрать из сохранённого',
-                icon: const Icon(Icons.bookmark_remove_outlined),
-                onPressed: controller.isLoading
-                    ? null
-                    : () => controller.sendProductEvent(context, product.id, 'unsave'),
-              ),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
               onTap: () => showModalBottomSheet(
                 context: context,
                 showDragHandle: true,
@@ -212,6 +199,15 @@ class _SavedProducts extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      SizedBox(
+                        height: 200,
+                        width: double.infinity,
+                        child: ProductFillImage(
+                          imageUrl: product.imageUrl,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       Text(
                         product.title,
                         style: const TextStyle(fontFamily: 'Georgia', fontSize: 22),
@@ -221,10 +217,68 @@ class _SavedProducts extends StatelessWidget {
                         '${product.brand} · ${product.price} ${product.currency}',
                         style: const TextStyle(color: AppColors.muted),
                       ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Сохранено: $savedLabel',
+                        style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                      ),
                       const SizedBox(height: 12),
-                      Text('Ссылка: ${product.productUrl}', style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+                      Text(
+                        'Ссылка: ${product.productUrl}',
+                        style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                      ),
                     ],
                   ),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 88,
+                      height: 110,
+                      child: ProductFillImage(
+                        imageUrl: product.imageUrl,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            product.title.isEmpty ? 'Товар' : product.title,
+                            style: const TextStyle(
+                              fontFamily: 'Georgia',
+                              fontSize: 18,
+                              height: 1.2,
+                              color: AppColors.ink,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '${product.brand} · ${product.price} ${product.currency}',
+                            style: const TextStyle(color: AppColors.muted, fontSize: 14),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Сохранено: $savedLabel',
+                            style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Убрать из сохранённого',
+                      icon: const Icon(Icons.bookmark_remove_outlined),
+                      onPressed: controller.isLoading
+                          ? null
+                          : () => controller.sendProductEvent(context, product.id, 'unsave'),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -233,4 +287,15 @@ class _SavedProducts extends StatelessWidget {
       }).toList(),
     );
   }
+}
+
+String _formatSavedAt(String raw) {
+  final d = DateTime.tryParse(raw);
+  if (d == null) return raw;
+  final l = d.toLocal();
+  final dd = l.day.toString().padLeft(2, '0');
+  final mm = l.month.toString().padLeft(2, '0');
+  final hh = l.hour.toString().padLeft(2, '0');
+  final min = l.minute.toString().padLeft(2, '0');
+  return '$dd.$mm.${l.year} · $hh:$min';
 }

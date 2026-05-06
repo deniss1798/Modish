@@ -49,12 +49,61 @@ def get_openai_api_key() -> str:
   return require_env("OPENAI_API_KEY")
 
 
+def get_ai_api_key() -> str:
+  """
+  Универсальный ключ для LLM-провайдера.
+
+  Приоритет:
+  - AI_API_KEY (для DeepSeek / других OpenAI-compatible провайдеров)
+  - OPENAI_API_KEY (обратная совместимость со старой настройкой)
+  """
+  value = (os.getenv("AI_API_KEY") or "").strip()
+  if value:
+    return value
+  return get_openai_api_key()
+
+
+def get_ai_base_url() -> str:
+  # Пример для совместимых провайдеров: https://api.deepseek.com
+  return os.getenv("AI_BASE_URL", "https://api.openai.com").strip() or "https://api.openai.com"
+
+
+def get_ai_mode() -> str:
+  """
+  Режим API:
+  - responses: OpenAI Responses API (/v1/responses)
+  - chat: OpenAI-compatible Chat Completions (/v1/chat/completions)
+  """
+  return os.getenv("AI_MODE", "responses").strip().lower() or "responses"
+
+
+def get_ai_responses_path() -> str:
+  return os.getenv("AI_RESPONSES_PATH", "/v1/responses").strip() or "/v1/responses"
+
+
+def get_ai_chat_completions_path() -> str:
+  return os.getenv("AI_CHAT_COMPLETIONS_PATH", "/v1/chat/completions").strip() or "/v1/chat/completions"
+
+
 def get_style_analysis_model() -> str:
-  return os.getenv("STYLE_ANALYSIS_MODEL", "gpt-4.1-mini").strip() or "gpt-4.1-mini"
+  value = (os.getenv("STYLE_ANALYSIS_MODEL") or "").strip()
+  if value:
+    return value
+  # Автодефолты под временные провайдеры, чтобы не ловить 400 на несовместимых моделях.
+  base = get_ai_base_url().lower()
+  if "deepseek" in base:
+    return "deepseek-v4-flash"
+  return "gpt-4.1-mini"
 
 
 def get_visual_analysis_text_model() -> str:
-  return os.getenv("VISUAL_ANALYSIS_TEXT_MODEL", "gpt-4.1-mini").strip() or "gpt-4.1-mini"
+  value = (os.getenv("VISUAL_ANALYSIS_TEXT_MODEL") or "").strip()
+  if value:
+    return value
+  base = get_ai_base_url().lower()
+  if "deepseek" in base:
+    return "deepseek-v4-flash"
+  return "gpt-4.1-mini"
 
 
 def get_visual_analysis_image_model() -> str:

@@ -74,7 +74,18 @@ class _UploadScreenState extends State<UploadScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(22, 36, 22, 24),
           children: [
-            const Center(child: Brand()),
+            Row(
+              children: [
+                IconButton(
+                  onPressed: () => widget.controller.exitUploadFlow(),
+                  icon: const Icon(Icons.arrow_back),
+                ),
+                const Spacer(),
+                const Brand(),
+                const Spacer(),
+                const SizedBox(width: 48),
+              ],
+            ),
             const SizedBox(height: 24),
             const Text(
               'Создадим ваш\nпервый стиль-профиль',

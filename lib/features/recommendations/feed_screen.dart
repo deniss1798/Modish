@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../app.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/modish_widgets.dart';
-import 'models.dart';
+import '../../core/widgets/product_image.dart';
 import '../products/models.dart' as prod;
 import '../products/product_detail_screen.dart';
 
@@ -143,45 +143,89 @@ class _ProductCardView extends StatelessWidget {
     final palette = p.colors.isNotEmpty
         ? p.colors.take(4).map(prod.colorFromName).toList()
         : const [Color(0xFF142238), Colors.white, Color(0xFFCFCBC5)];
+    final radius = BorderRadius.circular(18);
     return SoftCard(
-      child: ListView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            p.title.isEmpty ? 'Товар' : p.title,
-            style: const TextStyle(
-              fontFamily: 'Georgia',
-              fontSize: 34,
-              color: AppColors.ink,
+          Expanded(
+            flex: 11,
+            child: ProductFillImage(imageUrl: p.imageUrl, borderRadius: radius),
+          ),
+          const SizedBox(height: 14),
+          Expanded(
+            flex: 9,
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    p.title.isEmpty ? 'Товар' : p.title,
+                    style: const TextStyle(
+                      fontFamily: 'Georgia',
+                      fontSize: 26,
+                      height: 1.15,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          p.brand,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '${p.price} ${p.currency}',
+                        style: const TextStyle(
+                          fontFamily: 'Georgia',
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.accent,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    p.category,
+                    style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      ...palette.map(
+                        (e) => CircleAvatar(backgroundColor: e, radius: 11),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.bg,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.line),
+                    ),
+                    child: Text(
+                      card.reason,
+                      style: const TextStyle(height: 1.4, fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            '${p.brand} · ${p.price} ${p.currency}',
-            style: const TextStyle(color: AppColors.muted),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Категория: ${p.category}',
-            style: const TextStyle(color: AppColors.muted, fontSize: 13),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            children: palette
-                .map((e) => CircleAvatar(backgroundColor: e, radius: 12))
-                .toList(),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            card.reason,
-            style: const TextStyle(height: 1.35),
-          ),
-          const SizedBox(height: 12),
-          if (p.imageUrl.isNotEmpty)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Image.network(p.imageUrl, height: 220, fit: BoxFit.cover),
-            ),
         ],
       ),
     );
