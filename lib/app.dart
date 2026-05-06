@@ -410,6 +410,8 @@ class AppController extends ChangeNotifier {
     required String clothingSize,
     required int budgetMin,
     required int budgetMax,
+    List<String> interestCategories = const [],
+    List<String> styleScenarios = const [],
   }) async {
     await _run(() async {
       fitProfile = await api.fitProfilePatch(
@@ -419,6 +421,8 @@ class AppController extends ChangeNotifier {
         clothingSize: clothingSize,
         budgetMin: budgetMin,
         budgetMax: budgetMax,
+        interestCategories: interestCategories,
+        styleScenarios: styleScenarios,
       );
       await refreshRemoteData();
     });

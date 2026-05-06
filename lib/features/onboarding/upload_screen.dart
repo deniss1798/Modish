@@ -9,6 +9,22 @@ import '../../core/widgets/modish_widgets.dart';
 
 const _maxBytes = 5 * 1024 * 1024;
 
+/// Ключи совпадают с `normalize_category` на бэкенде (фильтр ленты).
+const _interestOptions = <String, String>{
+  'футболки': 'Футболки',
+  'рубашки': 'Рубашки',
+  'джинсы': 'Джинсы',
+  'брюки': 'Брюки',
+  'обувь': 'Обувь',
+  'верхний_слой': 'Верх',
+};
+
+const _scenarioOptions = <String, String>{
+  'daily': 'Повседневно',
+  'office': 'Офис',
+  'evening': 'Вечер',
+};
+
 class UploadScreen extends StatefulWidget {
   const UploadScreen({super.key, required this.controller});
   final AppController controller;
@@ -24,6 +40,8 @@ class _UploadScreenState extends State<UploadScreen> {
   final _size = TextEditingController(text: 'M');
   final _budgetMax = TextEditingController(text: '10000');
   String _genderTarget = 'unisex';
+  final Set<String> _interestCategories = {};
+  final Set<String> _styleScenarios = {};
 
   @override
   void initState() {
@@ -281,6 +299,62 @@ class _UploadScreenState extends State<UploadScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Категории в ленте (необязательно)',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: AppColors.ink.withValues(alpha: 0.85),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _interestOptions.entries.map((e) {
+                      final sel = _interestCategories.contains(e.key);
+                      return FilterChip(
+                        label: Text(e.value),
+                        selected: sel,
+                        onSelected: (v) => setState(() {
+                          if (v) {
+                            _interestCategories.add(e.key);
+                          } else {
+                            _interestCategories.remove(e.key);
+                          }
+                        }),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Сценарии (необязательно)',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: AppColors.ink.withValues(alpha: 0.85),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _scenarioOptions.entries.map((e) {
+                      final sel = _styleScenarios.contains(e.key);
+                      return FilterChip(
+                        label: Text(e.value),
+                        selected: sel,
+                        onSelected: (v) => setState(() {
+                          if (v) {
+                            _styleScenarios.add(e.key);
+                          } else {
+                            _styleScenarios.remove(e.key);
+                          }
+                        }),
+                      );
+                    }).toList(),
+                  ),
                 ],
               ),
             ),
@@ -298,6 +372,8 @@ class _UploadScreenState extends State<UploadScreen> {
                         clothingSize: _size.text.trim().isEmpty ? 'M' : _size.text.trim(),
                         budgetMin: 0,
                         budgetMax: bMax,
+                        interestCategories: _interestCategories.toList(),
+                        styleScenarios: _styleScenarios.toList(),
                       );
                       await c.analyze();
                     }

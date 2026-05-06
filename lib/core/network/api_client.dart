@@ -200,6 +200,8 @@ class ApiClient {
     required String clothingSize,
     required int budgetMin,
     required int budgetMax,
+    List<String> interestCategories = const [],
+    List<String> styleScenarios = const [],
   }) async {
     final response = await _dio.patch(
       '/fit-profile/me',
@@ -210,6 +212,8 @@ class ApiClient {
         'clothing_size': clothingSize,
         'budget_min': budgetMin,
         'budget_max': budgetMax,
+        'interest_categories': interestCategories,
+        'style_scenarios': styleScenarios,
       },
     );
     return Map<String, dynamic>.from(response.data as Map);
@@ -257,6 +261,12 @@ class ApiClient {
 
   Future<Map<String, dynamic>> visualAnalysis() async {
     final response = await _dio.post('/visual-analysis');
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  /// Affiliate: зарегистрировать клик и получить финальный URL магазина.
+  Future<Map<String, dynamic>> affiliateClick(String productId) async {
+    final response = await _dio.post('/affiliate/click/$productId');
     return Map<String, dynamic>.from(response.data as Map);
   }
 

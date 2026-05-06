@@ -5,10 +5,12 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
+from ..catalog_normalize import normalize_category
 from ..models import FitProfile, Product, StyleProfile, TasteProfile, User
+from .catalog.rule_filters import load_rules_by_source_id, product_gender_compatible, product_passes_source_rules
 from ..schemas.photo_analysis import extract_analysis_section
 
 
@@ -183,7 +185,12 @@ def score_product(db: Session, user: User, product: Product) -> ScoredProduct:
   else:
     reasons.append("Цена в рамках бюджета")
 
-  availability_score = 1.0 if (product.image_url and product.product_url and product.available_sizes) else 0.4
+  has_shop_url = bool(
+    str(product.affiliate_url or "").strip() or str(product.product_url or "").strip()
+  )
+  availability_score = (
+    1.0 if (product.image_url and has_shop_url and product.available_sizes) else 0.4
+  )
   freshness_score = 1.0  # placeholder: can decay by age later
 
   final = (
@@ -225,10 +232,58 @@ def generate_feed(
   exclude_product_ids: set[str] | None = None,
 ) -> list[ScoredProduct]:
   exclude_product_ids = exclude_product_ids or set()
-  products = db.execute(select(Product).where(Product.is_active == 1).limit(500)).scalars().all()
+  min_price = 500
+  q = (
+    select(Product)
+    .where(
+      and_(
+        Product.is_active == 1,
+        Product.is_available == 1,
+        Product.is_deleted_from_feed == 0,
+        Product.price > min_price,
+        Product.image_url.isnot(None),
+        Product.image_url != "",
+        or_(
+          and_(Product.affiliate_url.isnot(None), Product.affiliate_url != ""),
+          Product.product_url != "",
+        ),
+      )
+    )
+    .limit(1000)
+  )
+  products = db.execute(q).scalars().all()
   if exclude_product_ids:
     products = [p for p in products if p.id not in exclude_product_ids]
-  scored = [score_product(db, user, p) for p in products]
+  rules_by_source = load_rules_by_source_id(db)
+  fit = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
+  user_gender = fit.gender_target if fit else None
+  interest_norm: set[str] = set()
+  if fit and fit.interest_categories:
+    interest_norm = {
+      normalize_category(str(x).strip()) for x in fit.interest_categories if str(x).strip()
+    }
+  filtered: list[Product] = []
+  for p in products:
+    if not product_passes_source_rules(p, rules_by_source):
+      continue
+    if not product_gender_compatible(p, user_gender):
+      continue
+    if interest_norm:
+      pc = normalize_category(p.category or "")
+      if pc not in interest_norm:
+        continue
+    filtered.append(p)
+  scored = [score_product(db, user, p) for p in filtered]
   scored.sort(key=lambda x: x.final_score, reverse=True)
-  return scored[: max(1, min(100, int(limit)))]
+  lim = max(1, min(100, int(limit)))
+  top = scored[:lim]
+  from .recommendation_cache_service import persist_recommendation_caches  # noqa: PLC0415
+
+  persist_recommendation_caches(
+    db,
+    user_id=user.id,
+    filtered_products=filtered,
+    scored_top=top,
+  )
+  return top
 

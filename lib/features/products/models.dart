@@ -7,9 +7,13 @@ class Product {
     required this.brand,
     required this.category,
     required this.price,
+    this.oldPrice,
+    this.discountPercent,
     required this.currency,
     required this.imageUrl,
     required this.productUrl,
+    this.affiliateUrl,
+    this.originalUrl,
     required this.colors,
     required this.availableSizes,
   });
@@ -19,11 +23,22 @@ class Product {
   final String brand;
   final String category;
   final int price;
+  final int? oldPrice;
+  final int? discountPercent;
   final String currency;
   final String imageUrl;
   final String productUrl;
+  final String? affiliateUrl;
+  final String? originalUrl;
   final List<String> colors;
   final List<String> availableSizes;
+
+  /// Ссылка для открытия витрины (affiliate приоритетнее).
+  String get outboundUrl {
+    final a = (affiliateUrl ?? '').trim();
+    if (a.isNotEmpty) return a;
+    return productUrl.trim();
+  }
 
   factory Product.fromApi(Map<String, dynamic> json) {
     return Product(
@@ -32,9 +47,13 @@ class Product {
       brand: (json['brand'] ?? '').toString(),
       category: (json['category'] ?? '').toString(),
       price: (json['price'] as num?)?.toInt() ?? 0,
+      oldPrice: (json['old_price'] as num?)?.toInt(),
+      discountPercent: (json['discount_percent'] as num?)?.toInt(),
       currency: (json['currency'] ?? 'RUB').toString(),
       imageUrl: (json['image_url'] ?? json['imageUrl'] ?? '').toString(),
       productUrl: (json['product_url'] ?? '').toString(),
+      affiliateUrl: (json['affiliate_url'] ?? json['affiliateUrl'])?.toString(),
+      originalUrl: (json['original_url'] ?? json['originalUrl'])?.toString(),
       colors: List<String>.from((json['colors'] as List?) ?? const []),
       availableSizes: List<String>.from((json['available_sizes'] as List?) ?? const []),
     );
@@ -73,4 +92,3 @@ Color colorFromName(String raw) {
   final key = raw.toLowerCase().trim();
   return named[key] ?? const Color(0xFFE5E7EB);
 }
-

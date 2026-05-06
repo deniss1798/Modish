@@ -107,19 +107,85 @@ class UserLimits(Base):
   updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
 
+class ProductSource(Base):
+  """Источник каталога (affiliate / Admitad program и т.д.)."""
+  __tablename__ = "product_sources"
+  id: Mapped[str] = mapped_column(String(36), primary_key=True)
+  code: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+  name: Mapped[str] = mapped_column(String(128))
+  network: Mapped[str] = mapped_column(String(64), index=True)
+  advertiser_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+  feed_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+  deeplink_template: Mapped[str | None] = mapped_column(Text, nullable=True)
+  status: Mapped[str] = mapped_column(String(32), default="pending")
+  last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+  created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+  updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+
+class CatalogSyncRun(Base):
+  __tablename__ = "catalog_sync_runs"
+  id: Mapped[str] = mapped_column(String(36), primary_key=True)
+  source_id: Mapped[str] = mapped_column(ForeignKey("product_sources.id"), index=True)
+  status: Mapped[str] = mapped_column(String(32), default="running")
+  total_received: Mapped[int] = mapped_column(Integer, default=0)
+  created_count: Mapped[int] = mapped_column(Integer, default=0)
+  updated_count: Mapped[int] = mapped_column(Integer, default=0)
+  deactivated_count: Mapped[int] = mapped_column(Integer, default=0)
+  error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+  started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+  finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AffiliateClick(Base):
+  __tablename__ = "affiliate_clicks"
+  id: Mapped[str] = mapped_column(String(36), primary_key=True)
+  user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+  product_id: Mapped[str] = mapped_column(ForeignKey("products.id"), index=True)
+  source_id: Mapped[str | None] = mapped_column(ForeignKey("product_sources.id"), nullable=True, index=True)
+  affiliate_url: Mapped[str] = mapped_column(Text)
+  click_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+  user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
+  ip_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
+  created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class SourceRule(Base):
+  __tablename__ = "source_rules"
+  id: Mapped[str] = mapped_column(String(36), primary_key=True)
+  source_id: Mapped[str] = mapped_column(ForeignKey("product_sources.id"), index=True)
+  rule_type: Mapped[str] = mapped_column(String(64), index=True)
+  rule_value: Mapped[str] = mapped_column(Text)
+  is_active: Mapped[bool] = mapped_column(Integer, default=1)
+  created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+  updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+
 class Product(Base):
   __tablename__ = "products"
   id: Mapped[str] = mapped_column(String(36), primary_key=True)
   external_id: Mapped[str] = mapped_column(String(128), index=True)
   source: Mapped[str] = mapped_column(String(64), index=True)
+  source_id: Mapped[str | None] = mapped_column(ForeignKey("product_sources.id"), nullable=True, index=True)
   title: Mapped[str] = mapped_column(String(255))
   brand: Mapped[str] = mapped_column(String(128), index=True)
   category: Mapped[str] = mapped_column(String(64), index=True)
   subcategory: Mapped[str | None] = mapped_column(String(64), nullable=True)
   price: Mapped[int] = mapped_column(Integer)
   currency: Mapped[str] = mapped_column(String(8), default="RUB")
+  old_price: Mapped[int | None] = mapped_column(Integer, nullable=True)
+  discount_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)
+  availability_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
   image_url: Mapped[str] = mapped_column(Text)
   product_url: Mapped[str] = mapped_column(Text)
+  affiliate_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+  original_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+  feed_raw_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+  merchant_category: Mapped[str | None] = mapped_column(String(128), nullable=True)
+  merchant_subcategory: Mapped[str | None] = mapped_column(String(128), nullable=True)
+  external_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+  last_seen_in_feed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+  is_deleted_from_feed: Mapped[bool] = mapped_column(Integer, default=0)
   available_sizes: Mapped[list[str]] = mapped_column(JSON, default=list)
   available_sizes_detailed: Mapped[list[dict]] = mapped_column(JSON, default=list)
   size_system: Mapped[str | None] = mapped_column(String(32), nullable=True)
@@ -195,8 +261,30 @@ class FitProfile(Base):
   recommended_fit: Mapped[str] = mapped_column(String(32), default="regular")
   avoid_fit: Mapped[list[str]] = mapped_column(JSON, default=list)
   style_constraints: Mapped[dict] = mapped_column(JSON, default=dict)
+  interest_categories: Mapped[list[str]] = mapped_column(JSON, default=list)
+  style_scenarios: Mapped[list[str]] = mapped_column(JSON, default=list)
   budget_min: Mapped[int] = mapped_column(Integer, default=0)
   budget_max: Mapped[int] = mapped_column(Integer, default=10_000)
+  created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+  updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+
+class RecommendationCandidatePool(Base):
+  """Пул товаров-кандидатов до ранжирования (ТЗ §13)."""
+  __tablename__ = "recommendation_candidates"
+  id: Mapped[str] = mapped_column(String(36), primary_key=True)
+  user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), unique=True, index=True)
+  product_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
+  created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+  updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+
+class UserRecommendationCache(Base):
+  """Закэшированный топ рекомендаций для пользователя."""
+  __tablename__ = "user_recommendation_cache"
+  id: Mapped[str] = mapped_column(String(36), primary_key=True)
+  user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), unique=True, index=True)
+  top_product_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
   created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
   updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../app.dart';
+import '../../core/network/api_client.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/modish_widgets.dart';
 import '../../core/widgets/product_image.dart';
@@ -128,13 +130,14 @@ class _SwipeProductCard extends StatelessWidget {
           controller.sendProductEvent(context, card.product.id, 'skip');
         }
       },
-      child: _ProductCardView(card: card),
+      child: _ProductCardView(controller: controller, card: card),
     );
   }
 }
 
 class _ProductCardView extends StatelessWidget {
-  const _ProductCardView({required this.card});
+  const _ProductCardView({required this.controller, required this.card});
+  final AppController controller;
   final prod.FeedCard card;
 
   @override
@@ -171,6 +174,7 @@ class _ProductCardView extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Expanded(
                         child: Text(
@@ -182,6 +186,19 @@ class _ProductCardView extends StatelessWidget {
                           ),
                         ),
                       ),
+                      if (p.oldPrice != null && p.oldPrice! > p.price) ...[
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8, bottom: 2),
+                          child: Text(
+                            '${p.oldPrice} ${p.currency}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: AppColors.muted,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                        ),
+                      ],
                       Text(
                         '${p.price} ${p.currency}',
                         style: const TextStyle(
@@ -198,6 +215,13 @@ class _ProductCardView extends StatelessWidget {
                     p.category,
                     style: const TextStyle(color: AppColors.muted, fontSize: 13),
                   ),
+                  if (p.availableSizes.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'Размеры: ${p.availableSizes.take(8).join(', ')}',
+                      style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                    ),
+                  ],
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8,
@@ -222,6 +246,18 @@ class _ProductCardView extends StatelessWidget {
                       style: const TextStyle(height: 1.4, fontSize: 14),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: controller.isLoading
+                        ? null
+                        : () => _openAffiliateShop(context, controller, p.id),
+                    icon: const Icon(Icons.storefront_outlined),
+                    label: const Text('Перейти в магазин'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.accent,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -229,6 +265,38 @@ class _ProductCardView extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+Future<void> _openAffiliateShop(BuildContext context, AppController controller, String productId) async {
+  try {
+    final res = await controller.api.affiliateClick(productId);
+    final url = res['url']?.toString();
+    if (url == null || url.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Нет ссылки магазина')),
+        );
+      }
+      return;
+    }
+    final uri = Uri.parse(url);
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось открыть браузер')),
+      );
+      return;
+    }
+    if (context.mounted) {
+      await controller.sendProductEvent(context, productId, 'open_product');
+    }
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ApiClient.formatError(e))),
+      );
+    }
   }
 }
 

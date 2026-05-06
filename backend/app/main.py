@@ -18,6 +18,7 @@ from .catalog_normalize import normalize_category, normalize_product_colors
 from .config import get_jwt_expires_hours, get_jwt_secret
 from .db import SessionLocal
 from .schemas.photo_analysis import build_profile_json_after_analysis
+from .schemas.api_product import product_to_api as _product_to_api
 from .services.style_analysis_service import analyze_photo_bytes as analyze_photo_ai
 from .models import (
   FitProfile,
@@ -49,6 +50,13 @@ def _demo_picsum_image_url(*, external_id: str, source: str = "demo") -> str:
 
 
 app = FastAPI(title="Modish API", version="0.9.0-pre")
+
+from .api.affiliate import router as affiliate_router  # noqa: E402
+from .api.catalog_admin import router as catalog_admin_router  # noqa: E402
+
+app.include_router(affiliate_router)
+app.include_router(catalog_admin_router)
+
 auth_scheme = HTTPBearer(auto_error=False)
 JWT_SECRET = get_jwt_secret()
 JWT_ALG = "HS256"
@@ -137,6 +145,8 @@ class FitProfilePatchRequest(BaseModel):
   clothing_size: str = Field(min_length=1, max_length=16)
   budget_min: int = Field(default=0, ge=0)
   budget_max: int = Field(default=10000, ge=0)
+  interest_categories: list[str] = Field(default_factory=list, max_length=24)
+  style_scenarios: list[str] = Field(default_factory=list, max_length=24)
 
 
 class TasteProfilePatchRequest(BaseModel):
@@ -227,36 +237,13 @@ def _as_user_payload(user: User) -> dict[str, Any]:
   }
 
 
-def _product_to_api(p: Product) -> dict[str, Any]:
-  return {
-    "id": p.id,
-    "external_id": p.external_id,
-    "source": p.source,
-    "title": p.title,
-    "brand": p.brand,
-    "category": p.category,
-    "subcategory": p.subcategory,
-    "price": p.price,
-    "currency": p.currency,
-    "image_url": p.image_url,
-    "product_url": p.product_url,
-    "available_sizes": p.available_sizes or [],
-    "available_sizes_detailed": p.available_sizes_detailed or [],
-    "size_system": p.size_system,
-    "colors": p.colors or [],
-    "color_family": p.color_family,
-    "material": p.material,
-    "season": p.season,
-    "occasion": p.occasion,
-    "gender_target": p.gender_target,
-    "fit": p.fit,
-    "silhouette": p.silhouette,
-    "style_tags": p.style_tags or [],
-    "image_quality_score": p.image_quality_score,
-    "is_available": bool(p.is_available),
-    "last_checked_at": p.last_checked_at.isoformat() if p.last_checked_at else None,
-    "is_active": bool(p.is_active),
-  }
+def _norm_fit_tag_list(raw: list[str], *, max_items: int = 24) -> list[str]:
+  out: list[str] = []
+  for x in raw[:max_items]:
+    s = str(x).strip()[:64]
+    if s and s not in out:
+      out.append(s)
+  return out
 
 
 def _fit_to_api(fp: FitProfile) -> dict[str, Any]:
@@ -274,6 +261,8 @@ def _fit_to_api(fp: FitProfile) -> dict[str, Any]:
     "recommended_fit": fp.recommended_fit,
     "avoid_fit": fp.avoid_fit or [],
     "style_constraints": fp.style_constraints or {},
+    "interest_categories": fp.interest_categories or [],
+    "style_scenarios": fp.style_scenarios or [],
     "budget_min": fp.budget_min,
     "budget_max": fp.budget_max,
     "updated_at": fp.updated_at.isoformat(),
@@ -654,13 +643,12 @@ def admin_demo_rewrite_image_urls(
   return {"updated": updated}
 
 
-@app.get("/feed")
-def feed(
-  limit: int = 30,
-  db: Session = Depends(get_db),
-  credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+def _feed_scored_items(
+  db: Session,
+  user: User,
+  *,
+  limit: int,
 ) -> list[dict[str, Any]]:
-  user = _user_from_token(credentials, db)
   now = datetime.now(timezone.utc)
   hidden_ids = set(
     db.execute(
@@ -684,6 +672,26 @@ def feed(
       }
     )
   return out
+
+
+@app.get("/feed")
+def feed(
+  limit: int = 30,
+  db: Session = Depends(get_db),
+  credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+) -> list[dict[str, Any]]:
+  user = _user_from_token(credentials, db)
+  return _feed_scored_items(db, user, limit=limit)
+
+
+@app.get("/products/recommended")
+def products_recommended(
+  limit: int = 30,
+  db: Session = Depends(get_db),
+  credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+) -> list[dict[str, Any]]:
+  user = _user_from_token(credentials, db)
+  return _feed_scored_items(db, user, limit=limit)
 
 
 @app.post("/recommendations/events")
@@ -1017,6 +1025,8 @@ def fit_profile_me(
       recommended_fit=user.fit_preference,
       avoid_fit=[],
       style_constraints={},
+      interest_categories=[],
+      style_scenarios=[],
       budget_min=0,
       budget_max=10000,
       created_at=now,
@@ -1053,6 +1063,8 @@ def fit_profile_patch(
       recommended_fit=user.fit_preference,
       avoid_fit=[],
       style_constraints={},
+      interest_categories=_norm_fit_tag_list(payload.interest_categories),
+      style_scenarios=_norm_fit_tag_list(payload.style_scenarios),
       budget_min=payload.budget_min,
       budget_max=payload.budget_max,
       created_at=now,
@@ -1066,6 +1078,8 @@ def fit_profile_patch(
     fp.clothing_size = payload.clothing_size
     fp.budget_min = payload.budget_min
     fp.budget_max = payload.budget_max
+    fp.interest_categories = _norm_fit_tag_list(payload.interest_categories)
+    fp.style_scenarios = _norm_fit_tag_list(payload.style_scenarios)
     fp.updated_at = now
   db.commit()
   return _fit_to_api(fp)
