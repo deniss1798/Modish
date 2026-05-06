@@ -184,6 +184,14 @@ Future<void> _openAffiliateShop(BuildContext context, AppController controller, 
       return;
     }
     final uri = Uri.parse(url);
+    if (!await canLaunchUrl(uri)) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ссылку нельзя открыть на этом устройстве')),
+        );
+      }
+      return;
+    }
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!ok && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -192,6 +200,13 @@ Future<void> _openAffiliateShop(BuildContext context, AppController controller, 
       return;
     }
     if (context.mounted) {
+      try {
+        await controller.api.recordRecommendationEvent(
+          eventType: 'buy_click',
+          productId: productId,
+        );
+      } catch (_) {}
+      if (!context.mounted) return;
       await controller.sendProductEvent(context, productId, 'open_product');
     }
   } catch (e) {

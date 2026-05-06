@@ -266,7 +266,13 @@ class ApiClient {
 
   /// Affiliate: зарегистрировать клик и получить финальный URL магазина.
   Future<Map<String, dynamic>> affiliateClick(String productId) async {
-    final response = await _dio.post('/affiliate/click/$productId');
+    final response = await _dio.post(
+      '/affiliate/click/$productId',
+      options: Options(
+        sendTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 30),
+      ),
+    );
     return Map<String, dynamic>.from(response.data as Map);
   }
 

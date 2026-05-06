@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -23,6 +24,36 @@ def _detect_parser(url: str, body: str):
   return parse_admitad_xml(body)
 
 
+def _download_feed_body(url: str, *, max_attempts: int = 4) -> str:
+  """Скачивание фида с ретраями при сетевых сбоях и 429/5xx."""
+  last_err: Exception | None = None
+  timeout = httpx.Timeout(120.0, connect=30.0)
+  for attempt in range(max_attempts):
+    try:
+      with httpx.Client(timeout=timeout, follow_redirects=True) as client:
+        r = client.get(url)
+        if r.status_code in (429, 500, 502, 503, 504):
+          wait = min(1.5 * (2**attempt), 45.0)
+          ra = r.headers.get("Retry-After")
+          if ra:
+            try:
+              wait = min(float(ra), 60.0)
+            except ValueError:
+              pass
+          time.sleep(wait)
+          last_err = RuntimeError(f"HTTP {r.status_code} from feed")
+          continue
+        r.raise_for_status()
+        return r.text
+    except (httpx.ConnectError, httpx.ReadTimeout, httpx.ConnectTimeout, httpx.WriteTimeout) as exc:
+      last_err = exc
+      time.sleep(min(1.5 * (2**attempt), 25.0))
+  msg = f"feed download failed after {max_attempts} attempts"
+  if last_err:
+    raise RuntimeError(f"{msg}: {last_err}") from last_err
+  raise RuntimeError(msg)
+
+
 def sync_partner_feed(db: Session, *, source: ProductSource) -> CatalogSyncRun:
   now = datetime.now(timezone.utc)
   run = CatalogSyncRun(
@@ -39,10 +70,7 @@ def sync_partner_feed(db: Session, *, source: ProductSource) -> CatalogSyncRun:
   try:
     if not source.feed_url:
       raise RuntimeError("feed_url is empty")
-    with httpx.Client(timeout=httpx.Timeout(120.0, connect=30.0), follow_redirects=True) as client:
-      r = client.get(source.feed_url)
-      r.raise_for_status()
-      body = r.text
+    body = _download_feed_body(source.feed_url)
     rows = _detect_parser(source.feed_url, body)
     total = len(rows)
     sync_ts = datetime.now(timezone.utc)

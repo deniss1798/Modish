@@ -382,6 +382,7 @@ class AppController extends ChangeNotifier {
           'like' => 'product_liked',
           'save' => 'product_saved',
           'open_product' => 'product_opened',
+          'buy_click' => 'product_buy_click',
           _ => null,
         };
         if (name != null) {
