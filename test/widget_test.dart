@@ -10,7 +10,7 @@ void main() {
 
     expect(find.text('Modish'), findsWidgets);
 
-    final welcome = find.textContaining('Добро');
+    final welcome = find.textContaining('персональный');
     final feedTab = find.text('Подборка');
     expect(
       welcome.evaluate().isNotEmpty || feedTab.evaluate().isNotEmpty,

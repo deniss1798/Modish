@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../app.dart';
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/modish_widgets.dart';
 import '../../core/widgets/product_image.dart';
-import 'models.dart';
+import '../collections/collections_screen.dart';
 import '../products/models.dart' as prod;
 
-enum _SavedFilter { all, daily, office, evening }
+enum _SavedFilter { all, products, looks, collections }
 
 class SavedScreen extends StatefulWidget {
   const SavedScreen({super.key, required this.controller});
@@ -33,133 +33,34 @@ class _SavedScreenState extends State<SavedScreen> {
 
   void _onCtrl() => setState(() {});
 
-  bool _matches(Outfit o) {
-    switch (_filter) {
-      case _SavedFilter.all:
-        return true;
-      case _SavedFilter.daily:
-        return o.occasionTags.contains('daily');
-      case _SavedFilter.office:
-        return o.occasionTags.contains('office');
-      case _SavedFilter.evening:
-        return o.occasionTags.contains('evening');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final c = widget.controller;
-    final entries = <({String savedId, String recId, String savedAt, Outfit outfit})>[];
-    for (final row in c.savedRows) {
-      final rec = row['recommendation'];
-      if (rec is! Map<String, dynamic>) continue;
-      final outfit = Outfit.fromApi(rec);
-      if (!_matches(outfit)) continue;
-      entries.add((
-        savedId: '${row['id']}',
-        recId: '${row['recommendation_id']}',
-        savedAt: '${row['saved_at'] ?? ''}',
-        outfit: outfit,
-      ));
+
+    if (_filter == _SavedFilter.collections) {
+      return CollectionsScreen(controller: c);
     }
 
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(18, 22, 18, 20),
-        children: [
-          const Center(child: Brand()),
-          const SizedBox(height: 16),
-          const Text(
-            'Сохраненное',
-            style: TextStyle(
-              fontFamily: 'Georgia',
-              fontSize: 40,
-              color: AppColors.ink,
-            ),
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 20),
+      children: [
+        const ScreenHeader(title: 'Сохраненное'),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: [
+              ModishChip(label: 'Все', selected: _filter == _SavedFilter.all, onTap: () => setState(() => _filter = _SavedFilter.all)),
+              ModishChip(label: 'Товары', selected: _filter == _SavedFilter.products, onTap: () => setState(() => _filter = _SavedFilter.products)),
+              ModishChip(label: 'Образы', selected: _filter == _SavedFilter.looks, onTap: () => setState(() => _filter = _SavedFilter.looks)),
+              ModishChip(label: 'Коллекции', selected: _filter == _SavedFilter.collections, onTap: () => setState(() => _filter = _SavedFilter.collections)),
+            ],
           ),
-          const SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _chip('Все', _SavedFilter.all),
-                _chip('Каждый день', _SavedFilter.daily),
-                _chip('Офис', _SavedFilter.office),
-                _chip('Вечер', _SavedFilter.evening),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          const SoftCard(
-            child: Padding(
-              padding: EdgeInsets.all(12),
-              child: Text(
-                'Товары (новое ядро)',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          _SavedProducts(controller: c),
-          const SizedBox(height: 14),
-          if (entries.isEmpty)
-            const SoftCard(
-              child: Center(
-                child: Padding(
-                  padding: EdgeInsets.all(28),
-                  child: Text('Сохраненных образов пока нет'),
-                ),
-              ),
-            )
-          else
-            ...entries.map(
-              (e) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: SoftCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(
-                          e.outfit.title,
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontFamily: 'Georgia',
-                          ),
-                        ),
-                        subtitle: Text(
-                          '${e.outfit.description}\nСохранено: ${e.savedAt}',
-                        ),
-                        trailing: IconButton(
-                          tooltip: 'Удалить из сохранённого',
-                          icon: const Icon(Icons.bookmark_remove_outlined),
-                          onPressed: c.isLoading
-                              ? null
-                              : () => c.sendFeedback(e.recId, 'unsave'),
-                        ),
-                        onTap: () => openDetails(context, e.outfit, c),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _chip(String label, _SavedFilter value) {
-    final selected = _filter == value;
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: FilterChip(
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => setState(() => _filter = value),
-        selectedColor: AppColors.accent.withValues(alpha: .12),
-      ),
+        ),
+        const SizedBox(height: 12),
+        if (_filter == _SavedFilter.all || _filter == _SavedFilter.products) _SavedProducts(controller: c),
+        if (_filter == _SavedFilter.all || _filter == _SavedFilter.looks) _SavedOutfits(controller: c),
+      ],
     );
   }
 }
@@ -172,114 +73,75 @@ class _SavedProducts extends StatelessWidget {
   Widget build(BuildContext context) {
     final rows = controller.savedProductRows;
     if (rows.isEmpty) {
-      return const SoftCard(
-        child: Padding(
-          padding: EdgeInsets.all(18),
-          child: Text('Сохранённых товаров пока нет', style: TextStyle(color: AppColors.muted)),
-        ),
+      return const Padding(
+        padding: EdgeInsets.all(20),
+        child: SoftCard(child: Text('Сохранённых товаров пока нет', style: AppTextStyles.bodyMuted)),
       );
     }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childAspectRatio: 0.72,
+        ),
+        itemCount: rows.length,
+        itemBuilder: (context, i) {
+          final p = rows[i]['product'];
+          final product = p is Map ? prod.Product.fromApi(Map<String, dynamic>.from(p)) : prod.Product.fromApi({});
+          return SoftCard(
+            padding: const EdgeInsets.all(10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: ProductFillImage(imageUrl: product.imageUrl, borderRadius: BorderRadius.circular(12)),
+                ),
+                const SizedBox(height: 8),
+                Text(product.brand, style: AppTextStyles.caption, maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(
+                  product.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                ),
+                Text('${product.price} ₽', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SavedOutfits extends StatelessWidget {
+  const _SavedOutfits({required this.controller});
+  final AppController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = controller.savedRows;
+    if (rows.isEmpty) return const SizedBox.shrink();
     return Column(
-      children: rows.take(30).map((row) {
-        final p = row['product'];
-        final product = p is Map ? prod.Product.fromApi(Map<String, dynamic>.from(p)) : prod.Product.fromApi({});
-        final savedAt = (row['saved_at'] ?? '').toString();
-        final savedLabel = _formatSavedAt(savedAt);
+      children: rows.map((row) {
+        final rec = row['recommendation'];
+        final title = rec is Map ? '${rec['title'] ?? 'Образ'}' : 'Образ';
         return Padding(
-          padding: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
           child: SoftCard(
-            child: InkWell(
-              borderRadius: BorderRadius.circular(20),
-              onTap: () => showModalBottomSheet(
-                context: context,
-                showDragHandle: true,
-                builder: (_) => Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 8, 18, 22),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        height: 200,
-                        width: double.infinity,
-                        child: ProductFillImage(
-                          imageUrl: product.imageUrl,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        product.title,
-                        style: const TextStyle(fontFamily: 'Georgia', fontSize: 22),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '${product.brand} · ${product.price} ${product.currency}',
-                        style: const TextStyle(color: AppColors.muted),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Сохранено: $savedLabel',
-                        style: const TextStyle(color: AppColors.muted, fontSize: 13),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Ссылка: ${product.productUrl}',
-                        style: const TextStyle(color: AppColors.muted, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      width: 88,
-                      height: 110,
-                      child: ProductFillImage(
-                        imageUrl: product.imageUrl,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            product.title.isEmpty ? 'Товар' : product.title,
-                            style: const TextStyle(
-                              fontFamily: 'Georgia',
-                              fontSize: 18,
-                              height: 1.2,
-                              color: AppColors.ink,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            '${product.brand} · ${product.price} ${product.currency}',
-                            style: const TextStyle(color: AppColors.muted, fontSize: 14),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Сохранено: $savedLabel',
-                            style: const TextStyle(color: AppColors.muted, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'Убрать из сохранённого',
-                      icon: const Icon(Icons.bookmark_remove_outlined),
-                      onPressed: controller.isLoading
-                          ? null
-                          : () => controller.sendProductEvent(context, product.id, 'unsave'),
-                    ),
-                  ],
-                ),
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(title, style: AppTextStyles.displaySm.copyWith(fontSize: 18)),
+              trailing: IconButton(
+                icon: const Icon(Icons.bookmark_remove_outlined),
+                onPressed: controller.isLoading
+                    ? null
+                    : () => controller.sendFeedback('${row['recommendation_id']}', 'unsave'),
               ),
             ),
           ),
@@ -287,15 +149,4 @@ class _SavedProducts extends StatelessWidget {
       }).toList(),
     );
   }
-}
-
-String _formatSavedAt(String raw) {
-  final d = DateTime.tryParse(raw);
-  if (d == null) return raw;
-  final l = d.toLocal();
-  final dd = l.day.toString().padLeft(2, '0');
-  final mm = l.month.toString().padLeft(2, '0');
-  final hh = l.hour.toString().padLeft(2, '0');
-  final min = l.minute.toString().padLeft(2, '0');
-  return '$dd.$mm.${l.year} · $hh:$min';
 }

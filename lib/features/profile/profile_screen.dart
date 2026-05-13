@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../app.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/modish_widgets.dart';
+import '../catalog/brands_screen.dart';
+import '../settings/settings_screen.dart';
+import '../subscription/plus_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key, required this.controller});
@@ -10,163 +14,191 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final b = controller.billing;
-    final trialEnd = '${b['trial_ends_at'] ?? '—'}';
-    final plus = b['is_plus_available'] == true;
-    final status = '${b['status'] ?? 'trial'}';
-    final plan = '${b['plan'] ?? 'plus'}';
+    final plus = b['is_plus_available'] == true || '${b['status']}' == 'active';
     final summary = controller.summary;
+    final fit = controller.fitProfile;
     final suitableColors = List<String>.from(summary['suitable_colors'] as List? ?? const []);
-    final avoidColors = List<String>.from(summary['avoid_colors'] as List? ?? const []);
-    final silhouettes = List<String>.from(summary['suitable_silhouettes'] as List? ?? const []);
-    final items = List<String>.from(summary['recommended_items'] as List? ?? const []);
     final styleLines = List<String>.from(summary['style_direction_human'] as List? ?? const []);
+    final size = (fit['clothing_size'] ?? 'M').toString();
+    final budgetMax = fit['budget_max'];
+    final budgetLabel = budgetMax != null ? 'до $budgetMax ₽' : 'Средний';
+    final name = controller.email.split('@').first;
 
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(18, 22, 18, 20),
-        children: [
-          const Center(child: Brand()),
-          const SizedBox(height: 12),
-          const Center(
-            child: Text(
-              'Профиль',
-              style: TextStyle(fontSize: 30, color: AppColors.ink),
-            ),
-          ),
-          const SizedBox(height: 20),
-          SoftCard(
-            child: ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const CircleAvatar(
-                radius: 26,
-                child: Icon(Icons.person),
+    final feedCount = controller.productFeed.length;
+    final savedCount = controller.savedProductRows.length + controller.savedRows.length;
+    final viewsCount = controller.productFeed.length;
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      children: [
+        ScreenHeader(title: 'Профиль'),
+        SoftCard(
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 32,
+                backgroundColor: AppColors.chipBg,
+                child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?', style: AppTextStyles.displaySm),
               ),
-              title: Text(
-                controller.email.split('@').first,
-                style: const TextStyle(fontFamily: 'Georgia', fontSize: 26),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(name, style: AppTextStyles.displaySm.copyWith(fontSize: 22)),
+                        if (plus) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.ink,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Text('Plus', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                          ),
+                        ],
+                      ],
+                    ),
+                    Text(controller.email, style: AppTextStyles.bodyMuted),
+                  ],
+                ),
               ),
-              subtitle: Text(controller.email),
-            ),
+            ],
           ),
-          const SizedBox(height: 14),
-          SoftCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Подписка',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
-                ),
-                const SizedBox(height: 8),
-                Text('План: $plan · статус: $status'),
-                Text('Plus доступен: ${plus ? 'да' : 'нет'}'),
-                Text('Окончание trial: $trialEnd'),
-                const SizedBox(height: 6),
-                const Text(
-                  '129 ₽ / месяц после trial (без привязки карты в этом прототипе).',
-                  style: TextStyle(fontSize: 13, color: AppColors.muted),
-                ),
-                const SizedBox(height: 12),
-                FilledButton(
-                  onPressed: () {},
-                  child: const Text('Оформить Plus'),
-                ),
-              ],
-            ),
+        ),
+        const SizedBox(height: 14),
+        SoftCard(
+          child: Row(
+            children: [
+              StatTile(value: '$feedCount', label: 'Подборки'),
+              StatTile(value: '$savedCount', label: 'Сохранено'),
+              StatTile(value: '$viewsCount', label: 'Просмотры'),
+            ],
           ),
-          const SizedBox(height: 14),
-          SoftCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Стиль‑профиль',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
-                ),
-                const SizedBox(height: 10),
-                _LineBlock(title: 'Подходящие цвета', items: suitableColors),
-                const SizedBox(height: 10),
-                _LineBlock(title: 'Избегать', items: avoidColors),
-                const SizedBox(height: 10),
-                _LineBlock(title: 'Силуэты', items: silhouettes),
-                const SizedBox(height: 10),
-                _LineBlock(title: 'Вещи', items: items),
-                const SizedBox(height: 10),
-                _LineBlock(title: 'Стили', items: styleLines),
-                const SizedBox(height: 12),
-                PrimaryButton(
-                  label: controller.isLoading ? 'Генерируем…' : 'Visual Analysis',
-                  icon: Icons.image_outlined,
-                  onPressed: controller.isLoading ? null : () => controller.openVisualAnalysis(context),
-                ),
-              ],
-            ),
+        ),
+        const SizedBox(height: 14),
+        SoftCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Мой стиль', style: AppTextStyles.sectionTitle),
+              const SizedBox(height: 14),
+              Text('Цвета', style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: (suitableColors.isEmpty ? ['Бежевый', 'Чёрный', 'Белый'] : suitableColors.take(5)).map((c) {
+                  return Chip(label: Text(c), backgroundColor: AppColors.chipBg, side: BorderSide.none);
+                }).toList(),
+              ),
+              const SizedBox(height: 14),
+              Text('Предпочтения', style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: (styleLines.isEmpty ? ['Минимализм', 'Casual'] : styleLines.take(6)).map((s) {
+                  return Chip(label: Text(s), backgroundColor: AppColors.chipBg, side: BorderSide.none);
+                }).toList(),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(child: _InfoBox(label: 'Размер', value: size)),
+                  const SizedBox(width: 10),
+                  Expanded(child: _InfoBox(label: 'Бюджет', value: budgetLabel)),
+                ],
+              ),
+            ],
           ),
-          const SizedBox(height: 14),
-          SoftCard(
-            child: Column(
-              children: [
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(
-                    Icons.auto_awesome,
-                    color: AppColors.accent,
-                  ),
-                  title: const Text('Обновить фото-анализ'),
-                  subtitle: const Text(
-                    'Plus: 1 анализ в месяц. Выберите новое фото.',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                  onTap: controller.isLoading ? null : controller.goToReanalyze,
+        ),
+        const SizedBox(height: 14),
+        SoftCard(
+          child: Column(
+            children: [
+              MenuTile(
+                icon: Icons.style_outlined,
+                title: 'Мои образы',
+                onTap: () => controller.setTab(1),
+              ),
+              const Divider(color: AppColors.line),
+              MenuTile(
+                icon: Icons.bookmark_border,
+                title: 'Сохранённое',
+                onTap: () => controller.setTab(2),
+              ),
+              const Divider(color: AppColors.line),
+              MenuTile(
+                icon: Icons.history,
+                title: 'История просмотров',
+                onTap: () => controller.setTab(0),
+              ),
+              const Divider(color: AppColors.line),
+              MenuTile(
+                icon: Icons.storefront_outlined,
+                title: 'Бренды',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => BrandsScreen(controller: controller)),
                 ),
-                const Divider(),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.palette_outlined, color: AppColors.accent),
-                  title: const Text('Направление рекомендаций'),
-                  subtitle: Text('Сейчас: ${controller.styleTarget}'),
-                  onTap: () => controller.goToReanalyze(),
+              ),
+              const Divider(color: AppColors.line),
+              MenuTile(
+                icon: Icons.workspace_premium_outlined,
+                title: 'Modish Plus',
+                subtitle: '129 ₽ / месяц',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => PlusScreen(controller: controller)),
                 ),
-                const Divider(),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.settings_outlined, color: AppColors.muted),
-                  title: const Text('Настройки'),
-                  onTap: () {},
+              ),
+              const Divider(color: AppColors.line),
+              MenuTile(
+                icon: Icons.settings_outlined,
+                title: 'Настройки',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => SettingsScreen(controller: controller)),
                 ),
-                const Divider(),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.logout, color: AppColors.accent),
-                  title: const Text('Выйти'),
-                  onTap: controller.isLoading ? null : () => controller.logout(),
-                ),
-              ],
-            ),
+              ),
+              const Divider(color: AppColors.line),
+              MenuTile(
+                icon: Icons.auto_awesome_outlined,
+                title: 'Обновить фото-анализ',
+                onTap: controller.isLoading ? null : controller.goToReanalyze,
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
-class _LineBlock extends StatelessWidget {
-  const _LineBlock({required this.title, required this.items});
-  final String title;
-  final List<String> items;
+class _InfoBox extends StatelessWidget {
+  const _InfoBox({required this.label, required this.value});
+  final String label;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
-    if (items.isEmpty) {
-      return Text('$title: —', style: const TextStyle(color: AppColors.muted));
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: const TextStyle(color: AppColors.muted, fontSize: 12)),
-        const SizedBox(height: 4),
-        Text(items.take(8).join(', ')),
-      ],
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.bg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: AppTextStyles.caption),
+          const SizedBox(height: 4),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
+        ],
+      ),
     );
   }
 }

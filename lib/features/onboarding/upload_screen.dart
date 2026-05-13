@@ -86,7 +86,6 @@ class _UploadScreenState extends State<UploadScreen> {
   @override
   Widget build(BuildContext context) {
     final c = widget.controller;
-    final path = c.selectedPhotoPath;
     return MobileViewport(
       child: SafeArea(
         child: ListView(
@@ -169,7 +168,11 @@ class _UploadScreenState extends State<UploadScreen> {
                     )
                   else ...[
                     const SizedBox(height: 24),
-                    Icon(Icons.person_outline, size: 76, color: AppColors.muted),
+                    Icon(
+                      Icons.person_outline,
+                      size: 76,
+                      color: AppColors.muted,
+                    ),
                     const SizedBox(height: 12),
                     const Text(
                       'Загрузите или снимите фото',
@@ -194,7 +197,9 @@ class _UploadScreenState extends State<UploadScreen> {
                             .map(
                               (p) => Chip(
                                 label: Text(p.split(RegExp(r'[/\\]')).last),
-                                onDeleted: c.isLoading ? null : () => c.removePhotoPath(p),
+                                onDeleted: c.isLoading
+                                    ? null
+                                    : () => c.removePhotoPath(p),
                               ),
                             )
                             .toList(),
@@ -204,7 +209,9 @@ class _UploadScreenState extends State<UploadScreen> {
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: c.isLoading ? null : () => _pick(ImageSource.gallery),
+                          onPressed: c.isLoading
+                              ? null
+                              : () => _pick(ImageSource.gallery),
                           icon: const Icon(Icons.image_outlined),
                           label: const Text('Галерея'),
                         ),
@@ -212,7 +219,9 @@ class _UploadScreenState extends State<UploadScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: c.isLoading ? null : () => _pick(ImageSource.camera),
+                          onPressed: c.isLoading
+                              ? null
+                              : () => _pick(ImageSource.camera),
                           icon: const Icon(Icons.photo_camera_outlined),
                           label: const Text('Камера'),
                         ),
@@ -285,17 +294,20 @@ class _UploadScreenState extends State<UploadScreen> {
                       ChoiceChip(
                         label: const Text('Мужское'),
                         selected: _genderTarget == 'menswear',
-                        onSelected: (_) => setState(() => _genderTarget = 'menswear'),
+                        onSelected: (_) =>
+                            setState(() => _genderTarget = 'menswear'),
                       ),
                       ChoiceChip(
                         label: const Text('Женское'),
                         selected: _genderTarget == 'womenswear',
-                        onSelected: (_) => setState(() => _genderTarget = 'womenswear'),
+                        onSelected: (_) =>
+                            setState(() => _genderTarget = 'womenswear'),
                       ),
                       ChoiceChip(
                         label: const Text('Универсальное'),
                         selected: _genderTarget == 'unisex',
-                        onSelected: (_) => setState(() => _genderTarget = 'unisex'),
+                        onSelected: (_) =>
+                            setState(() => _genderTarget = 'unisex'),
                       ),
                     ],
                   ),
@@ -365,11 +377,14 @@ class _UploadScreenState extends State<UploadScreen> {
               onPressed: c.photoPaths.isNotEmpty && !c.isLoading
                   ? () async {
                       final h = int.tryParse(_height.text.trim()) ?? 170;
-                      final bMax = int.tryParse(_budgetMax.text.trim()) ?? 10000;
+                      final bMax =
+                          int.tryParse(_budgetMax.text.trim()) ?? 10000;
                       await c.updateFitProfile(
                         height: h,
                         genderTarget: _genderTarget,
-                        clothingSize: _size.text.trim().isEmpty ? 'M' : _size.text.trim(),
+                        clothingSize: _size.text.trim().isEmpty
+                            ? 'M'
+                            : _size.text.trim(),
                         budgetMin: 0,
                         budgetMax: bMax,
                         interestCategories: _interestCategories.toList(),
@@ -381,7 +396,10 @@ class _UploadScreenState extends State<UploadScreen> {
             ),
             if (_localError != null) ...[
               const SizedBox(height: 12),
-              Text(_localError!, style: const TextStyle(color: AppColors.accent)),
+              Text(
+                _localError!,
+                style: const TextStyle(color: AppColors.accent),
+              ),
             ],
             if (c.error != null) ...[
               const SizedBox(height: 12),

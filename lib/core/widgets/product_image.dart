@@ -14,6 +14,16 @@ String _normalizeImageUrl(String raw) {
   return u;
 }
 
+bool _isDemoOrGenericImageUrl(String url) {
+  final uri = Uri.tryParse(url);
+  if (uri == null) return false;
+  final host = uri.host.toLowerCase();
+  if (host.contains('picsum.photos')) return true;
+  if (host.contains('placehold.co')) return true;
+  if (host.contains('dummyimage.com')) return true;
+  return false;
+}
+
 Map<String, String> _imageRequestHeaders(String url) {
   const ua =
       'Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
@@ -81,11 +91,7 @@ class _ProductFillImageState extends State<ProductFillImage> {
     ),
   );
 
-  static const List<String> _fallbackUrls = [
-    'https://placehold.co/600x800/f1f5f9/64748b/png?text=+',
-    'https://dummyimage.com/600x800/e2e8f0/475569.png&text=+',
-    'https://picsum.photos/id/237/600/800',
-  ];
+  static const List<String> _fallbackUrls = [];
 
   late List<String> _candidates;
   int _index = 0;
@@ -133,12 +139,15 @@ class _ProductFillImageState extends State<ProductFillImage> {
     _stallTimer = Timer(const Duration(seconds: 20), () {
       if (!mounted || gen != _requestGen) return;
       if (_bytes != null) return;
-      debugPrint('ProductFillImage: stall (no bytes in 20s) gen=$gen idx=$_index url=$url');
+      debugPrint(
+        'ProductFillImage: stall (no bytes in 20s) gen=$gen idx=$_index url=$url',
+      );
       _advanceAfterFailure();
     });
   }
 
   List<String> _buildCandidates(String primary) {
+    if (_isDemoOrGenericImageUrl(primary)) return const [];
     if (primary.isEmpty) return const [];
     final out = <String>[primary];
     for (final fb in _fallbackUrls) {
@@ -160,7 +169,9 @@ class _ProductFillImageState extends State<ProductFillImage> {
     });
     _armStallTimer(url, gen);
 
-    final headers = _effectiveFetchUrl(url) == url ? _imageRequestHeaders(url) : const <String, String>{};
+    final headers = _effectiveFetchUrl(url) == url
+        ? _imageRequestHeaders(url)
+        : const <String, String>{};
     if (kDebugMode) {
       final via = _effectiveFetchUrl(url) == url ? 'direct' : 'proxy';
       debugPrint('ProductFillImage: GET idx=$_index via=$via url=$url');
@@ -168,43 +179,54 @@ class _ProductFillImageState extends State<ProductFillImage> {
 
     _dio
         .get<List<int>>(
-      _effectiveFetchUrl(url),
-      options: Options(headers: headers),
-    )
+          _effectiveFetchUrl(url),
+          options: Options(headers: headers),
+        )
         .then((resp) {
-      if (!mounted || gen != _requestGen) return;
-      _stallTimer?.cancel();
-      final code = resp.statusCode ?? 0;
-      final data = resp.data;
-      final ct = (resp.headers.value('content-type') ?? '').toLowerCase();
+          if (!mounted || gen != _requestGen) return;
+          _stallTimer?.cancel();
+          final code = resp.statusCode ?? 0;
+          final data = resp.data;
+          final ct = (resp.headers.value('content-type') ?? '').toLowerCase();
 
-      if (code != 200 || data == null || data.isEmpty) {
-        debugPrint('ProductFillImage: bad response code=$code bytes=${data?.length ?? 0} ct=$ct url=$url');
-        _advanceAfterFailure();
-        return;
-      }
-      if (ct.contains('text/html') || ct.contains('application/json') || ct.contains('application/xml')) {
-        debugPrint('ProductFillImage: rejected content-type="$ct" (likely error page) url=$url');
-        _advanceAfterFailure();
-        return;
-      }
-      if (ct.isNotEmpty && !ct.startsWith('image/') && !ct.contains('octet-stream')) {
-        debugPrint('ProductFillImage: unexpected content-type="$ct" url=$url (trying decode anyway)');
-      }
+          if (code != 200 || data == null || data.isEmpty) {
+            debugPrint(
+              'ProductFillImage: bad response code=$code bytes=${data?.length ?? 0} ct=$ct url=$url',
+            );
+            _advanceAfterFailure();
+            return;
+          }
+          if (ct.contains('text/html') ||
+              ct.contains('application/json') ||
+              ct.contains('application/xml')) {
+            debugPrint(
+              'ProductFillImage: rejected content-type="$ct" (likely error page) url=$url',
+            );
+            _advanceAfterFailure();
+            return;
+          }
+          if (ct.isNotEmpty &&
+              !ct.startsWith('image/') &&
+              !ct.contains('octet-stream')) {
+            debugPrint(
+              'ProductFillImage: unexpected content-type="$ct" url=$url (trying decode anyway)',
+            );
+          }
 
-      setState(() {
-        _bytes = Uint8List.fromList(data);
-        _loading = false;
-      });
-    }).catchError((Object e, StackTrace? st) {
-      if (!mounted || gen != _requestGen) return;
-      _stallTimer?.cancel();
-      debugPrint('ProductFillImage: dio error idx=$_index url=$url → $e');
-      if (kDebugMode && st != null) {
-        debugPrint('$st');
-      }
-      _advanceAfterFailure();
-    });
+          setState(() {
+            _bytes = Uint8List.fromList(data);
+            _loading = false;
+          });
+        })
+        .catchError((Object e, StackTrace? st) {
+          if (!mounted || gen != _requestGen) return;
+          _stallTimer?.cancel();
+          debugPrint('ProductFillImage: dio error idx=$_index url=$url → $e');
+          if (kDebugMode && st != null) {
+            debugPrint('$st');
+          }
+          _advanceAfterFailure();
+        });
   }
 
   void _advanceAfterFailure() {
@@ -226,7 +248,9 @@ class _ProductFillImageState extends State<ProductFillImage> {
   void _onDecodeError(Object error, StackTrace? stack) {
     if (_decodeAdvanceScheduled) return;
     _decodeAdvanceScheduled = true;
-    debugPrint('ProductFillImage: Image.memory decode error idx=$_index → $error');
+    debugPrint(
+      'ProductFillImage: Image.memory decode error idx=$_index → $error',
+    );
     if (kDebugMode && stack != null) {
       debugPrint('$stack');
     }
@@ -263,7 +287,10 @@ class _ProductFillImageState extends State<ProductFillImage> {
               child: SizedBox(
                 width: 28,
                 height: 28,
-                child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.accent),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: AppColors.accent,
+                ),
               ),
             ),
           );
@@ -288,7 +315,10 @@ class _ProductFillImageState extends State<ProductFillImage> {
                   child: SizedBox(
                     width: 28,
                     height: 28,
-                    child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.accent),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: AppColors.accent,
+                    ),
                   ),
                 ),
               );
@@ -306,7 +336,10 @@ class _ProductFillImageState extends State<ProductFillImage> {
               child: SizedBox(
                 width: 28,
                 height: 28,
-                child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.accent),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: AppColors.accent,
+                ),
               ),
             ),
           );
@@ -321,7 +354,10 @@ class _ProductFillImageState extends State<ProductFillImage> {
             child: SizedBox(
               width: 28,
               height: 28,
-              child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.accent),
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: AppColors.accent,
+              ),
             ),
           ),
         );

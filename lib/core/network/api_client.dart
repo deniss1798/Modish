@@ -193,6 +193,25 @@ class ApiClient {
     return Map<String, dynamic>.from(response.data as Map);
   }
 
+  Future<List<Map<String, dynamic>>> productsList({
+    int limit = 50,
+    int offset = 0,
+    String? category,
+    String? source,
+    String? brand,
+  }) async {
+    final qp = <String, dynamic>{
+      'limit': limit,
+      'offset': offset,
+    };
+    if (category != null && category.trim().isNotEmpty) qp['category'] = category.trim();
+    if (source != null && source.trim().isNotEmpty) qp['source'] = source.trim();
+    if (brand != null && brand.trim().isNotEmpty) qp['brand'] = brand.trim();
+    final response = await _dio.get('/products', queryParameters: qp);
+    final list = (response.data as List).cast<Map<String, dynamic>>();
+    return list;
+  }
+
   Future<void> metricsEvent(String name, {Map<String, dynamic>? meta}) async {
     await _dio.post('/metrics/events', data: {'name': name, 'meta': meta ?? {}});
   }

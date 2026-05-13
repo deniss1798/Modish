@@ -7,7 +7,9 @@ import 'core/theme/app_colors.dart';
 import 'core/widgets/modish_widgets.dart';
 import 'features/auth/auth_screen.dart';
 import 'features/onboarding/analysis_screen.dart';
+import 'features/onboarding/intro_onboarding_screen.dart';
 import 'features/onboarding/upload_screen.dart';
+import 'features/onboarding/welcome_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/recommendations/detail_screen.dart';
 import 'features/recommendations/feed_screen.dart';
@@ -79,10 +81,40 @@ class ModishApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         scaffoldBackgroundColor: AppColors.bg,
+        fontFamily: 'Arial',
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.accent,
           surface: AppColors.card,
           primary: AppColors.accent,
+        ),
+        appBarTheme: const AppBarTheme(
+          centerTitle: true,
+          surfaceTintColor: Colors.transparent,
+          foregroundColor: AppColors.ink,
+        ),
+        chipTheme: ChipThemeData(
+          backgroundColor: AppColors.card,
+          selectedColor: AppColors.ink,
+          side: const BorderSide(color: AppColors.line),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          labelStyle: const TextStyle(fontSize: 12, color: AppColors.ink),
+          secondaryLabelStyle: const TextStyle(
+            fontSize: 12,
+            color: Colors.white,
+          ),
+        ),
+        sliderTheme: const SliderThemeData(
+          activeTrackColor: AppColors.accent,
+          inactiveTrackColor: AppColors.line,
+          thumbColor: AppColors.accent,
+          overlayColor: Color(0x198F1530),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: AppColors.card,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
       home: const RootScreen(),
@@ -98,6 +130,8 @@ class RootScreen extends StatelessWidget {
     final app = ModishApp.of(context);
     return switch (app.stage) {
       AppStage.splash => const SplashScreen(),
+      AppStage.welcome => WelcomeScreen(controller: app),
+      AppStage.onboarding => IntroOnboardingScreen(controller: app),
       AppStage.auth => AuthScreen(controller: app),
       AppStage.upload => UploadScreen(controller: app),
       AppStage.analysis => AnalysisScreen(controller: app),
@@ -106,14 +140,20 @@ class RootScreen extends StatelessWidget {
   }
 }
 
-enum AppStage { splash, auth, upload, analysis, home }
+enum AppStage { splash, welcome, onboarding, auth, upload, analysis, home }
 
 class AppController extends ChangeNotifier {
   final api = ApiClient();
 
   AppStage stage = AppStage.splash;
+
   /// 0 Подборка (товары), 1 Образы, 2 Сохранённое, 3 Профиль
   int tab = 0;
+  bool authRegisterMode = true;
+  int? feedMinPrice;
+  int? feedMaxPrice;
+  List<String> feedFilterSizes = const [];
+  List<String> feedFilterColors = const [];
   String email = '';
   String styleTarget = 'menswear';
   String? token;
@@ -129,6 +169,7 @@ class AppController extends ChangeNotifier {
   List<Outfit> feed = [];
   List<Map<String, dynamic>> savedRows = [];
   List<prod.FeedCard> productFeed = [];
+
   /// Ошибка последней загрузки `/feed` (сеть, 401, сервер).
   String? productFeedError;
   List<Map<String, dynamic>> savedProductRows = [];
@@ -140,7 +181,38 @@ class AppController extends ChangeNotifier {
   Map<String, dynamic> tasteProfile = {};
 
   Outfit? get currentOutfit => feed.isEmpty ? null : feed.first;
-  prod.FeedCard? get currentProduct => productFeed.isEmpty ? null : productFeed.first;
+  prod.FeedCard? get currentProduct =>
+      filteredProductFeed.isEmpty ? null : filteredProductFeed.first;
+
+  List<prod.FeedCard> get filteredProductFeed {
+    return productFeed.where((c) {
+      final p = c.product;
+      if (feedMinPrice != null && p.price < feedMinPrice!) return false;
+      if (feedMaxPrice != null && p.price > feedMaxPrice!) return false;
+      if (feedFilterSizes.isNotEmpty) {
+        final sizes = p.availableSizes.map((e) => e.toUpperCase()).toSet();
+        if (!feedFilterSizes.any((s) => sizes.contains(s.toUpperCase()))) {
+          return false;
+        }
+      }
+      if (feedFilterColors.isNotEmpty) {
+        final cols = p.colors.map((e) => e.toLowerCase()).toList();
+        if (!feedFilterColors.any(
+          (col) => cols.any((pc) => pc.contains(col.toLowerCase())),
+        )) {
+          return false;
+        }
+      }
+      return true;
+    }).toList();
+  }
+
+  List<prod.FeedCard> relatedProducts(String productId, {int limit = 6}) {
+    return filteredProductFeed
+        .where((c) => c.product.id != productId)
+        .take(limit)
+        .toList();
+  }
 
   Future<void> boot() async {
     await Future<void>.delayed(const Duration(milliseconds: 200));
@@ -152,9 +224,10 @@ class AppController extends ChangeNotifier {
       if (stored != null && stored.isNotEmpty) {
         api.applyToken(stored);
         token = stored;
-        final me = await api
-            .usersMe()
-            .timeout(const Duration(seconds: 1), onTimeout: () => throw TimeoutException('usersMe'));
+        final me = await api.usersMe().timeout(
+          const Duration(seconds: 1),
+          onTimeout: () => throw TimeoutException('usersMe'),
+        );
         email = '${me['email'] ?? email}';
         final profile = await api.styleProfileMe().timeout(
           const Duration(seconds: 1),
@@ -164,8 +237,10 @@ class AppController extends ChangeNotifier {
         final rawMap = raw is Map ? Map<String, dynamic>.from(raw) : null;
         final analyzed =
             rawMap != null && rawMap.isNotEmpty && _profileHasAnalysis(rawMap);
-        await refreshRemoteData()
-            .timeout(const Duration(seconds: 3), onTimeout: () => throw TimeoutException('refresh'));
+        await refreshRemoteData().timeout(
+          const Duration(seconds: 3),
+          onTimeout: () => throw TimeoutException('refresh'),
+        );
         stage = analyzed ? AppStage.home : AppStage.upload;
         notifyListeners();
         return;
@@ -175,7 +250,36 @@ class AppController extends ChangeNotifier {
       api.clearToken();
       token = null;
     }
+    stage = AppStage.welcome;
+    notifyListeners();
+  }
+
+  void goToWelcome() {
+    stage = AppStage.welcome;
+    notifyListeners();
+  }
+
+  void goToOnboarding() {
+    stage = AppStage.onboarding;
+    notifyListeners();
+  }
+
+  void goToAuth({required bool registerMode}) {
+    authRegisterMode = registerMode;
     stage = AppStage.auth;
+    notifyListeners();
+  }
+
+  void applyFeedFilters({
+    int? minPrice,
+    int? maxPrice,
+    List<String> sizes = const [],
+    List<String> colors = const [],
+  }) {
+    feedMinPrice = minPrice;
+    feedMaxPrice = maxPrice;
+    feedFilterSizes = sizes;
+    feedFilterColors = colors;
     notifyListeners();
   }
 
@@ -292,9 +396,7 @@ class AppController extends ChangeNotifier {
     }
     savedIds
       ..clear()
-      ..addAll(
-        savedRows.map((r) => '${r['recommendation_id']}'),
-      );
+      ..addAll(savedRows.map((r) => '${r['recommendation_id']}'));
     notifyListeners();
   }
 
@@ -353,7 +455,7 @@ class AppController extends ChangeNotifier {
       stage = AppStage.home;
       tab = 3; // Профиль
     } else {
-      stage = AppStage.auth;
+      stage = AppStage.welcome;
     }
     notifyListeners();
   }
@@ -376,7 +478,7 @@ class AppController extends ChangeNotifier {
     savedIds.clear();
     _detailViewSent.clear();
     _productViewSent.clear();
-    stage = AppStage.auth;
+    stage = AppStage.welcome;
     notifyListeners();
   }
 
@@ -385,18 +487,31 @@ class AppController extends ChangeNotifier {
     if (_productViewSent.contains(productId)) return;
     _productViewSent.add(productId);
     try {
-      await api.recordRecommendationEvent(eventType: 'view', productId: productId);
+      await api.recordRecommendationEvent(
+        eventType: 'view',
+        productId: productId,
+      );
       try {
-        await api.metricsEvent('product_viewed', meta: {'product_id': productId});
+        await api.metricsEvent(
+          'product_viewed',
+          meta: {'product_id': productId},
+        );
       } catch (_) {}
     } catch (_) {
       _productViewSent.remove(productId);
     }
   }
 
-  Future<void> sendProductEvent(BuildContext context, String productId, String eventType) async {
+  Future<void> sendProductEvent(
+    BuildContext context,
+    String productId,
+    String eventType,
+  ) async {
     await _run(() async {
-      final res = await api.recordRecommendationEvent(eventType: eventType, productId: productId);
+      final res = await api.recordRecommendationEvent(
+        eventType: eventType,
+        productId: productId,
+      );
       try {
         final name = switch (eventType) {
           'like' => 'product_liked',
@@ -417,8 +532,12 @@ class AppController extends ChangeNotifier {
       if (eventType == 'save') {
         // оптимистично: просто перезагрузим
       }
-      if (eventType == 'like' || eventType == 'dislike' || eventType == 'skip') {
-        productFeed = productFeed.where((c) => c.product.id != productId).toList();
+      if (eventType == 'like' ||
+          eventType == 'dislike' ||
+          eventType == 'skip') {
+        productFeed = productFeed
+            .where((c) => c.product.id != productId)
+            .toList();
       }
       await refreshRemoteData();
     });
@@ -490,7 +609,9 @@ class AppController extends ChangeNotifier {
       }
       if (context.mounted) {
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => VisualAnalysisScreen(controller: this)),
+          MaterialPageRoute(
+            builder: (_) => VisualAnalysisScreen(controller: this),
+          ),
         );
       }
     });
@@ -534,20 +655,40 @@ class AppController extends ChangeNotifier {
   }
 }
 
-class SplashScreen extends StatelessWidget {
+class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future<void>.delayed(const Duration(milliseconds: 900), () {
+        if (!mounted) return;
+        final app = ModishApp.of(context);
+        if (app.stage == AppStage.splash) {
+          app.goToWelcome();
+        }
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return const MobileViewport(
+      minimalBackdrop: true,
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Brand(size: 72),
+            Brand(size: 56),
             SizedBox(height: 14),
             Text(
               'Персональный AI-стилист',
-              style: TextStyle(color: AppColors.muted, fontSize: 18),
+              style: TextStyle(color: AppColors.muted, fontSize: 16),
             ),
           ],
         ),
@@ -573,31 +714,9 @@ class HomeScreen extends StatelessWidget {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: pages[controller.tab],
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: controller.tab,
-          onDestinationSelected: controller.setTab,
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.explore_outlined),
-              selectedIcon: Icon(Icons.explore),
-              label: 'Подборка',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.style_outlined),
-              selectedIcon: Icon(Icons.style),
-              label: 'Образы',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.bookmark_border),
-              selectedIcon: Icon(Icons.bookmark),
-              label: 'Сохраненное',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person),
-              label: 'Профиль',
-            ),
-          ],
+        bottomNavigationBar: ModishBottomNav(
+          index: controller.tab,
+          onChanged: controller.setTab,
         ),
       ),
     );
