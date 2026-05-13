@@ -13,14 +13,15 @@ class ApiClient {
   ApiClient()
     : _dio = Dio(
         BaseOptions(
-          baseUrl: _resolvedBaseUrl(),
+          baseUrl: resolvedBaseUrl(),
           connectTimeout: const Duration(seconds: 12),
           receiveTimeout: const Duration(seconds: 20),
           headers: {'Accept': 'application/json'},
         ),
       );
 
-  static String _resolvedBaseUrl() {
+  /// Базовый URL API (без завершающего `/`).
+  static String resolvedBaseUrl() {
     const fromEnv = String.fromEnvironment(
       'MODISH_API_BASE_URL',
       defaultValue: '',
@@ -35,6 +36,16 @@ class ApiClient {
       return 'http://10.0.2.2:8000';
     }
     return 'http://127.0.0.1:8000';
+  }
+
+  /// Загрузка картинок через `GET /media/proxy-image` (эмулятор без исходящего HTTPS).
+  /// `--dart-define=MODISH_IMAGE_PROXY=true|false` переопределяет авто-режим.
+  static bool useImageProxyForProductImages() {
+    const override = String.fromEnvironment('MODISH_IMAGE_PROXY', defaultValue: '');
+    final v = override.trim().toLowerCase();
+    if (v == '1' || v == 'true' || v == 'yes') return true;
+    if (v == '0' || v == 'false' || v == 'no') return false;
+    return resolvedBaseUrl().contains('10.0.2.2');
   }
 
   final Dio _dio;
@@ -149,8 +160,12 @@ class ApiClient {
     return Map<String, dynamic>.from(response.data as Map);
   }
 
-  Future<List<Map<String, dynamic>>> productFeed({int limit = 30}) async {
-    final response = await _dio.get('/feed', queryParameters: {'limit': limit});
+  Future<List<Map<String, dynamic>>> productFeed({int limit = 30, String? source}) async {
+    final qp = <String, dynamic>{'limit': limit};
+    if (source != null && source.trim().isNotEmpty) {
+      qp['source'] = source.trim();
+    }
+    final response = await _dio.get('/feed', queryParameters: qp);
     final list = (response.data as List).cast<Map<String, dynamic>>();
     return list;
   }
@@ -170,6 +185,11 @@ class ApiClient {
         'meta': meta ?? {},
       },
     );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  Future<Map<String, dynamic>> productById(String id) async {
+    final response = await _dio.get('/products/$id');
     return Map<String, dynamic>.from(response.data as Map);
   }
 

@@ -1,11 +1,11 @@
-# Modish (предрелиз v1)
+# Modish — alpha (каталог + лента)
 
-Мобильное приложение персонального AI-стилиста по ТЗ v1
+Мобильное приложение персонального AI-стилиста. **Alpha:** реальный каталог (YML/XML Befree), импорт, лента товаров, affiliate-клики, события и базовые рекомендации.
 
-## Что сделано для предрелиза
+## Что входит в alpha
 
-- **Flutter:** splash и восстановление сессии (JWT в `flutter_secure_storage`), таймауты сети при boot, нижнее меню в порядке ТЗ (Подборка → Рекомендации → Сохранённое → Профиль), свайпы на подборке, загрузка фото (галерея + камера, превью, удаление, лимит 5 MB на клиенте), экран рекомендаций по полям summary, сохранённое с API и фильтрами, профиль с billing, `view_details` при открытии деталей.
-- **Backend:** PostgreSQL + SQLAlchemy + Alembic; JWT; лимиты Plus (1 анализ фото / месяц, 5 генераций пачек / месяц); `saved_recommendations`, `user_preferences`, `user_recommendation_summaries`, `user_limits`; эндпоинты из раздела 14 ТЗ (включая `generate`, `saved`, `billing`, `summary/rebuild`, `style-profile/me`); пересборка summary после каждых 10 событий feedback; мок AI для анализа и генерации (без OpenAI до продакшена).
+- **Flutter:** JWT, подборка товаров (`/feed`), свайпы, карточка с галереей и описанием, обновление товара с сервера в деталях, сохранённые товары, образы, профиль, affiliate-переходы.
+- **Backend:** PostgreSQL, импорт YML-каталога, поля товара (group_id, описание, картинки, категория, param), `/feed` с фильтром `source`, `/products`, affiliate click, события `/recommendations/events`, скоринг с бюджетом и просмотрами.
 
 ## Запуск Flutter
 
@@ -47,6 +47,8 @@ uvicorn app.main:app --reload --port 8000
 
 Список маршрутов см. `backend/README.md`.
 
+**Импорт каталога Befree:** задайте `ADMIN_TOKEN` и опционально `BEFREE_FEED_URL` в `.env`. Затем `POST /admin/catalog/alpha-bootstrap` и `POST .../sources/{id}/sync` или `sync-upload` (см. `backend/README.md`).
+
 ## Очистка артефактов
 
 Закройте Cursor/Android Studio, остановите `uvicorn`, затем:
@@ -60,4 +62,4 @@ powershell -ExecutionPolicy Bypass -File scripts\clean_artifacts.ps1
 ## Дальше до продакшена
 
 - OpenAI для анализа, генерации карточек и текстов summary; Redis rate limit; разнесение backend по модулям ТЗ; Riverpod + go_router во Flutter; обработка edge cases и e2e-тесты.
-- Подключение реальных товаров и каталогов (SKU, партнёрские фиды, экран «что купить» поверх текущих текстовых рекомендаций).
+- Отдельные таблицы вариантов SKU, A/B весов рекомендаций, мониторинг импорта фидов.

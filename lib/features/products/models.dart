@@ -1,5 +1,15 @@
 import 'package:flutter/material.dart';
 
+List<String> _imageUrlsFromJson(dynamic raw) {
+  if (raw is! List) return const [];
+  final out = <String>[];
+  for (final e in raw) {
+    final s = e?.toString().trim() ?? '';
+    if (s.isNotEmpty) out.add(s);
+  }
+  return out;
+}
+
 class Product {
   const Product({
     required this.id,
@@ -12,11 +22,16 @@ class Product {
     this.discountPercent,
     required this.currency,
     required this.imageUrl,
+    this.imageUrls = const [],
     required this.productUrl,
     this.affiliateUrl,
     this.originalUrl,
     required this.colors,
     required this.availableSizes,
+    this.categoryName,
+    this.description,
+    this.sizeOriginal,
+    this.colorOriginal,
   });
 
   final String id;
@@ -30,17 +45,38 @@ class Product {
   final int? discountPercent;
   final String currency;
   final String imageUrl;
+  /// Все URL картинок из фида (если бэкенд отдаёт).
+  final List<String> imageUrls;
   final String productUrl;
   final String? affiliateUrl;
   final String? originalUrl;
   final List<String> colors;
   final List<String> availableSizes;
+  final String? categoryName;
+  final String? description;
+  final String? sizeOriginal;
+  final String? colorOriginal;
 
   /// Ссылка для открытия витрины (affiliate приоритетнее).
   String get outboundUrl {
     final a = (affiliateUrl ?? '').trim();
     if (a.isNotEmpty) return a;
     return productUrl.trim();
+  }
+
+  /// URL для галереи: сначала `imageUrls` с бэкенда, иначе одна `imageUrl`.
+  List<String> get galleryUrls {
+    String norm(String u) {
+      final t = u.trim();
+      if (t.isEmpty) return '';
+      if (t.startsWith('//')) return 'https:$t';
+      return t;
+    }
+
+    final fromFeed = imageUrls.map(norm).where((e) => e.isNotEmpty).toList();
+    if (fromFeed.isNotEmpty) return fromFeed;
+    final one = norm(imageUrl);
+    return one.isEmpty ? const <String>[] : <String>[one];
   }
 
   static String _shopLabelFromJson(Map<String, dynamic> json) {
@@ -65,11 +101,16 @@ class Product {
       discountPercent: (json['discount_percent'] as num?)?.toInt(),
       currency: (json['currency'] ?? 'RUB').toString(),
       imageUrl: (json['image_url'] ?? json['imageUrl'] ?? '').toString(),
+      imageUrls: _imageUrlsFromJson(json['image_urls'] ?? json['imageUrls']),
       productUrl: (json['product_url'] ?? '').toString(),
       affiliateUrl: (json['affiliate_url'] ?? json['affiliateUrl'])?.toString(),
       originalUrl: (json['original_url'] ?? json['originalUrl'])?.toString(),
       colors: List<String>.from((json['colors'] as List?) ?? const []),
       availableSizes: List<String>.from((json['available_sizes'] as List?) ?? const []),
+      categoryName: json['category_name']?.toString(),
+      description: json['description']?.toString(),
+      sizeOriginal: json['size_original']?.toString(),
+      colorOriginal: json['color_original']?.toString(),
     );
   }
 }

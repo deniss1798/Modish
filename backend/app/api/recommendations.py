@@ -21,7 +21,7 @@ from ..models import (
   UserProductState,
 )
 from ..services.outfit_service import generate_outfits
-from ..services.recommendation_engine import ensure_taste_profile
+from ..services.recommendation_engine import _product_category_norms, ensure_taste_profile
 from .deps import auth_scheme, get_db, user_from_token
 from .serializers import rec_to_dict
 
@@ -153,7 +153,8 @@ def recommendations_events(
   if payload.product_id:
     p = db.execute(select(Product).where(Product.id == payload.product_id)).scalar_one_or_none()
     if p:
-      cat = (p.category or "").strip().lower()
+      cat_keys = _product_category_norms(p)
+      cat = next(iter(cat_keys), "") or (p.category or "").strip().lower()
       brand = (p.brand or "").strip().lower()
       cols = [str(c).strip().lower() for c in (p.colors or []) if str(c).strip()]
       styles = [str(t).strip().lower() for t in (p.style_tags or []) if str(t).strip()]
@@ -206,6 +207,14 @@ def recommendations_events(
           add_unique(tp.disliked_colors, c)
         for t in styles[:3]:
           add_unique(tp.disliked_styles, t)
+
+      if payload.event_type == "view":
+        for ck in cat_keys:
+          bump(tp.category_weights, ck, +1)
+        if brand:
+          bump(tp.brand_weights, brand, +1)
+        for c in cols[:2]:
+          bump(tp.color_weights, c, +1)
 
       delta = weight
       bump(tp.category_weights, cat, delta)

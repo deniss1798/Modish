@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from .. import business
 from ..models import StyleProfile, User
+from ..services.recommendation_engine import ensure_taste_profile
 from .deps import create_access_token, get_db, hash_password, verify_password
 from .seed import seed_recommendations
 from .serializers import as_user_payload
@@ -65,6 +66,7 @@ def register(payload: AuthRequest, db: Session = Depends(get_db)) -> TokenRespon
   business.get_or_refresh_limits(db, user.id)
   db.commit()
   seed_recommendations(db, user.id)
+  ensure_taste_profile(db, user.id)
   business.rebuild_user_summary(db, user.id)
   db.commit()
   return TokenResponse(access_token=create_access_token(user.id), user=as_user_payload(user))
@@ -78,4 +80,6 @@ def login(payload: AuthRequest, db: Session = Depends(get_db)) -> TokenResponse:
   business.get_or_refresh_limits(db, user.id)
   db.commit()
   seed_recommendations(db, user.id)
+  ensure_taste_profile(db, user.id)
+  db.commit()
   return TokenResponse(access_token=create_access_token(user.id), user=as_user_payload(user))

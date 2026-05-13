@@ -30,3 +30,13 @@ class NormalizedProduct:
   availability_status: str | None = None
   merchant_category: str | None = None
   merchant_subcategory: str | None = None
+  group_id: str | None = None
+  description: str | None = None
+  image_urls: list[str] = field(default_factory=list)
+  barcode: str | None = None
+  vendor_code: str | None = None
+  category_external_id: str | None = None
+  category_name: str | None = None
+  raw_params: dict[str, Any] = field(default_factory=dict)
+  size_original: str | None = None
+  color_original: str | None = None

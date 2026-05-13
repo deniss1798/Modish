@@ -126,22 +126,25 @@ def saved_products(
       RecommendationEventV2.product_id.is_not(None),
     )
     .order_by(RecommendationEventV2.created_at.desc())
-    .limit(min(200, max(1, limit)))
+    .limit(min(400, max(1, limit * 4)))
   ).all()
-  seen: set[str] = set()
-  out: list[dict[str, Any]] = []
+  # У каждого товара берём только последнее событие save/unsave (порядок — от новых к старым).
+  last_by_product: dict[str, tuple[RecommendationEventV2, Product]] = {}
   for ev, p in rows:
-    if p.id in seen:
+    pid = str(p.id)
+    if pid in last_by_product:
       continue
-    seen.add(p.id)
-    if ev.event_type == "save":
-      out.append(
-        {
-          "saved_at": ev.created_at.isoformat(),
-          "product": product_to_api(p),
-        }
-      )
-  return out
+    last_by_product[pid] = (ev, p)
+  out: list[dict[str, Any]] = [
+    {
+      "saved_at": ev.created_at.isoformat(),
+      "product": product_to_api(p),
+    }
+    for _pid, (ev, p) in last_by_product.items()
+    if ev.event_type == "save"
+  ]
+  out.sort(key=lambda x: x["saved_at"], reverse=True)
+  return out[: min(200, max(1, limit))]
 
 
 @router.patch("/users/me/preferences")

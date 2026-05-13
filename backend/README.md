@@ -64,3 +64,13 @@ python -m uvicorn app.main:app --reload --port 8000
 - `GET /health`
 
 Redis и Docker в этом предрелизе не обязательны; моки AI в `app/business.py` / `app/main.py`.
+
+## Alpha: каталог (admin, `ADMIN_TOKEN`)
+
+- `POST /admin/catalog/alpha-bootstrap` — источник `befree` (один раз); URL из `BEFREE_FEED_URL` в `.env` (опционально)
+- `GET|POST|PATCH /admin/catalog/sources` — источники
+- `POST /admin/catalog/sources/{id}/sync` — импорт по `feed_url`
+- `POST /admin/catalog/sources/{id}/sync-upload` — загрузка файла XML/YML
+- `GET /admin/catalog/sync-runs` (опционально `?source_id=`), `GET /admin/catalog/sync-runs/{run_id}`
+
+**Модель alpha:** строка `products` = один SKU (оффер); отдельная таблица `product_variants` не используется — вариант в колонках и `feed_raw_json`.

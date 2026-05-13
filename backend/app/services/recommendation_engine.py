@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from ..catalog_normalize import normalize_category
-from ..models import FitProfile, Product, StyleProfile, TasteProfile, User
+from ..models import FitProfile, Product, RecommendationEventV2, StyleProfile, TasteProfile, User
 from .catalog.rule_filters import load_rules_by_source_id, product_gender_compatible, product_passes_source_rules
 from ..schemas.photo_analysis import extract_analysis_section
 
@@ -63,6 +63,33 @@ def ensure_taste_profile(db: Session, user_id: str) -> TasteProfile:
   db.add(row)
   db.flush()
   return row
+
+
+def _product_category_norms(product: Product) -> set[str]:
+  """Ключи категории для скоринга и фильтра интересов (витрина + фид)."""
+  keys: set[str] = set()
+  for raw in (product.category_name, product.category):
+    if raw and str(raw).strip():
+      k = normalize_category(str(raw).strip())
+      if k:
+        keys.add(k)
+  return keys
+
+
+def _recent_product_engagement(db: Session, *, user_id: str, product_id: str) -> int:
+  """Сколько раз пользователь смотрел карточку (view/open) за последние 30 дней."""
+  since = datetime.now(timezone.utc) - timedelta(days=30)
+  n = db.execute(
+    select(func.count())
+    .select_from(RecommendationEventV2)
+    .where(
+      RecommendationEventV2.user_id == user_id,
+      RecommendationEventV2.product_id == product_id,
+      RecommendationEventV2.event_type.in_(["view", "open_product"]),
+      RecommendationEventV2.created_at >= since,
+    )
+  ).scalar_one()
+  return int(n or 0)
 
 
 def score_product(db: Session, user: User, product: Product) -> ScoredProduct:
@@ -121,19 +148,22 @@ def score_product(db: Session, user: User, product: Product) -> ScoredProduct:
     except Exception:
       return 0
 
-  cat = (product.category or "").strip().lower()
+  cat_keys = _product_category_norms(product)
   brand = (product.brand or "").strip().lower()
   style_tags = set(_norm_list(product.style_tags))
 
   taste_points = 0.0
-  if taste.category_weights:
-    taste_points += float(w(taste.category_weights, cat))
-    if w(taste.category_weights, cat) >= 6:
+  if taste.category_weights and cat_keys:
+    best_w = max((w(taste.category_weights, ck) for ck in cat_keys), default=0)
+    taste_points += float(best_w)
+    if best_w >= 6:
       reasons.append("Вы часто выбираете эту категорию")
-  else:
-    if cat and cat in set(_norm_list(taste.liked_categories)):
+  elif cat_keys:
+    liked_norm = {normalize_category(str(x).strip()) for x in (taste.liked_categories or []) if str(x).strip()}
+    disliked_norm = {normalize_category(str(x).strip()) for x in (taste.disliked_categories or []) if str(x).strip()}
+    if cat_keys & liked_norm:
       taste_points += 15.0
-    if cat and cat in set(_norm_list(taste.disliked_categories)):
+    if cat_keys & disliked_norm:
       taste_points -= 20.0
 
   if taste.brand_weights:
@@ -168,21 +198,42 @@ def score_product(db: Session, user: User, product: Product) -> ScoredProduct:
     if style_tags and (set(_norm_list(taste.disliked_styles)) & style_tags):
       taste_points -= 10.0
 
+  eng_n = _recent_product_engagement(db, user_id=user.id, product_id=product.id)
+  if eng_n > 0:
+    taste_points += min(10.0, 2.0 + 3.0 * float(eng_n - 1))
+    reasons.append("Вы уже смотрели этот товар")
+
   # squash into 0..1
   taste_score = max(0.0, min(1.0, 0.5 + (taste_points / 60.0)))
 
-  price_score = 1.0
-  # budget / price range (taste + fit budget max)
-  budget_max = taste.price_max
-  if fit is not None and int(fit.budget_max or 0) > 0:
-    budget_max = min(budget_max, int(fit.budget_max))
-  if product.price > budget_max:
-    price_score = 0.4
+  lo = int(taste.price_min or 0)
+  hi = int(taste.price_max or 200_000)
+  if fit is not None:
+    bmin = int(fit.budget_min or 0)
+    bmax = int(fit.budget_max or 0)
+    if bmin > 0:
+      lo = max(lo, bmin)
+    if bmax > 0:
+      hi = min(hi, bmax)
+  if hi < lo:
+    lo, hi = hi, lo
+  if hi == lo:
+    hi = lo + 1
+
+  pr = int(product.price or 0)
+  if pr > hi:
+    over = (pr - hi) / max(float(hi), 1.0)
+    price_score = max(0.12, 0.52 - min(0.4, over * 0.1))
     reasons.append("Цена выше вашего бюджета")
-  elif product.price < taste.price_min:
-    price_score = 0.7
-    reasons.append("Цена ниже вашего типичного диапазона")
+  elif lo > 0 and pr < lo:
+    price_score = 0.72
+    reasons.append("Дешевле заданного диапазона")
   else:
+    mid = (lo + hi) / 2.0
+    span = max(float(hi - lo), 1.0)
+    dist = abs(float(pr) - mid) / (span / 2.0)
+    dist = min(1.0, dist)
+    price_score = 0.82 + 0.18 * (1.0 - dist)
     reasons.append("Цена в рамках бюджета")
 
   has_shop_url = bool(
@@ -214,6 +265,9 @@ def score_product(db: Session, user: User, product: Product) -> ScoredProduct:
     "price_score": price_score,
     "freshness_score": freshness_score,
     "availability_score": availability_score,
+    "budget_lo": float(lo),
+    "budget_hi": float(hi),
+    "engagement_recent_views": float(eng_n),
   }
   return ScoredProduct(
     product=product,
@@ -230,27 +284,26 @@ def generate_feed(
   *,
   limit: int = 30,
   exclude_product_ids: set[str] | None = None,
+  source: str | None = None,
 ) -> list[ScoredProduct]:
   exclude_product_ids = exclude_product_ids or set()
   min_price = 500
-  q = (
-    select(Product)
-    .where(
-      and_(
-        Product.is_active == 1,
-        Product.is_available == 1,
-        Product.is_deleted_from_feed == 0,
-        Product.price > min_price,
-        Product.image_url.isnot(None),
-        Product.image_url != "",
-        or_(
-          and_(Product.affiliate_url.isnot(None), Product.affiliate_url != ""),
-          Product.product_url != "",
-        ),
-      )
-    )
-    .limit(1000)
-  )
+  conds = [
+    Product.is_active == 1,
+    Product.is_available == 1,
+    Product.is_deleted_from_feed == 0,
+    Product.source != "demo",
+    Product.price > min_price,
+    Product.image_url.isnot(None),
+    Product.image_url != "",
+    or_(
+      and_(Product.affiliate_url.isnot(None), Product.affiliate_url != ""),
+      Product.product_url != "",
+    ),
+  ]
+  if source and source.strip():
+    conds.append(Product.source == source.strip())
+  q = select(Product).where(and_(*conds)).limit(1000)
   products = db.execute(q).scalars().all()
   if exclude_product_ids:
     products = [p for p in products if p.id not in exclude_product_ids]
@@ -269,8 +322,8 @@ def generate_feed(
     if not product_gender_compatible(p, user_gender):
       continue
     if interest_norm:
-      pc = normalize_category(p.category or "")
-      if pc not in interest_norm:
+      p_cats = _product_category_norms(p)
+      if p_cats and not (p_cats & interest_norm):
         continue
     filtered.append(p)
   scored = [score_product(db, user, p) for p in filtered]

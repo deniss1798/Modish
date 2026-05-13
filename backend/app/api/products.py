@@ -21,6 +21,7 @@ def _feed_scored_items(
   user: User,
   *,
   limit: int,
+  source: str | None = None,
 ) -> list[dict[str, Any]]:
   from datetime import datetime, timezone
 
@@ -34,7 +35,13 @@ def _feed_scored_items(
       )
     ).scalars()
   )
-  scored = generate_feed(db, user, limit=limit, exclude_product_ids=set(map(str, hidden_ids)))
+  scored = generate_feed(
+    db,
+    user,
+    limit=limit,
+    exclude_product_ids=set(map(str, hidden_ids)),
+    source=source,
+  )
   out: list[dict[str, Any]] = []
   for s in scored:
     out.append(
@@ -54,11 +61,21 @@ def products_list(
   limit: int = 50,
   offset: int = 0,
   category: str | None = None,
+  source: str | None = None,
+  brand: str | None = None,
   db: Session = Depends(get_db),
 ) -> list[dict[str, Any]]:
   q = select(Product).where(Product.is_active == 1)
   if category:
     q = q.where(Product.category == category)
+  if source and source.strip().lower() == "demo":
+    q = q.where(Product.source == "demo")
+  else:
+    q = q.where(Product.source != "demo")
+    if source and source.strip():
+      q = q.where(Product.source == source.strip())
+  if brand and brand.strip():
+    q = q.where(Product.brand.ilike(f"%{brand.strip()}%"))
   q = q.order_by(Product.created_at.desc()).offset(max(0, offset)).limit(min(200, max(1, limit)))
   rows = db.execute(q).scalars().all()
   return [product_to_api(p) for p in rows]
@@ -77,18 +94,20 @@ def products_get(product_id: str, db: Session = Depends(get_db)) -> dict[str, An
 @router.get("/products/recommended")
 def products_recommended(
   limit: int = 30,
+  source: str | None = None,
   db: Session = Depends(get_db),
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> list[dict[str, Any]]:
   u = user_from_token(credentials, db)
-  return _feed_scored_items(db, u, limit=limit)
+  return _feed_scored_items(db, u, limit=limit, source=source)
 
 
 @router.get("/feed")
 def feed(
   limit: int = 30,
+  source: str | None = None,
   db: Session = Depends(get_db),
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> list[dict[str, Any]]:
   u = user_from_token(credentials, db)
-  return _feed_scored_items(db, u, limit=limit)
+  return _feed_scored_items(db, u, limit=limit, source=source)

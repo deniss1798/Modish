@@ -12,6 +12,7 @@ from .api.auth import router as auth_router
 from .api.catalog_admin import router as catalog_admin_router
 from .api.deps import auth_scheme, get_db, user_from_token
 from .api.fit_profile import router as fit_profile_router
+from .api.media_proxy import router as media_proxy_router
 from .api.outfits import router as outfits_router
 from .api.products import router as products_router
 from .api.profile import router as profile_router
@@ -23,6 +24,7 @@ from .services.visual_analysis_service import generate_style_visual
 app = FastAPI(title="Modish API", version="0.9.0-pre")
 
 app.include_router(auth_router)
+app.include_router(media_proxy_router)
 app.include_router(products_router)
 app.include_router(recommendations_router)
 app.include_router(profile_router)

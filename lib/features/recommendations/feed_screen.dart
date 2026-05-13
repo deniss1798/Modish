@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../app.dart';
@@ -8,13 +10,30 @@ import '../../core/widgets/product_image.dart';
 import '../products/models.dart' as prod;
 import '../products/product_detail_screen.dart';
 
-class FeedScreen extends StatelessWidget {
+class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key, required this.controller});
   final AppController controller;
 
   @override
+  State<FeedScreen> createState() => _FeedScreenState();
+}
+
+class _FeedScreenState extends State<FeedScreen> {
+  String? _lastViewRecordedId;
+
+  @override
   Widget build(BuildContext context) {
+    final controller = widget.controller;
     final card = controller.currentProduct;
+    final id = card?.product.id;
+    if (id != null && id != _lastViewRecordedId) {
+      _lastViewRecordedId = id;
+      unawaited(controller.recordProductViewIfNeeded(id));
+    }
+    if (id == null) {
+      _lastViewRecordedId = null;
+    }
+
     return SafeArea(
       child: Column(
         children: [
@@ -76,26 +95,27 @@ class _EmptyFeed extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final err = controller.productFeedError?.trim();
     return Center(
       child: SoftCard(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Карточек пока нет',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+            Text(
+              err != null && err.isNotEmpty ? 'Не удалось загрузить ленту' : 'Карточек пока нет',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Импортируйте каталог и откройте ленту товаров.',
+            Text(
+              err != null && err.isNotEmpty
+                  ? err
+                  : 'Импортируйте каталог или обновите экран. Если каталог уже есть — проверьте фильтры профиля (интересы).',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.muted, fontSize: 14),
+              style: const TextStyle(color: AppColors.muted, fontSize: 14),
             ),
             const SizedBox(height: 18),
             FilledButton.icon(
-              onPressed: controller.isLoading
-                  ? null
-                  : () => controller.refreshRemoteData(),
+              onPressed: controller.isLoading ? null : () => controller.refreshRemoteData(),
               icon: const Icon(Icons.refresh),
               label: const Text('Обновить'),
             ),
@@ -135,6 +155,80 @@ class _SwipeProductCard extends StatelessWidget {
   }
 }
 
+class _FeedImageCarousel extends StatefulWidget {
+  const _FeedImageCarousel({required this.urls, required this.borderRadius});
+  final List<String> urls;
+  final BorderRadius borderRadius;
+
+  @override
+  State<_FeedImageCarousel> createState() => _FeedImageCarouselState();
+}
+
+class _FeedImageCarouselState extends State<_FeedImageCarousel> {
+  late final PageController _pageController;
+  int _page = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final urls = widget.urls;
+    if (urls.isEmpty) {
+      return ProductFillImage(imageUrl: '', borderRadius: widget.borderRadius);
+    }
+    if (urls.length == 1) {
+      return ProductFillImage(imageUrl: urls.first, borderRadius: widget.borderRadius);
+    }
+    return Column(
+      children: [
+        Expanded(
+          child: ClipRRect(
+            borderRadius: widget.borderRadius,
+            child: PageView.builder(
+              controller: _pageController,
+              itemCount: urls.length,
+              onPageChanged: (i) => setState(() => _page = i),
+              itemBuilder: (context, i) {
+                return ProductFillImage(
+                  imageUrl: urls[i],
+                  borderRadius: BorderRadius.zero,
+                );
+              },
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(urls.length, (i) {
+            final on = i == _page;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              width: on ? 14 : 5,
+              height: 5,
+              decoration: BoxDecoration(
+                color: on ? AppColors.accent : AppColors.line,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+}
+
 class _ProductCardView extends StatelessWidget {
   const _ProductCardView({required this.controller, required this.card});
   final AppController controller;
@@ -143,17 +237,24 @@ class _ProductCardView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = card.product;
+    final gallery = p.galleryUrls;
+    final catLabel = (p.categoryName ?? '').trim().isNotEmpty ? p.categoryName! : p.category;
+    final sizeLine = (p.sizeOriginal?.trim().isNotEmpty ?? false)
+        ? p.sizeOriginal!.trim()
+        : (p.availableSizes.isEmpty ? '' : p.availableSizes.take(8).join(', '));
     final palette = p.colors.isNotEmpty
         ? p.colors.take(4).map(prod.colorFromName).toList()
         : const [Color(0xFF142238), Colors.white, Color(0xFFCFCBC5)];
     final radius = BorderRadius.circular(18);
+    final disc = p.discountPercent;
+    final showDisc = disc != null && disc > 0;
     return SoftCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
             flex: 11,
-            child: ProductFillImage(imageUrl: p.imageUrl, borderRadius: radius),
+            child: _FeedImageCarousel(urls: gallery, borderRadius: radius),
           ),
           const SizedBox(height: 14),
           Expanded(
@@ -210,15 +311,22 @@ class _ProductCardView extends StatelessWidget {
                       ),
                     ],
                   ),
+                  if (showDisc) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      '−$disc%',
+                      style: const TextStyle(color: AppColors.accent, fontWeight: FontWeight.w600, fontSize: 14),
+                    ),
+                  ],
                   const SizedBox(height: 6),
                   Text(
-                    p.category,
+                    catLabel,
                     style: const TextStyle(color: AppColors.muted, fontSize: 13),
                   ),
-                  if (p.availableSizes.isNotEmpty) ...[
+                  if (sizeLine.isNotEmpty) ...[
                     const SizedBox(height: 6),
                     Text(
-                      'Размеры: ${p.availableSizes.take(8).join(', ')}',
+                      'Размеры: $sizeLine',
                       style: const TextStyle(color: AppColors.muted, fontSize: 13),
                     ),
                   ],

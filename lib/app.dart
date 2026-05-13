@@ -12,7 +12,6 @@ import 'features/profile/profile_screen.dart';
 import 'features/recommendations/detail_screen.dart';
 import 'features/recommendations/feed_screen.dart';
 import 'features/recommendations/models.dart';
-import 'features/recommendations/recommendations_screen.dart';
 import 'features/recommendations/saved_screen.dart';
 import 'features/visual/visual_analysis_screen.dart';
 import 'features/products/models.dart' as prod;
@@ -23,7 +22,7 @@ import 'features/onboarding/result_screen.dart';
 bool _profileHasAnalysis(Map<String, dynamic> pj) {
   final nested = pj['analysis'];
   if (nested is Map) {
-    final n = Map<String, dynamic>.from(nested as Map);
+    final n = Map<String, dynamic>.from(nested);
     return n.containsKey('color_palette') ||
         n.containsKey('recommended_silhouettes') ||
         n.containsKey('summary');
@@ -113,7 +112,7 @@ class AppController extends ChangeNotifier {
   final api = ApiClient();
 
   AppStage stage = AppStage.splash;
-  /// 0 Подборка, 1 Рекомендации, 2 Сохранённое, 3 Профиль (п.2 ТЗ)
+  /// 0 Подборка (товары), 1 Образы, 2 Сохранённое, 3 Профиль
   int tab = 0;
   String email = '';
   String styleTarget = 'menswear';
@@ -126,9 +125,12 @@ class AppController extends ChangeNotifier {
 
   final savedIds = <String>{};
   final _detailViewSent = <String>{};
+  final _productViewSent = <String>{};
   List<Outfit> feed = [];
   List<Map<String, dynamic>> savedRows = [];
   List<prod.FeedCard> productFeed = [];
+  /// Ошибка последней загрузки `/feed` (сеть, 401, сервер).
+  String? productFeedError;
   List<Map<String, dynamic>> savedProductRows = [];
   List<Map<String, dynamic>> outfits = [];
   Map<String, dynamic> summary = {};
@@ -159,9 +161,9 @@ class AppController extends ChangeNotifier {
           onTimeout: () => throw TimeoutException('styleProfileMe'),
         );
         final raw = profile['profile_json'];
-        final analyzed = raw is Map &&
-            Map<String, dynamic>.from(raw as Map).isNotEmpty &&
-            _profileHasAnalysis(Map<String, dynamic>.from(raw as Map));
+        final rawMap = raw is Map ? Map<String, dynamic>.from(raw) : null;
+        final analyzed =
+            rawMap != null && rawMap.isNotEmpty && _profileHasAnalysis(rawMap);
         await refreshRemoteData()
             .timeout(const Duration(seconds: 3), onTimeout: () => throw TimeoutException('refresh'));
         stage = analyzed ? AppStage.home : AppStage.upload;
@@ -243,8 +245,10 @@ class AppController extends ChangeNotifier {
     try {
       final rows = await api.productFeed(limit: 30);
       productFeed = rows.map(prod.FeedCard.fromApi).toList();
-    } catch (_) {
+      productFeedError = null;
+    } catch (e) {
       productFeed = [];
+      productFeedError = ApiClient.formatError(e);
     }
     if (productFeed.isNotEmpty) {
       try {
@@ -361,6 +365,7 @@ class AppController extends ChangeNotifier {
     feed = [];
     savedRows = [];
     productFeed = [];
+    productFeedError = null;
     savedProductRows = [];
     outfits = [];
     summary = {};
@@ -370,8 +375,23 @@ class AppController extends ChangeNotifier {
     tasteProfile = {};
     savedIds.clear();
     _detailViewSent.clear();
+    _productViewSent.clear();
     stage = AppStage.auth;
     notifyListeners();
+  }
+
+  /// Показ карточки в ленте: `view` один раз на товар за сессию, без блокирующего loading.
+  Future<void> recordProductViewIfNeeded(String productId) async {
+    if (_productViewSent.contains(productId)) return;
+    _productViewSent.add(productId);
+    try {
+      await api.recordRecommendationEvent(eventType: 'view', productId: productId);
+      try {
+        await api.metricsEvent('product_viewed', meta: {'product_id': productId});
+      } catch (_) {}
+    } catch (_) {
+      _productViewSent.remove(productId);
+    }
   }
 
   Future<void> sendProductEvent(BuildContext context, String productId, String eventType) async {

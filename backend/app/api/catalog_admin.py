@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Literal
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
@@ -16,6 +16,12 @@ from ..catalog_normalize import normalize_category, normalize_product_colors
 from ..db import SessionLocal
 from ..models import CatalogSyncRun, Product, ProductSource, SourceRule
 from ..services.catalog.feed_import_service import sync_partner_feed, sync_partner_feed_from_text
+
+
+def _allow_demo_catalog_mutations() -> bool:
+  """POST demo-seed / demo-rewrite — только если явно включено в .env (прод: реальные фиды)."""
+  return os.getenv("ALLOW_DEMO_CATALOG", "").strip().lower() in ("1", "true", "yes", "on")
+
 
 RuleType = Literal[
   "blocked_brand",
@@ -125,6 +131,22 @@ def _rule_to_api(r: SourceRule) -> dict[str, Any]:
   }
 
 
+def _sync_run_to_api(run: CatalogSyncRun) -> dict[str, Any]:
+  return {
+    "sync_run_id": run.id,
+    "id": run.id,
+    "source_id": run.source_id,
+    "status": run.status,
+    "total_received": run.total_received,
+    "created_count": run.created_count,
+    "updated_count": run.updated_count,
+    "deactivated_count": run.deactivated_count,
+    "error_message": run.error_message,
+    "started_at": run.started_at.isoformat(),
+    "finished_at": run.finished_at.isoformat() if run.finished_at else None,
+  }
+
+
 @router.get("/sources")
 def admin_catalog_sources(
   db: Session = Depends(get_db),
@@ -224,17 +246,37 @@ def admin_catalog_source_sync(
   if src is None:
     raise HTTPException(status_code=404, detail="Source not found")
   run = sync_partner_feed(db, source=src)
-  return {
-    "sync_run_id": run.id,
-    "status": run.status,
-    "total_received": run.total_received,
-    "created_count": run.created_count,
-    "updated_count": run.updated_count,
-    "deactivated_count": run.deactivated_count,
-    "error_message": run.error_message,
-    "started_at": run.started_at.isoformat(),
-    "finished_at": run.finished_at.isoformat() if run.finished_at else None,
-  }
+  return _sync_run_to_api(run)
+
+
+_MAX_FEED_UPLOAD_BYTES = 50 * 1024 * 1024
+
+
+@router.post("/sources/{source_id}/sync-upload")
+async def admin_catalog_source_sync_upload(
+  source_id: str,
+  file: UploadFile = File(..., description="XML/YML фид (например Befree yml_catalog)"),
+  db: Session = Depends(get_db),
+  authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+  """Импорт из загруженного файла (без сети). Формат определяется по содержимому и имени файла."""
+  _admin_auth(authorization)
+  src = db.execute(select(ProductSource).where(ProductSource.id == source_id)).scalar_one_or_none()
+  if src is None:
+    raise HTTPException(status_code=404, detail="Source not found")
+  raw = await file.read()
+  if len(raw) > _MAX_FEED_UPLOAD_BYTES:
+    raise HTTPException(
+      status_code=413,
+      detail=f"File too large (max {_MAX_FEED_UPLOAD_BYTES // (1024 * 1024)} MB)",
+    )
+  try:
+    body = raw.decode("utf-8")
+  except UnicodeDecodeError:
+    body = raw.decode("utf-8", errors="replace")
+  hint = (file.filename or "feed.xml").strip() or "feed.xml"
+  run = sync_partner_feed_from_text(db, source=src, body=body, parser_url_hint=hint)
+  return {**_sync_run_to_api(run), "upload_filename": hint}
 
 
 @router.get("/sources/{source_id}/rules")
@@ -331,32 +373,29 @@ def admin_catalog_rule_delete(
 @router.get("/sync-runs")
 def admin_catalog_sync_runs(
   limit: int = 50,
+  source_id: str | None = None,
   db: Session = Depends(get_db),
   authorization: str | None = Header(default=None),
 ) -> list[dict[str, Any]]:
   _admin_auth(authorization)
-  rows = (
-    db.execute(
-      select(CatalogSyncRun).order_by(CatalogSyncRun.started_at.desc()).limit(min(200, max(1, limit)))
-    )
-    .scalars()
-    .all()
-  )
-  return [
-    {
-      "id": r.id,
-      "source_id": r.source_id,
-      "status": r.status,
-      "total_received": r.total_received,
-      "created_count": r.created_count,
-      "updated_count": r.updated_count,
-      "deactivated_count": r.deactivated_count,
-      "error_message": r.error_message,
-      "started_at": r.started_at.isoformat(),
-      "finished_at": r.finished_at.isoformat() if r.finished_at else None,
-    }
-    for r in rows
-  ]
+  q = select(CatalogSyncRun).order_by(CatalogSyncRun.started_at.desc())
+  if source_id:
+    q = q.where(CatalogSyncRun.source_id == source_id)
+  rows = db.execute(q.limit(min(200, max(1, limit)))).scalars().all()
+  return [_sync_run_to_api(r) for r in rows]
+
+
+@router.get("/sync-runs/{run_id}")
+def admin_catalog_sync_run_get(
+  run_id: str,
+  db: Session = Depends(get_db),
+  authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+  _admin_auth(authorization)
+  r = db.execute(select(CatalogSyncRun).where(CatalogSyncRun.id == run_id)).scalar_one_or_none()
+  if r is None:
+    raise HTTPException(status_code=404, detail="Sync run not found")
+  return _sync_run_to_api(r)
 
 
 @router.get("/products/stats")
@@ -435,6 +474,11 @@ def admin_catalog_demo_seed(
   authorization: str | None = Header(default=None),
 ) -> dict[str, Any]:
   _admin_auth(authorization)
+  if not _allow_demo_catalog_mutations():
+    raise HTTPException(
+      status_code=403,
+      detail="Demo catalog disabled. Set ALLOW_DEMO_CATALOG=1 in backend/.env to enable.",
+    )
   now = datetime.now(timezone.utc)
   source = "demo"
   categories = [
@@ -491,6 +535,11 @@ def admin_demo_rewrite_image_urls(
   authorization: str | None = Header(default=None),
 ) -> dict[str, Any]:
   _admin_auth(authorization)
+  if not _allow_demo_catalog_mutations():
+    raise HTTPException(
+      status_code=403,
+      detail="Demo catalog disabled. Set ALLOW_DEMO_CATALOG=1 in backend/.env to enable.",
+    )
   rows = db.execute(select(Product).where(Product.source == "demo")).scalars().all()
   updated = 0
   for p in rows:
@@ -528,15 +577,51 @@ def admin_catalog_sync_mock_lamoda(
     )
   body = path.read_text(encoding="utf-8")
   run = sync_partner_feed_from_text(db, source=src, body=body, parser_url_hint=str(path.name))
+  return {**_sync_run_to_api(run), "mock_file": str(path)}
+
+
+@router.post("/alpha-bootstrap")
+def admin_catalog_alpha_bootstrap(
+  db: Session = Depends(get_db),
+  authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+  """
+  Подготовка alpha: источник каталога `befree` (создаётся один раз).
+  URL фида: `BEFREE_FEED_URL` в окружении или пусто — задайте позже PATCH /sources/{id}.
+  """
+  _admin_auth(authorization)
+  code = "befree"
+  feed_url = (os.getenv("BEFREE_FEED_URL") or "").strip() or None
+  existing = db.execute(select(ProductSource).where(ProductSource.code == code)).scalar_one_or_none()
+  if existing is not None:
+    return {
+      "ok": True,
+      "created": False,
+      "source_id": existing.id,
+      "code": existing.code,
+      "feed_url": existing.feed_url,
+      "hint": "Источник уже есть. При необходимости обновите feed_url через PATCH /admin/catalog/sources/{id}.",
+    }
+  now = datetime.now(timezone.utc)
+  s = ProductSource(
+    id=str(uuid4()),
+    code=code,
+    name="Befree",
+    network="befree",
+    advertiser_id=None,
+    feed_url=feed_url,
+    deeplink_template=None,
+    status="ok" if feed_url else "pending",
+    created_at=now,
+    updated_at=now,
+  )
+  db.add(s)
+  db.commit()
   return {
-    "sync_run_id": run.id,
-    "status": run.status,
-    "mock_file": str(path),
-    "total_received": run.total_received,
-    "created_count": run.created_count,
-    "updated_count": run.updated_count,
-    "deactivated_count": run.deactivated_count,
-    "error_message": run.error_message,
-    "started_at": run.started_at.isoformat(),
-    "finished_at": run.finished_at.isoformat() if run.finished_at else None,
+    "ok": True,
+    "created": True,
+    "source_id": s.id,
+    "code": code,
+    "feed_url": feed_url,
+    "next": "POST .../sources/{source_id}/sync или .../sync-upload с XML фида",
   }

@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..catalog_normalize import normalize_category
 from ..models import Product
 
 # Человекочитаемые названия витрин (source code → подпись в приложении).
@@ -14,7 +13,19 @@ _SHOP_LABEL_BY_SOURCE: dict[str, str] = {
   "wildberries": "Wildberries",
   "wb": "Wildberries",
   "admitad": "Партнёрский каталог",
+  "befree": "Befree",
 }
+
+
+def _api_discount_percent(p: Product) -> int | None:
+  """Процент скидки для API: из БД или из old_price/price."""
+  if p.discount_percent is not None:
+    return int(p.discount_percent)
+  op = p.old_price
+  pr = p.price
+  if op is not None and pr is not None and op > pr > 0:
+    return int(round(100.0 * (op - pr) / float(op)))
+  return None
 
 
 def shop_label_for_product(p: Product) -> str:
@@ -41,7 +52,7 @@ def product_to_api(p: Product) -> dict[str, Any]:
     "subcategory": p.subcategory,
     "price": p.price,
     "old_price": p.old_price,
-    "discount_percent": p.discount_percent,
+    "discount_percent": _api_discount_percent(p),
     "currency": p.currency,
     "availability_status": p.availability_status,
     "image_url": p.image_url,
@@ -69,4 +80,14 @@ def product_to_api(p: Product) -> dict[str, Any]:
     "last_seen_in_feed_at": p.last_seen_in_feed_at.isoformat() if p.last_seen_in_feed_at else None,
     "is_deleted_from_feed": bool(p.is_deleted_from_feed),
     "shop_label": shop_label_for_product(p),
+    "group_id": p.group_id,
+    "description": p.description,
+    "image_urls": p.image_urls or [],
+    "barcode": p.barcode,
+    "vendor_code": p.vendor_code,
+    "category_external_id": p.category_external_id,
+    "category_name": p.category_name,
+    "raw_params_json": p.raw_params_json or {},
+    "size_original": p.size_original,
+    "color_original": p.color_original,
   }

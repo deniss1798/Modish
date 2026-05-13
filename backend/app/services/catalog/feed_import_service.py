@@ -8,7 +8,13 @@ import httpx
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
-from ...integrations.admitad.feed_parser import parse_admitad_csv, parse_admitad_xml, parse_admitad_yml
+from ...integrations.admitad.feed_parser import (
+  is_yml_catalog_xml,
+  parse_admitad_csv,
+  parse_admitad_xml,
+  parse_admitad_yml,
+  parse_yml_catalog_xml,
+)
 from ...models import CatalogSyncRun, Product, ProductSource
 from .affiliate_link_service import apply_deeplink_for_product
 from .feed_row_mapper import row_to_normalized
@@ -21,6 +27,8 @@ def _detect_parser(url: str, body: str):
     return parse_admitad_csv(body)
   if u.endswith(".yml") or u.endswith(".yaml"):
     return parse_admitad_yml(body)
+  if is_yml_catalog_xml(body):
+    return parse_yml_catalog_xml(body)
   return parse_admitad_xml(body)
 
 
