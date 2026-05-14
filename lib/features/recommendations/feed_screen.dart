@@ -187,7 +187,7 @@ class _ActionBtn extends StatelessWidget {
         child: SizedBox(
           width: 52,
           height: 46,
-          child: Icon(icon, color: AppColors.ink, size: 22),
+          child: Icon(icon, color: AppColors.accent, size: 22),
         ),
       ),
     );
@@ -236,24 +236,114 @@ class _EmptyFeed extends StatelessWidget {
   }
 }
 
-class _SwipeProductCard extends StatelessWidget {
+class _SwipeProductCard extends StatefulWidget {
   const _SwipeProductCard({required this.controller, required this.card});
   final AppController controller;
   final prod.FeedCard card;
 
   @override
+  State<_SwipeProductCard> createState() => _SwipeProductCardState();
+}
+
+class _SwipeProductCardState extends State<_SwipeProductCard>
+    with SingleTickerProviderStateMixin {
+  double _dx = 0;
+  bool _animating = false;
+
+  Future<void> _flyOut(String event) async {
+    if (_animating) return;
+    setState(() => _animating = true);
+    final target = event == 'like' ? 420.0 : -420.0;
+    final start = _dx;
+    const steps = 12;
+    for (var i = 1; i <= steps; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 16));
+      if (!mounted) return;
+      setState(() => _dx = start + (target - start) * (i / steps));
+    }
+    if (!mounted) return;
+    await widget.controller.sendProductEvent(
+      context,
+      widget.card.product.id,
+      event,
+    );
+    if (mounted) {
+      setState(() {
+        _dx = 0;
+        _animating = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final angle = (_dx / 1000).clamp(-0.12, 0.12);
+    final likeOpacity = (_dx / 120).clamp(0.0, 1.0);
+    final skipOpacity = (-_dx / 120).clamp(0.0, 1.0);
     return GestureDetector(
-      onHorizontalDragEnd: (details) {
-        final v = details.primaryVelocity ?? 0;
-        if (v > 280) {
-          controller.sendProductEvent(context, card.product.id, 'like');
-        } else if (v < -280) {
-          controller.sendProductEvent(context, card.product.id, 'skip');
-        }
-      },
-      onTap: () => _openProduct(context, card, controller),
-      child: _ProductCardView(controller: controller, card: card),
+      onHorizontalDragUpdate: _animating
+          ? null
+          : (d) => setState(() => _dx += d.delta.dx),
+      onHorizontalDragEnd: _animating
+          ? null
+          : (d) {
+              if (_dx > 90 || (d.primaryVelocity ?? 0) > 500) {
+                _flyOut('like');
+              } else if (_dx < -90 || (d.primaryVelocity ?? 0) < -500) {
+                _flyOut('skip');
+              } else {
+                setState(() => _dx = 0);
+              }
+            },
+      onTap: () => _openProduct(context, widget.card, widget.controller),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Transform.translate(
+            offset: Offset(_dx, 0),
+            child: Transform.rotate(
+              angle: angle,
+              child: _ProductCardView(controller: widget.controller, card: widget.card),
+            ),
+          ),
+          if (likeOpacity > 0.05)
+            Positioned(
+              left: 24,
+              top: 40,
+              child: Opacity(
+                opacity: likeOpacity,
+                child: const _SwipeStamp(label: 'НРАВИТСЯ', color: AppColors.success),
+              ),
+            ),
+          if (skipOpacity > 0.05)
+            Positioned(
+              right: 24,
+              top: 40,
+              child: Opacity(
+                opacity: skipOpacity,
+                child: const _SwipeStamp(label: 'ПРОПУСК', color: AppColors.muted),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SwipeStamp extends StatelessWidget {
+  const _SwipeStamp({required this.label, required this.color});
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        border: Border.all(color: color, width: 2),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 13)),
     );
   }
 }
@@ -427,29 +517,23 @@ class _ProductCardView extends StatelessWidget {
                     ],
                   ],
                 ),
-                if (card.reason.trim().isNotEmpty) ...[
+                if (card.reasons.isNotEmpty || card.reason.trim().isNotEmpty) ...[
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
-                    children: card.reason
-                        .split(',')
+                    children: (card.reasons.isNotEmpty ? card.reasons : [card.reason])
                         .take(3)
                         .map(
                           (r) => Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 9,
-                              vertical: 5,
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                             decoration: BoxDecoration(
                               color: AppColors.chipBg,
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
                               r.trim(),
-                              style: AppTextStyles.caption.copyWith(
-                                color: AppColors.ink,
-                              ),
+                              style: AppTextStyles.caption.copyWith(color: AppColors.ink),
                             ),
                           ),
                         )
@@ -473,15 +557,15 @@ class _RoundIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white.withValues(alpha: .9),
-      shape: const CircleBorder(),
+      color: AppColors.card.withValues(alpha: 0.92),
+      shape: const CircleBorder(side: BorderSide(color: AppColors.line)),
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: onTap,
         child: SizedBox(
           width: 40,
           height: 40,
-          child: Icon(icon, size: 20, color: AppColors.ink),
+          child: Icon(icon, size: 20, color: AppColors.accent),
         ),
       ),
     );

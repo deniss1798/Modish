@@ -77,6 +77,14 @@ _CATEGORY_ALIASES: dict[str, str] = {
   "sneaker": "обувь",
   "boot": "обувь",
   "обувь": "обувь",
+  "bag": "сумки",
+  "bags": "сумки",
+  "сумка": "сумки",
+  "сумки": "сумки",
+  "accessory": "аксессуары",
+  "accessories": "аксессуары",
+  "аксессуар": "аксессуары",
+  "аксессуары": "аксессуары",
 }
 
 _CANONICAL_CATEGORIES = frozenset(_CATEGORY_ALIASES.values())

@@ -34,20 +34,66 @@ class MobileViewport extends StatelessWidget {
 }
 
 class Brand extends StatelessWidget {
-  const Brand({super.key, this.size = 46, this.light = false});
-  final double size;
+  const Brand({super.key, this.width = 168, this.light = false, this.gold = true});
+  final double width;
   final bool light;
+  final bool gold;
+
+  static const _logoPath = 'assets/images/logo.png';
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      'Modish',
-      style: TextStyle(
-        fontFamily: 'Georgia',
-        fontSize: size,
-        fontWeight: FontWeight.w500,
-        color: light ? Colors.white : AppColors.ink,
-        letterSpacing: 0,
+    if (gold) {
+      return GoldWordmark(fontSize: width * 0.19);
+    }
+    return Image.asset(
+      _logoPath,
+      width: width,
+      fit: BoxFit.contain,
+      alignment: Alignment.centerLeft,
+      errorBuilder: (context, error, stackTrace) => GoldWordmark(fontSize: width * 0.19),
+    );
+  }
+}
+
+class GoldWordmark extends StatelessWidget {
+  const GoldWordmark({super.key, this.fontSize = 32});
+
+  final double fontSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final base = TextStyle(
+      fontFamily: 'Georgia',
+      fontSize: fontSize,
+      fontWeight: FontWeight.w500,
+      height: 1.05,
+      color: Colors.white,
+    );
+    return ShaderMask(
+      blendMode: BlendMode.srcIn,
+      shaderCallback: (bounds) => const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [AppColors.accentSoft, AppColors.accent],
+      ).createShader(bounds),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text('Mod', style: base),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '✦',
+                style: base.copyWith(fontSize: fontSize * 0.28, height: 0.85, fontFamily: null),
+              ),
+              Text('i', style: base),
+            ],
+          ),
+          Text('sh', style: base),
+        ],
       ),
     );
   }
@@ -68,7 +114,7 @@ class SoftCard extends StatelessWidget {
         border: Border.all(color: AppColors.line),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x061A1410),
+            color: Color(0x18000000),
             blurRadius: 10,
             offset: Offset(0, 3),
           ),
@@ -86,19 +132,25 @@ class PrimaryButton extends StatelessWidget {
     this.icon,
     this.onPressed,
     this.expanded = true,
+    this.backgroundColor,
+    this.foregroundColor,
   });
   final String label;
   final IconData? icon;
   final VoidCallback? onPressed;
   final bool expanded;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
 
   @override
   Widget build(BuildContext context) {
+    final bg = backgroundColor ?? AppColors.accent;
+    final fg = foregroundColor ?? AppColors.onAccent;
     final btn = FilledButton(
       onPressed: onPressed,
       style: FilledButton.styleFrom(
-        backgroundColor: AppColors.ink,
-        foregroundColor: Colors.white,
+        backgroundColor: bg,
+        foregroundColor: fg,
         disabledBackgroundColor: AppColors.line,
         minimumSize: const Size(0, 50),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -129,18 +181,26 @@ class SecondaryButton extends StatelessWidget {
     required this.label,
     this.onPressed,
     this.expanded = true,
+    this.onDark = false,
+    this.borderColor,
+    this.foregroundColor,
   });
   final String label;
   final VoidCallback? onPressed;
   final bool expanded;
+  final bool onDark;
+  final Color? borderColor;
+  final Color? foregroundColor;
 
   @override
   Widget build(BuildContext context) {
+    final fg = foregroundColor ?? (onDark ? AppColors.accentSoft : AppColors.accent);
+    final border = borderColor ?? (onDark ? AppColors.accent : AppColors.accentDark);
     final btn = OutlinedButton(
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
-        foregroundColor: AppColors.ink,
-        side: const BorderSide(color: AppColors.line),
+        foregroundColor: fg,
+        side: BorderSide(color: border),
         minimumSize: const Size(0, 50),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
@@ -196,10 +256,10 @@ class ModishChip extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: Material(
-        color: selected ? AppColors.ink : AppColors.card,
+        color: selected ? AppColors.accent : AppColors.chipBg,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: selected ? AppColors.ink : AppColors.line),
+          side: BorderSide(color: selected ? AppColors.accent : AppColors.line),
         ),
         child: InkWell(
           onTap: onTap,
@@ -209,7 +269,7 @@ class ModishChip extends StatelessWidget {
             child: Text(
               label,
               style: AppTextStyles.chip.copyWith(
-                color: selected ? Colors.white : AppColors.ink,
+                color: selected ? AppColors.onAccent : AppColors.ink,
               ),
             ),
           ),
@@ -239,7 +299,7 @@ class ScreenHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (showBrand) ...[const Brand(size: 32), const SizedBox(height: 12)],
+          if (showBrand) ...[const Brand(width: 120), const SizedBox(height: 12)],
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -276,7 +336,11 @@ class StatTile extends StatelessWidget {
         children: [
           Text(
             value,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
+            ),
           ),
           const SizedBox(height: 2),
           Text(
@@ -314,9 +378,9 @@ class ModishBottomNav extends StatelessWidget {
         border: Border(top: BorderSide(color: AppColors.line)),
         boxShadow: [
           BoxShadow(
-            color: Color(0x081A1410),
-            blurRadius: 10,
-            offset: Offset(0, -3),
+            color: Color(0x33000000),
+            blurRadius: 12,
+            offset: Offset(0, -4),
           ),
         ],
       ),
@@ -336,7 +400,7 @@ class ModishBottomNav extends StatelessWidget {
                     children: [
                       Icon(
                         on ? item.$2 : item.$1,
-                        color: on ? AppColors.ink : AppColors.muted,
+                        color: on ? AppColors.accent : AppColors.muted,
                         size: 22,
                       ),
                       const SizedBox(height: 4),
@@ -345,7 +409,7 @@ class ModishBottomNav extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: on ? FontWeight.w600 : FontWeight.w400,
-                          color: on ? AppColors.ink : AppColors.muted,
+                          color: on ? AppColors.accent : AppColors.muted,
                         ),
                       ),
                     ],
@@ -363,31 +427,44 @@ class ModishBottomNav extends StatelessWidget {
 class HeroFashionBackdrop extends StatelessWidget {
   const HeroFashionBackdrop({super.key});
 
+  static const _imagePath = 'assets/images/back.png';
+
   @override
   Widget build(BuildContext context) {
     return Stack(
       fit: StackFit.expand,
       children: [
-        Image.network(
-          'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=900&q=80',
+        Image.asset(
+          _imagePath,
           fit: BoxFit.cover,
+          alignment: const Alignment(-0.45, 0),
           errorBuilder: (context, error, stackTrace) => const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [AppColors.sand, AppColors.graphite],
+                colors: [
+                  Color(0xFF35312E),
+                  Color(0xFF221F1D),
+                  Color(0xFF121010),
+                ],
+                stops: [0.0, 0.5, 1.0],
               ),
             ),
           ),
         ),
-        Container(
-          decoration: const BoxDecoration(
+        const DecoratedBox(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Color(0x11111111), Color(0x77111111), Color(0xCC111111)],
-              stops: [0.0, 0.55, 1.0],
+              colors: [
+                Color(0x52000000),
+                Color(0x28000000),
+                Color(0x5A000000),
+                Color(0xE6000000),
+              ],
+              stops: [0.0, 0.28, 0.52, 1.0],
             ),
           ),
         ),
@@ -427,6 +504,8 @@ class ModishTextField extends StatelessWidget {
         TextField(
           controller: controller,
           obscureText: obscure,
+          style: const TextStyle(color: AppColors.ink),
+          cursorColor: AppColors.accent,
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: icon != null
@@ -472,13 +551,13 @@ class MenuTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: AppColors.ink),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+      leading: Icon(icon, color: AppColors.accent),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500, color: AppColors.ink)),
       subtitle: subtitle != null
           ? Text(subtitle!, style: AppTextStyles.caption)
           : null,
       trailing:
-          trailing ?? const Icon(Icons.chevron_right, color: AppColors.muted),
+          trailing ?? const Icon(Icons.chevron_right, color: AppColors.accent),
       onTap: onTap,
     );
   }

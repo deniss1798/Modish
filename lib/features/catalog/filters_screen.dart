@@ -74,9 +74,9 @@ class _FiltersScreenState extends State<FiltersScreen> {
                     child: Container(
                       height: 64,
                       decoration: BoxDecoration(
-                        color: on ? AppColors.ink : AppColors.card,
+                        color: on ? AppColors.accent : AppColors.card,
                         border: Border.all(
-                          color: on ? AppColors.ink : AppColors.line,
+                          color: on ? AppColors.accent : AppColors.line,
                         ),
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -86,7 +86,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
                           Icon(
                             _categoryIcon(c),
                             size: 20,
-                            color: on ? Colors.white : AppColors.ink,
+                            color: on ? AppColors.onAccent : AppColors.ink,
                           ),
                           const SizedBox(height: 5),
                           Text(
@@ -95,7 +95,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               fontSize: 9,
-                              color: on ? Colors.white : AppColors.ink,
+                              color: on ? AppColors.onAccent : AppColors.ink,
                             ),
                           ),
                         ],
@@ -157,7 +157,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
                     color: _swatch(c),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: on ? AppColors.ink : AppColors.line,
+                      color: on ? AppColors.accent : AppColors.line,
                       width: on ? 2 : 1,
                     ),
                   ),
@@ -210,7 +210,7 @@ Color _swatch(String value) {
     'Бежевый' => const Color(0xFFD8D0C5),
     'Серый' => const Color(0xFF9A9A9A),
     'Синий' => const Color(0xFF45546D),
-    'Красный' => AppColors.accent,
+    'Красный' => const Color(0xFFB54A4A),
     'Зеленый' => const Color(0xFF4E7A55),
     _ => AppColors.chipBg,
   };

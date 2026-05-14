@@ -20,17 +20,17 @@ class _IntroOnboardingScreenState extends State<IntroOnboardingScreen> {
     (
       'Ваш стиль.\nНаш интеллект',
       'Персональные подборки, основанные на ваших предпочтениях',
-      'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=700&q=80',
+      Icons.auto_awesome_outlined,
     ),
     (
       'Подборка для вас',
       'Сохраняйте любимое и переходите в магазин в один тап',
-      'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=700&q=80',
+      Icons.explore_outlined,
     ),
     (
       'Образы на каждый день',
       'Готовые луки для офиса, прогулок и вечера',
-      'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=700&q=80',
+      Icons.style_outlined,
     ),
   ];
 
@@ -61,10 +61,7 @@ class _IntroOnboardingScreenState extends State<IntroOnboardingScreen> {
               alignment: Alignment.centerRight,
               child: TextButton(
                 onPressed: () => widget.controller.goToAuth(registerMode: true),
-                child: const Text(
-                  'Пропустить',
-                  style: TextStyle(color: AppColors.muted),
-                ),
+                child: const Text('Пропустить', style: TextStyle(color: AppColors.muted)),
               ),
             ),
             Expanded(
@@ -79,39 +76,20 @@ class _IntroOnboardingScreenState extends State<IntroOnboardingScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: SizedBox(
-                            width: 210,
-                            height: 250,
-                            child: Image.network(
-                              s.$3,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  const ColoredBox(
-                                    color: AppColors.chipBg,
-                                    child: Icon(
-                                      Icons.checkroom_outlined,
-                                      size: 54,
-                                      color: AppColors.ink,
-                                    ),
-                                  ),
-                            ),
+                        Container(
+                          width: 120,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            color: AppColors.chipBg,
+                            borderRadius: BorderRadius.circular(32),
+                            border: Border.all(color: AppColors.line),
                           ),
+                          child: Icon(s.$3, size: 52, color: AppColors.accent),
                         ),
-                        const SizedBox(height: 34),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            s.$1,
-                            style: AppTextStyles.display.copyWith(fontSize: 28),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(s.$2, style: AppTextStyles.bodyMuted),
-                        ),
+                        const SizedBox(height: 36),
+                        Text(s.$1, textAlign: TextAlign.center, style: AppTextStyles.display),
+                        const SizedBox(height: 16),
+                        Text(s.$2, textAlign: TextAlign.center, style: AppTextStyles.bodyMuted),
                       ],
                     ),
                   );
@@ -128,7 +106,7 @@ class _IntroOnboardingScreenState extends State<IntroOnboardingScreen> {
                   width: on ? 24 : 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: on ? AppColors.ink : AppColors.line,
+                    color: on ? AppColors.accent : AppColors.line,
                     borderRadius: BorderRadius.circular(4),
                   ),
                 );

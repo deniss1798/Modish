@@ -46,7 +46,7 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            const Center(child: Brand(size: 34)),
+            const Center(child: Brand(width: 180)),
             const SizedBox(height: 28),
             Container(
               height: 44,
@@ -114,7 +114,7 @@ class _AuthScreenState extends State<AuthScreen> {
               const SizedBox(height: 12),
               Text(
                 c.error!,
-                style: const TextStyle(color: AppColors.accentSoft),
+                style: const TextStyle(color: AppColors.error),
               ),
             ],
             const SizedBox(height: 24),
@@ -200,7 +200,7 @@ class _AuthTab extends StatelessWidget {
           duration: const Duration(milliseconds: 160),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: selected ? AppColors.bg : Colors.transparent,
+            color: selected ? AppColors.accent : Colors.transparent,
             borderRadius: BorderRadius.circular(6),
           ),
           child: Text(
@@ -208,7 +208,7 @@ class _AuthTab extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              color: selected ? AppColors.ink : AppColors.muted,
+              color: selected ? AppColors.onAccent : AppColors.muted,
             ),
           ),
         ),

@@ -47,6 +47,15 @@ def _split_sizes(raw: Any) -> list[str]:
   return [p.strip() for p in parts if p.strip()]
 
 
+def _split_colors(raw: Any) -> list[str]:
+  if raw is None:
+    return []
+  if isinstance(raw, list):
+    return [str(x).strip() for x in raw if str(x).strip()]
+  parts = re.split(r"[,;/|]", str(raw))
+  return [p.strip() for p in parts if p.strip()]
+
+
 def _normalize_media_url(raw: Any) -> str:
   """Протокол-относительные //host → https:// ; обрезка."""
   s = str(raw or "").strip()
@@ -108,6 +117,18 @@ def row_to_normalized(row: dict[str, Any], source: ProductSource) -> NormalizedP
   else:
     img = _normalize_media_url(raw_img)
 
+  pics_src = d.get("pictures")
+  image_urls: list[str] = []
+  if isinstance(pics_src, list):
+    for x in pics_src:
+      u = _normalize_media_url(x)
+      if u:
+        image_urls.append(u)
+      if len(image_urls) >= 80:
+        break
+  if not img and image_urls:
+    img = image_urls[0]
+
   url = str(_pick(d, "url", "product_url", "link", "deeplink", "available_url") or "").strip()
   affiliate = str(_pick(d, "affiliate_url", "partner_link", "admitad_url", "gotolink", "goto_link") or "").strip()
 
@@ -158,17 +179,6 @@ def row_to_normalized(row: dict[str, Any], source: ProductSource) -> NormalizedP
       continue
     raw_params[str(rk)] = rv
 
-  pics_src = d.get("pictures")
-  image_urls: list[str] = []
-  if isinstance(pics_src, list):
-    image_urls = []
-    for x in pics_src:
-      u = _normalize_media_url(x)
-      if u:
-        image_urls.append(u)
-      if len(image_urls) >= 80:
-        break
-
   desc_raw = _pick(d, "description")
   if desc_raw is None:
     description = None
@@ -177,6 +187,12 @@ def row_to_normalized(row: dict[str, Any], source: ProductSource) -> NormalizedP
 
   gid = _pick(d, "group_id")
   group_id = str(gid).strip()[:64] if gid else None
+  if not group_id:
+    cids = d.get("collectionids")
+    if isinstance(cids, list) and cids:
+      group_id = str(cids[0]).strip()[:64] or None
+    elif cids:
+      group_id = str(cids).strip()[:64] or None
 
   barcode = str(_pick(d, "barcode") or "").strip()[:128] or None
   vendor_code = str(_pick(d, "vendorcode", "vendor_code") or "").strip()[:128] or None

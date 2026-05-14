@@ -25,10 +25,10 @@ class PlusScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: AppColors.ink,
+              color: AppColors.accent,
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Text('Modish Plus', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            child: const Text('Modish Plus', style: TextStyle(color: AppColors.onAccent, fontWeight: FontWeight.w600)),
           ),
           const SizedBox(height: 20),
           Text('AI-стилист\nбез ограничений', style: AppTextStyles.display.copyWith(fontSize: 34)),
@@ -77,7 +77,7 @@ class _FeatureRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         children: [
-          const Icon(Icons.check_circle_outline, color: AppColors.success, size: 22),
+          const Icon(Icons.check_circle_outline, color: AppColors.accent, size: 22),
           const SizedBox(width: 10),
           Expanded(child: Text(text)),
         ],

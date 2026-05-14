@@ -4,11 +4,41 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from ..catalog_normalize import normalize_category
 from ..models import FitProfile, Outfit, Product, RecommendationEventV2, StyleProfile, User
 from ..schemas.photo_analysis import extract_analysis_section
+from .recommendation_engine import generate_feed
+
+_TOP_CATS = frozenset({"футболки", "рубашки", "верхний_слой"})
+_BOTTOM_CATS = frozenset({"джинсы", "брюки"})
+_SHOES_CATS = frozenset({"обувь"})
+_ACCESSORY_CATS = frozenset({"аксессуары", "сумки"})
+
+_SLOT_CATEGORIES: dict[str, list[str]] = {
+  "top": ["футболки", "рубашки", "верхний_слой"],
+  "bottom": ["джинсы", "брюки"],
+  "shoes": ["обувь"],
+  "accessory": ["аксессуары", "сумки"],
+}
+
+_SCENARIO_LABELS = {
+  "daily": "Каждый день",
+  "office": "В офис",
+  "evening": "Вечер",
+  "casual": "Casual",
+  "minimal": "Минимализм",
+}
+
+_SCENARIO_TOP_PREF: dict[str, list[str]] = {
+  "daily": ["футболки", "рубашки", "верхний_слой"],
+  "office": ["рубашки", "верхний_слой", "футболки"],
+  "evening": ["верхний_слой", "рубашки"],
+  "casual": ["футболки", "рубашки"],
+  "minimal": ["рубашки", "футболки"],
+}
 
 
 def _norm_list(values: Any) -> list[str]:
@@ -22,21 +52,142 @@ def _norm_list(values: Any) -> list[str]:
   return out
 
 
-def generate_outfits(db: Session, user: User, *, count: int = 3) -> list[Outfit]:
-  """
-  MVP outfits:
-  - pick top/bottom/shoes from highest scored products by category
-  - use profile analysis style_direction/palette as hints (best-effort)
-  """
+def _product_slot(product: Product) -> str | None:
+  raw = (product.category_name or product.category or "").strip()
+  cat = normalize_category(raw)
+  if not cat:
+    low = raw.lower()
+    if any(k in low for k in ("сумк", "bag", "аксессуар", "accessory")):
+      return "accessory"
+    return None
+  if cat in _TOP_CATS:
+    return "top"
+  if cat in _BOTTOM_CATS:
+    return "bottom"
+  if cat in _SHOES_CATS:
+    return "shoes"
+  if cat in _ACCESSORY_CATS:
+    return "accessory"
+  if any(k in cat for k in ("сумк", "аксессуар")):
+    return "accessory"
+  return None
+
+
+def _dedupe_products(products: list[Product]) -> list[Product]:
+  seen: set[str] = set()
+  out: list[Product] = []
+  for p in products:
+    if p.id in seen:
+      continue
+    seen.add(p.id)
+    out.append(p)
+  return out
+
+
+def _bucket_products(products: list[Product], scenario: str) -> dict[str, list[Product]]:
+  buckets: dict[str, list[Product]] = {
+    "top": [],
+    "bottom": [],
+    "shoes": [],
+    "accessory": [],
+  }
+  top_pref = _SCENARIO_TOP_PREF.get(scenario, _SCENARIO_TOP_PREF["daily"])
+  for p in products:
+    slot = _product_slot(p)
+    if slot:
+      buckets[slot].append(p)
+
+  for slot in buckets:
+    buckets[slot] = _dedupe_products(buckets[slot])
+
+  buckets["top"] = sorted(
+    buckets["top"],
+    key=lambda p: (
+      top_pref.index(normalize_category(p.category_name or p.category))
+      if normalize_category(p.category_name or p.category) in top_pref
+      else 99
+    ),
+  )
+  return buckets
+
+
+def _extend_buckets(
+  db: Session,
+  buckets: dict[str, list[Product]],
+  *,
+  excluded: set[str],
+  min_per_slot: int,
+) -> None:
+  """Добираем товары из каталога, если в ленте мало позиций для разнообразия."""
+  for slot, cats in _SLOT_CATEGORIES.items():
+    if len(buckets[slot]) >= min_per_slot:
+      continue
+    existing = {p.id for p in buckets[slot]}
+    rows = db.execute(
+      select(Product)
+      .where(
+        Product.is_active == 1,
+        Product.is_deleted_from_feed == 0,
+        Product.source != "demo",
+        Product.category.in_(cats),
+      )
+      .order_by(Product.created_at.desc())
+      .limit(80)
+    ).scalars().all()
+    for p in rows:
+      if p.id in excluded or p.id in existing:
+        continue
+      buckets[slot].append(p)
+      existing.add(p.id)
+      if len(buckets[slot]) >= min_per_slot:
+        break
+
+
+def _pick_unique(
+  slot: str,
+  pool: list[Product],
+  *,
+  cursors: dict[str, int],
+  used_in_batch: set[str],
+) -> Product | None:
+  if not pool:
+    return None
+  n = len(pool)
+  start = cursors[slot]
+  for i in range(n):
+    p = pool[(start + i) % n]
+    if p.id not in used_in_batch:
+      cursors[slot] = (start + i + 1) % n
+      used_in_batch.add(p.id)
+      return p
+  p = pool[start % n]
+  cursors[slot] = (start + 1) % n
+  return p
+
+
+def generate_outfits(
+  db: Session,
+  user: User,
+  *,
+  count: int = 3,
+  scenario: str = "daily",
+  replace_existing: bool = True,
+) -> list[Outfit]:
+  """Собирает образы из каталога; в одной пачке старается не повторять товары."""
+  scenario_key = scenario.strip().lower() if scenario else "daily"
+  if scenario_key not in _SCENARIO_LABELS:
+    scenario_key = "daily"
+
   profile = db.execute(select(StyleProfile).where(StyleProfile.user_id == user.id)).scalar_one()
   analysis = extract_analysis_section(profile.profile_json or {})
   palette = _norm_list(analysis.get("color_palette"))[:4]
-  style_dir = (_norm_list(analysis.get("style_directions"))[:1] or ["minimal"])[0]
 
   fit = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
-  size = (fit.clothing_size or "").strip().upper() if fit else ""
+  if fit and fit.style_scenarios:
+    preferred = [str(x).strip().lower() for x in fit.style_scenarios if str(x).strip()]
+    if scenario_key == "daily" and preferred:
+      scenario_key = preferred[0] if preferred[0] in _SCENARIO_LABELS else scenario_key
 
-  # Don't use products the user already skipped/disliked
   excluded = set(
     db.execute(
       select(RecommendationEventV2.product_id).where(
@@ -48,74 +199,91 @@ def generate_outfits(db: Session, user: User, *, count: int = 3) -> list[Outfit]
   )
   excluded = {str(x) for x in excluded if x}
 
-  def candidates(category: str) -> list[Product]:
-    q = select(Product).where(Product.is_active == 1, Product.category == category)
-    rows = db.execute(q.limit(200)).scalars().all()
-    if excluded:
-      rows = [p for p in rows if p.id not in excluded]
-    # filter by size if possible
-    if size:
-      rows = [p for p in rows if not p.available_sizes or size in {str(x).upper() for x in p.available_sizes}]
-    # prefer palette match
-    if palette:
-      rows.sort(key=lambda p: int(bool(set(_norm_list(p.colors)) & set(palette))), reverse=True)
-    return rows[:20]
+  if replace_existing:
+    db.execute(
+      delete(Outfit).where(
+        Outfit.user_id == user.id,
+        Outfit.style_direction == scenario_key,
+        Outfit.is_saved == 0,
+      )
+    )
+    db.flush()
 
-  tops = (
-    candidates("футболки")
-    or candidates("рубашки")
-    or candidates("shirts")
-    or candidates("tshirts")
-    or candidates("tops")
-  )
-  bottoms = candidates("джинсы") or candidates("jeans") or candidates("брюки") or candidates("trousers")
-  shoes_list = candidates("обувь") or candidates("shoes")
+  need = max(1, min(10, int(count)))
+  scored = generate_feed(db, user, limit=200)
+  products = [s.product for s in scored if s.product.id not in excluded]
+  buckets = _bucket_products(products, scenario_key)
+  _extend_buckets(db, buckets, excluded=excluded, min_per_slot=need + 2)
 
+  if not any(buckets[s] for s in ("top", "bottom", "shoes")):
+    fallback = db.execute(
+      select(Product).where(
+        Product.is_active == 1,
+        Product.is_deleted_from_feed == 0,
+        Product.source != "demo",
+      ).limit(300)
+    ).scalars().all()
+    fallback = [p for p in fallback if p.id not in excluded]
+    buckets = _bucket_products(fallback, scenario_key)
+    _extend_buckets(db, buckets, excluded=excluded, min_per_slot=need + 2)
+
+  label = _SCENARIO_LABELS[scenario_key]
   created: list[Outfit] = []
   now = datetime.now(timezone.utc)
-  need = max(1, min(10, int(count)))
-  seen: set[tuple[str | None, str | None, str | None]] = set()
-  ti = bi = si = 0
-  # generate unique combinations by cycling candidates
-  while len(created) < need and (tops or bottoms or shoes_list):
-    top = tops[ti % len(tops)] if tops else None
-    bottom = bottoms[bi % len(bottoms)] if bottoms else None
-    shoes = shoes_list[si % len(shoes_list)] if shoes_list else None
-    ti += 1
-    bi += 1 if ti % 2 == 0 else 0
-    si += 1 if ti % 3 == 0 else 0
+  used_in_batch: set[str] = set()
+  cursors = {"top": 0, "bottom": 0, "shoes": 0, "accessory": 0}
+  seen_combos: set[tuple[str, ...]] = set()
+  attempts = 0
+  max_attempts = need * 40
 
-    key = (top.id if top else None, bottom.id if bottom else None, shoes.id if shoes else None)
-    if key in seen:
-      continue
-    seen.add(key)
+  while len(created) < need and attempts < max_attempts:
+    attempts += 1
+    top = _pick_unique("top", buckets["top"], cursors=cursors, used_in_batch=used_in_batch)
+    bottom = _pick_unique("bottom", buckets["bottom"], cursors=cursors, used_in_batch=used_in_batch)
+    shoes = _pick_unique("shoes", buckets["shoes"], cursors=cursors, used_in_batch=used_in_batch)
+    accessory = _pick_unique("accessory", buckets["accessory"], cursors=cursors, used_in_batch=used_in_batch)
 
     items: dict[str, Any] = {}
     total = 0
-    if top:
-      items["top"] = top.id
-      total += int(top.price or 0)
-    if bottom:
-      items["bottom"] = bottom.id
-      total += int(bottom.price or 0)
-    if shoes:
-      items["shoes"] = shoes.id
-      total += int(shoes.price or 0)
+    ids: list[str] = []
+    for slot, prod in (
+      ("top", top),
+      ("bottom", bottom),
+      ("shoes", shoes),
+      ("accessory", accessory),
+    ):
+      if prod is None:
+        continue
+      items[slot] = prod.id
+      ids.append(prod.id)
+      total += int(prod.price or 0)
+
+    if len(items) < 2:
+      continue
+
+    combo_key = tuple(sorted(ids))
+    if combo_key in seen_combos:
+      continue
+    seen_combos.add(combo_key)
+
+    reason_bits = [f"Сценарий: {label}"]
+    if palette:
+      reason_bits.append(f"Палитра: {', '.join(palette[:3])}")
 
     out = Outfit(
       id=str(uuid4()),
       user_id=user.id,
       items_json=items,
       total_price=total,
-      style_direction=style_dir,
-      reason=f"Собрано под {style_dir} с учётом палитры: {', '.join(palette) if palette else '—'}.",
-      score=0.5,
+      style_direction=scenario_key,
+      reason=". ".join(reason_bits) + ".",
+      score=0.72,
       is_saved=0,
       created_at=now,
       updated_at=now,
     )
     db.add(out)
     created.append(out)
+
   db.flush()
   return created
-

@@ -17,44 +17,43 @@ from ..schemas.api_product import product_to_api
 router = APIRouter(tags=["outfits"])
 
 
+def _outfit_products(db: Session, o: Outfit) -> dict[str, Any]:
+  products: dict[str, Any] = {}
+  for slot, pid in (o.items_json or {}).items():
+    p = db.execute(select(Product).where(Product.id == str(pid))).scalar_one_or_none()
+    if p is not None:
+      products[str(slot)] = product_to_api(p)
+  return products
+
+
 @router.post("/outfits/generate")
 def outfits_generate(
   count: int = 3,
+  scenario: str = "daily",
   db: Session = Depends(get_db),
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> list[dict[str, Any]]:
   user = user_from_token(credentials, db)
-  items = generate_outfits(db, user, count=count)
+  items = generate_outfits(db, user, count=count, scenario=scenario)
   db.commit()
-  out: list[dict[str, Any]] = []
-  for o in items:
-    products: dict[str, Any] = {}
-    for slot, pid in (o.items_json or {}).items():
-      p = db.execute(select(Product).where(Product.id == str(pid))).scalar_one_or_none()
-      if p is not None:
-        products[str(slot)] = product_to_api(p)
-    out.append(outfit_to_api(o, products))
-  return out
+  return [outfit_to_api(o, _outfit_products(db, o)) for o in items]
 
 
 @router.get("/outfits")
 def outfits_list(
+  scenario: str | None = None,
+  saved_only: bool = False,
   db: Session = Depends(get_db),
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> list[dict[str, Any]]:
   user = user_from_token(credentials, db)
-  rows = db.execute(
-    select(Outfit).where(Outfit.user_id == user.id).order_by(Outfit.created_at.desc()).limit(50)
-  ).scalars().all()
-  out: list[dict[str, Any]] = []
-  for o in rows:
-    products: dict[str, Any] = {}
-    for slot, pid in (o.items_json or {}).items():
-      p = db.execute(select(Product).where(Product.id == str(pid))).scalar_one_or_none()
-      if p is not None:
-        products[str(slot)] = product_to_api(p)
-    out.append(outfit_to_api(o, products))
-  return out
+  q = select(Outfit).where(Outfit.user_id == user.id)
+  if saved_only:
+    q = q.where(Outfit.is_saved == 1)
+  if scenario and scenario.strip():
+    q = q.where(Outfit.style_direction == scenario.strip().lower())
+  rows = db.execute(q.order_by(Outfit.created_at.desc()).limit(50)).scalars().all()
+  return [outfit_to_api(o, _outfit_products(db, o)) for o in rows]
 
 
 @router.post("/outfits/save")
@@ -70,6 +69,24 @@ def outfits_save(
   if o is None:
     raise HTTPException(status_code=404, detail="Outfit not found")
   o.is_saved = 1
+  o.updated_at = datetime.now(timezone.utc)
+  db.commit()
+  return {"status": "ok", "outfit_id": outfit_id}
+
+
+@router.post("/outfits/unsave")
+def outfits_unsave(
+  outfit_id: str,
+  db: Session = Depends(get_db),
+  credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+) -> dict[str, Any]:
+  user = user_from_token(credentials, db)
+  o = db.execute(
+    select(Outfit).where(Outfit.id == outfit_id, Outfit.user_id == user.id)
+  ).scalar_one_or_none()
+  if o is None:
+    raise HTTPException(status_code=404, detail="Outfit not found")
+  o.is_saved = 0
   o.updated_at = datetime.now(timezone.utc)
   db.commit()
   return {"status": "ok", "outfit_id": outfit_id}

@@ -279,16 +279,27 @@ class ApiClient {
     return Map<String, dynamic>.from(response.data as Map);
   }
 
-  Future<List<Map<String, dynamic>>> outfitsList() async {
-    final response = await _dio.get('/outfits');
+  Future<List<Map<String, dynamic>>> outfitsList({
+    String? scenario,
+    bool savedOnly = false,
+  }) async {
+    final qp = <String, dynamic>{};
+    if (scenario != null && scenario.trim().isNotEmpty) {
+      qp['scenario'] = scenario.trim();
+    }
+    if (savedOnly) qp['saved_only'] = true;
+    final response = await _dio.get('/outfits', queryParameters: qp);
     final list = (response.data as List).cast<Map<String, dynamic>>();
     return list;
   }
 
-  Future<List<Map<String, dynamic>>> outfitsGenerate({int count = 3}) async {
+  Future<List<Map<String, dynamic>>> outfitsGenerate({
+    int count = 3,
+    String scenario = 'daily',
+  }) async {
     final response = await _dio.post(
       '/outfits/generate',
-      queryParameters: {'count': count},
+      queryParameters: {'count': count, 'scenario': scenario},
     );
     final list = (response.data as List).cast<Map<String, dynamic>>();
     return list;
@@ -296,6 +307,10 @@ class ApiClient {
 
   Future<void> outfitsSave(String outfitId) async {
     await _dio.post('/outfits/save', queryParameters: {'outfit_id': outfitId});
+  }
+
+  Future<void> outfitsUnsave(String outfitId) async {
+    await _dio.post('/outfits/unsave', queryParameters: {'outfit_id': outfitId});
   }
 
   Future<Map<String, dynamic>> visualAnalysis() async {

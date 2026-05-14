@@ -206,9 +206,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             selected: on,
                             onSelected: (_) =>
                                 setState(() => _selectedSize = s),
-                            selectedColor: AppColors.ink,
+                            selectedColor: AppColors.accent,
                             labelStyle: TextStyle(
-                              color: on ? Colors.white : AppColors.ink,
+                              color: on ? AppColors.onAccent : AppColors.ink,
                             ),
                           );
                         }).toList(),
@@ -232,6 +232,60 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 setState(() => _selectedColor = c),
                           );
                         }).toList(),
+                      ),
+                      if (_card.reasons.isNotEmpty || _card.reason.trim().isNotEmpty) ...[
+                        const SizedBox(height: 20),
+                        Text('Почему рекомендовано', style: AppTextStyles.sectionTitle.copyWith(fontSize: 14)),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: (_card.reasons.isNotEmpty ? _card.reasons : [_card.reason])
+                              .take(4)
+                              .map((r) => Chip(label: Text(r), backgroundColor: AppColors.chipBg, side: BorderSide.none))
+                              .toList(),
+                        ),
+                      ],
+                      Builder(
+                        builder: (context) {
+                          final related = widget.controller.relatedProducts(p.id, limit: 4);
+                          if (related.isEmpty) return const SizedBox.shrink();
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 20),
+                              Text('С чем носить', style: AppTextStyles.sectionTitle.copyWith(fontSize: 14)),
+                              const SizedBox(height: 10),
+                              SizedBox(
+                                height: 110,
+                                child: ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: related.length,
+                                  separatorBuilder: (context, index) =>
+                                      const SizedBox(width: 10),
+                                  itemBuilder: (context, i) {
+                                    final rp = related[i].product;
+                                    return SizedBox(
+                                      width: 80,
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Expanded(
+                                            child: ProductFillImage(
+                                              imageUrl: rp.imageUrl,
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                          ),
+                                          Text(rp.brand, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.caption),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                       if (_descriptionWidgets(p.description).isNotEmpty) ...[
                         const SizedBox(height: 20),
@@ -337,7 +391,7 @@ class _ProductImageCarouselState extends State<_ProductImageCarousel> {
                     width: i == _page ? 18 : 6,
                     height: 6,
                     decoration: BoxDecoration(
-                      color: i == _page ? Colors.white : Colors.white54,
+                      color: i == _page ? AppColors.accent : AppColors.muted,
                       borderRadius: BorderRadius.circular(3),
                     ),
                   );

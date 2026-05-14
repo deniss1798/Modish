@@ -5,6 +5,28 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
   from ...models import Product, ProductSource
 
+_PARTNER_MARKERS = (
+  "admitad",
+  "ad.admitad",
+  "goto.",
+  "ulp=",
+  "subid",
+  "sub_id",
+  "affiliate",
+  "partner",
+  "clk.",
+  "click.",
+  "utm_source=admitad",
+  "prf.hn",
+)
+
+
+def _looks_like_partner_url(url: str) -> bool:
+  u = (url or "").strip().lower()
+  if not u:
+    return False
+  return any(m in u for m in _PARTNER_MARKERS)
+
 
 def apply_deeplink_for_product(
   base_url: str,
@@ -30,23 +52,29 @@ def apply_deeplink_for_product(
 
 def resolve_outbound_url(product: Product, source: ProductSource | None = None) -> str:
   """
-  URL для перехода: готовый affiliate_url (уже с шаблоном при импорте) > product_url.
-  Шаблон применяется только если affiliate_url пуст, а в фиде был базовый url (старые строки).
+  URL для перехода: только партнёрская ссылка.
+  Прямой URL магазина без шаблона/deeplink не отдаём.
   """
   au = (product.affiliate_url or "").strip()
-  if au:
-    return au
-  pu = (product.product_url or "").strip()
   ou = (product.original_url or "").strip()
-  base = pu or ou
-  if base and source and (source.deeplink_template or "").strip():
-    return (
-      apply_deeplink_for_product(
+  pu = (product.product_url or "").strip()
+
+  if au and (_looks_like_partner_url(au) or (ou and au != ou)):
+    return au
+
+  if source and (source.deeplink_template or "").strip():
+    base = ou or pu
+    if base:
+      wrapped = apply_deeplink_for_product(
         base,
         source,
         external_id=product.external_id or "",
         original_url=ou,
       )
-      or base
-    )
-  return pu or ou
+      if wrapped:
+        return wrapped
+
+  if au:
+    return au
+
+  return ""

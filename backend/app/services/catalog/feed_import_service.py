@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -21,6 +22,22 @@ from .feed_row_mapper import row_to_normalized
 from .product_normalizer import orm_kwargs_from_normalized
 
 
+@dataclass
+class IngestResult:
+  total_received: int = 0
+  created: int = 0
+  updated: int = 0
+  deactivated: int = 0
+  skipped: int = 0
+  ingested: int = 0
+  skip_breakdown: dict[str, int] = field(default_factory=dict)
+  sync_ts: datetime | None = None
+
+  def note_skip(self, reason: str) -> None:
+    self.skipped += 1
+    self.skip_breakdown[reason] = self.skip_breakdown.get(reason, 0) + 1
+
+
 def _detect_parser(url: str, body: str):
   u = url.lower()
   if u.endswith(".csv") or "text/csv" in u:
@@ -30,6 +47,22 @@ def _detect_parser(url: str, body: str):
   if is_yml_catalog_xml(body):
     return parse_yml_catalog_xml(body)
   return parse_admitad_xml(body)
+
+
+def _parse_feed_rows(url_hint: str, body: str) -> list:
+  stripped = body.lstrip("\ufeff").strip()
+  if not stripped:
+    raise RuntimeError("Feed body is empty")
+  rows = _detect_parser(url_hint, body)
+  if not rows:
+    looks_like_catalog = (
+      is_yml_catalog_xml(stripped)
+      or "<offer" in stripped.lower()
+      or stripped.lower().startswith("id,")
+    )
+    if looks_like_catalog:
+      raise RuntimeError("Feed parse produced 0 offers — check XML/YML format")
+  return rows
 
 
 def _download_feed_body(url: str, *, max_attempts: int = 4) -> str:
@@ -67,54 +100,71 @@ def _ingest_feed_rows(
   *,
   source: ProductSource,
   rows: list,
-) -> tuple[int, int, int, int, datetime]:
-  """Парсинг строк фида: (total_received, created, updated, deactivated, sync_ts)."""
-  sync_ts = datetime.now(timezone.utc)
-  created = updated = 0
+) -> IngestResult:
+  """Парсинг строк фида с подсчётом created/updated/skipped."""
+  result = IngestResult(
+    total_received=len(rows),
+    sync_ts=datetime.now(timezone.utc),
+  )
   seen_external: set[str] = set()
+
   for row in rows:
-    n = row_to_normalized(row, source)
-    if n is None:
-      continue
-    img = (n.image_url or "").strip()
-    raw_dest = (n.affiliate_url or n.original_url or "").strip()
-    if not img or not raw_dest:
-      continue
+    try:
+      n = row_to_normalized(row, source)
+      if n is None:
+        result.note_skip("invalid_row")
+        continue
 
-    payload = orm_kwargs_from_normalized(n, source_id=source.id, sync_ts=sync_ts)
-    raw_aff = (n.affiliate_url or "").strip()
-    raw_orig = (n.original_url or "").strip()
-    base_for_tpl = raw_aff or raw_orig
-    aff_templated = apply_deeplink_for_product(
-      base_for_tpl,
-      source,
-      external_id=n.external_id,
-      original_url=raw_orig or raw_aff,
-    )
-    payload["affiliate_url"] = aff_templated if aff_templated else None
-    payload["original_url"] = raw_orig or None
-    payload["product_url"] = (aff_templated or raw_orig or raw_aff).strip()
+      img = (n.image_url or "").strip()
+      if not img and n.image_urls:
+        img = (n.image_urls[0] or "").strip()
+      raw_dest = (n.affiliate_url or n.original_url or "").strip()
+      if not img:
+        result.note_skip("missing_image")
+        continue
+      if not raw_dest:
+        result.note_skip("missing_url")
+        continue
 
-    seen_external.add(n.external_id)
-    existing = db.execute(
-      select(Product).where(
-        Product.external_id == n.external_id,
-        Product.source == source.code,
+      payload = orm_kwargs_from_normalized(n, source_id=source.id, sync_ts=result.sync_ts)
+      payload["image_url"] = img
+      raw_aff = (n.affiliate_url or "").strip()
+      raw_orig = (n.original_url or "").strip()
+      base_for_tpl = raw_aff or raw_orig
+      aff_templated = apply_deeplink_for_product(
+        base_for_tpl,
+        source,
+        external_id=n.external_id,
+        original_url=raw_orig or raw_aff,
       )
-    ).scalar_one_or_none()
+      payload["affiliate_url"] = aff_templated if aff_templated else None
+      payload["original_url"] = raw_orig or None
+      payload["product_url"] = (aff_templated or raw_orig or raw_aff).strip()
 
-    if existing is None:
-      pid = str(uuid4())
-      p = Product(id=pid, **payload)
-      db.add(p)
-      created += 1
-    else:
-      for k, v in payload.items():
-        setattr(existing, k, v)
-      existing.updated_at = sync_ts
-      updated += 1
+      seen_external.add(n.external_id)
+      existing = db.execute(
+        select(Product).where(
+          Product.external_id == n.external_id,
+          Product.source == source.code,
+        )
+      ).scalar_one_or_none()
 
-  deactivated = 0
+      if existing is None:
+        pid = str(uuid4())
+        p = Product(id=pid, **payload)
+        db.add(p)
+        result.created += 1
+      else:
+        for k, v in payload.items():
+          setattr(existing, k, v)
+        existing.updated_at = result.sync_ts
+        result.updated += 1
+    except Exception:
+      result.note_skip("row_error")
+      continue
+
+  result.ingested = result.created + result.updated
+
   if seen_external:
     res = db.execute(
       update(Product)
@@ -126,12 +176,12 @@ def _ingest_feed_rows(
         is_deleted_from_feed=1,
         is_available=0,
         is_active=0,
-        updated_at=sync_ts,
+        updated_at=result.sync_ts,
       )
     )
-    deactivated = res.rowcount or 0
+    result.deactivated = res.rowcount or 0
 
-  return len(rows), created, updated, deactivated, sync_ts
+  return result
 
 
 def _finalize_run(
@@ -139,24 +189,23 @@ def _finalize_run(
   *,
   run: CatalogSyncRun,
   source: ProductSource,
-  total: int,
-  created: int,
-  updated: int,
-  deactivated: int,
+  ingest: IngestResult,
   err: str | None,
-  sync_ts: datetime | None,
   ok: bool,
 ) -> None:
-  run.total_received = total
-  run.created_count = created
-  run.updated_count = updated
-  run.deactivated_count = deactivated
+  run.total_received = ingest.total_received
+  run.created_count = ingest.created
+  run.updated_count = ingest.updated
+  run.deactivated_count = ingest.deactivated
+  run.skipped_count = ingest.skipped
+  run.ingested_count = ingest.ingested
+  run.skip_breakdown = ingest.skip_breakdown
   run.error_message = err
   run.finished_at = datetime.now(timezone.utc)
   run.status = "ok" if ok else "error"
   source.status = "ok" if ok else "error"
-  if ok and sync_ts is not None:
-    source.last_sync_at = sync_ts
+  if ok and ingest.sync_ts is not None:
+    source.last_sync_at = ingest.sync_ts
 
 
 def sync_partner_feed(db: Session, *, source: ProductSource) -> CatalogSyncRun:
@@ -169,33 +218,23 @@ def sync_partner_feed(db: Session, *, source: ProductSource) -> CatalogSyncRun:
   )
   db.add(run)
   db.flush()
-  total = created = updated = deactivated = 0
+  ingest = IngestResult()
   err: str | None = None
-  sync_ts: datetime | None = None
   try:
     if not source.feed_url:
       raise RuntimeError("feed_url is empty")
     body = _download_feed_body(source.feed_url)
-    total, created, updated, deactivated, sync_ts = _ingest_feed_rows(
-      db,
-      source=source,
-      rows=_detect_parser(source.feed_url, body),
-    )
+    rows = _parse_feed_rows(source.feed_url, body)
+    ingest = _ingest_feed_rows(db, source=source, rows=rows)
+    if ingest.ingested == 0 and ingest.total_received > 0:
+      err = (
+        f"No products ingested from {ingest.total_received} offers "
+        f"(skipped={ingest.skipped}, breakdown={ingest.skip_breakdown})"
+      )
   except Exception as exc:  # noqa: BLE001
     err = str(exc)[:2000]
   ok = err is None
-  _finalize_run(
-    db,
-    run=run,
-    source=source,
-    total=total,
-    created=created,
-    updated=updated,
-    deactivated=deactivated,
-    err=err,
-    sync_ts=sync_ts,
-    ok=ok,
-  )
+  _finalize_run(db, run=run, source=source, ingest=ingest, err=err, ok=ok)
   db.commit()
   return run
 
@@ -217,27 +256,20 @@ def sync_partner_feed_from_text(
   )
   db.add(run)
   db.flush()
-  total = created = updated = deactivated = 0
+  ingest = IngestResult()
   err: str | None = None
-  sync_ts: datetime | None = None
   try:
-    rows = _detect_parser(parser_url_hint, body)
-    total, created, updated, deactivated, sync_ts = _ingest_feed_rows(db, source=source, rows=rows)
+    rows = _parse_feed_rows(parser_url_hint, body)
+    ingest = _ingest_feed_rows(db, source=source, rows=rows)
+    if ingest.ingested == 0 and ingest.total_received > 0:
+      err = (
+        f"No products ingested from {ingest.total_received} offers "
+        f"(skipped={ingest.skipped}, breakdown={ingest.skip_breakdown})"
+      )
   except Exception as exc:  # noqa: BLE001
     err = str(exc)[:2000]
   ok = err is None
-  _finalize_run(
-    db,
-    run=run,
-    source=source,
-    total=total,
-    created=created,
-    updated=updated,
-    deactivated=deactivated,
-    err=err,
-    sync_ts=sync_ts,
-    ok=ok,
-  )
+  _finalize_run(db, run=run, source=source, ingest=ingest, err=err, ok=ok)
   db.commit()
   return run
 

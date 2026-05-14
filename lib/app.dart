@@ -80,21 +80,29 @@ class ModishApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
+        brightness: Brightness.dark,
         scaffoldBackgroundColor: AppColors.bg,
         fontFamily: 'Arial',
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.accent,
+        colorScheme: const ColorScheme.dark(
           surface: AppColors.card,
           primary: AppColors.accent,
+          onPrimary: AppColors.onAccent,
+          secondary: AppColors.accentSoft,
+          onSurface: AppColors.ink,
+          outline: AppColors.line,
         ),
+        dividerColor: AppColors.line,
+        iconTheme: const IconThemeData(color: AppColors.ink),
         appBarTheme: const AppBarTheme(
           centerTitle: true,
+          backgroundColor: AppColors.bg,
           surfaceTintColor: Colors.transparent,
           foregroundColor: AppColors.ink,
+          elevation: 0,
         ),
         chipTheme: ChipThemeData(
-          backgroundColor: AppColors.card,
-          selectedColor: AppColors.ink,
+          backgroundColor: AppColors.chipBg,
+          selectedColor: AppColors.accent,
           side: const BorderSide(color: AppColors.line),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
@@ -102,19 +110,43 @@ class ModishApp extends StatelessWidget {
           labelStyle: const TextStyle(fontSize: 12, color: AppColors.ink),
           secondaryLabelStyle: const TextStyle(
             fontSize: 12,
-            color: Colors.white,
+            color: AppColors.onAccent,
           ),
         ),
         sliderTheme: const SliderThemeData(
           activeTrackColor: AppColors.accent,
           inactiveTrackColor: AppColors.line,
           thumbColor: AppColors.accent,
-          overlayColor: Color(0x198F1530),
+          overlayColor: Color(0x33C4A574),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: AppColors.card,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          hintStyle: const TextStyle(color: AppColors.muted),
+          labelStyle: const TextStyle(color: AppColors.muted),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: AppColors.line),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: AppColors.line),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: AppColors.accent, width: 1.2),
+          ),
+        ),
+        textTheme: const TextTheme(
+          bodyMedium: TextStyle(color: AppColors.ink),
+          bodySmall: TextStyle(color: AppColors.muted),
+          titleMedium: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600),
+        ),
+        snackBarTheme: SnackBarThemeData(
+          backgroundColor: AppColors.surface,
+          contentTextStyle: const TextStyle(color: AppColors.ink),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          behavior: SnackBarBehavior.floating,
         ),
       ),
       home: const RootScreen(),
@@ -174,6 +206,7 @@ class AppController extends ChangeNotifier {
   String? productFeedError;
   List<Map<String, dynamic>> savedProductRows = [];
   List<Map<String, dynamic>> outfits = [];
+  List<Map<String, dynamic>> savedOutfits = [];
   Map<String, dynamic> summary = {};
   Map<String, dynamic> billing = {};
   String? visualImageUrl;
@@ -391,8 +424,10 @@ class AppController extends ChangeNotifier {
     }
     try {
       outfits = await api.outfitsList();
+      savedOutfits = await api.outfitsList(savedOnly: true);
     } catch (_) {
       outfits = [];
+      savedOutfits = [];
     }
     savedIds
       ..clear()
@@ -470,6 +505,7 @@ class AppController extends ChangeNotifier {
     productFeedError = null;
     savedProductRows = [];
     outfits = [];
+    savedOutfits = [];
     summary = {};
     billing = {};
     visualImageUrl = null;
@@ -583,19 +619,41 @@ class AppController extends ChangeNotifier {
     });
   }
 
-  Future<void> generateOutfitsV2({int count = 3}) async {
+  Future<void> generateOutfitsV2({int count = 3, String scenario = 'daily'}) async {
     await _run(() async {
-      outfits = await api.outfitsGenerate(count: count);
+      await api.outfitsGenerate(count: count, scenario: scenario);
+      outfits = await api.outfitsList();
+      savedOutfits = await api.outfitsList(savedOnly: true);
       try {
-        await api.metricsEvent('outfit_generated', meta: {'count': count});
+        await api.metricsEvent('outfit_generated', meta: {'count': count, 'scenario': scenario});
       } catch (_) {}
-      await refreshRemoteData();
     });
   }
 
   Future<void> saveOutfit(String outfitId) async {
     await _run(() async {
       await api.outfitsSave(outfitId);
+      outfits = await api.outfitsList();
+      savedOutfits = await api.outfitsList(savedOnly: true);
+      await refreshRemoteData();
+    });
+  }
+
+  Future<void> unsaveOutfit(String outfitId) async {
+    await _run(() async {
+      await api.outfitsUnsave(outfitId);
+      outfits = await api.outfitsList();
+      savedOutfits = await api.outfitsList(savedOnly: true);
+      await refreshRemoteData();
+    });
+  }
+
+  Future<void> unsaveProduct(String productId) async {
+    await _run(() async {
+      await api.recordRecommendationEvent(
+        eventType: 'unsave',
+        productId: productId,
+      );
       await refreshRemoteData();
     });
   }
@@ -684,7 +742,7 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Brand(size: 56),
+            Brand(width: 200),
             SizedBox(height: 14),
             Text(
               'Персональный AI-стилист',

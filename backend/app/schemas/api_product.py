@@ -44,6 +44,7 @@ def product_to_api(p: Product) -> dict[str, Any]:
   return {
     "id": p.id,
     "external_id": p.external_id,
+    "offer_id": p.external_id,
     "source": p.source,
     "source_id": p.source_id,
     "title": p.title,

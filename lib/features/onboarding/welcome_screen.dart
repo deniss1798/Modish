@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../app.dart';
+import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/modish_widgets.dart';
 
@@ -17,27 +18,33 @@ class WelcomeScreen extends StatelessWidget {
           const HeroFashionBackdrop(),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 34, 24, 24),
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Brand(size: 34, light: true),
+                  const SizedBox(height: 8),
+                  const Center(child: GoldWordmark(fontSize: 38)),
                   const Spacer(),
                   Text(
                     'Ваш\nперсональный\nстилист',
+                    textAlign: TextAlign.left,
                     style: AppTextStyles.display.copyWith(
-                      color: Colors.white,
+                      color: AppColors.ink,
                       fontSize: 32,
+                      height: 1.08,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   Text(
                     'AI-подборки, вдохновение\nи лучшие вещи в одном месте',
+                    textAlign: TextAlign.left,
                     style: AppTextStyles.body.copyWith(
-                      color: Colors.white.withValues(alpha: .9),
+                      color: AppColors.ink.withValues(alpha: 0.88),
+                      fontSize: 15,
+                      height: 1.45,
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 32),
                   PrimaryButton(
                     label: 'Войти',
                     onPressed: () => controller.goToAuth(registerMode: false),
@@ -45,15 +52,17 @@ class WelcomeScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   SecondaryButton(
                     label: 'Создать аккаунт',
+                    onDark: true,
                     onPressed: () => controller.goToOnboarding(),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 16),
                   Center(
                     child: Text(
                       'Продолжая, вы соглашаетесь\nс Условиями и Политикой конфиденциальности',
                       textAlign: TextAlign.center,
                       style: AppTextStyles.caption.copyWith(
-                        color: Colors.white70,
+                        color: AppColors.muted,
+                        height: 1.35,
                       ),
                     ),
                   ),

@@ -6,7 +6,18 @@ import '../../core/widgets/modish_widgets.dart';
 import '../../core/widgets/product_image.dart';
 import 'outfit_detail_screen.dart';
 
-enum _OutfitScenario { all, daily, office, evening }
+enum _OutfitScenario { all, daily, office, evening, casual, minimal }
+
+String _scenarioLabel(String key) {
+  return switch (key.toLowerCase()) {
+    'daily' => 'Каждый день',
+    'office' => 'В офис',
+    'evening' => 'Вечер',
+    'casual' => 'Casual',
+    'minimal' => 'Минимализм',
+    _ => key,
+  };
+}
 
 class OutfitsScreen extends StatefulWidget {
   const OutfitsScreen({super.key, required this.controller});
@@ -33,16 +44,34 @@ class _OutfitsScreenState extends State<OutfitsScreen> {
 
   void _onCtrl() => setState(() {});
 
+  String? get _apiScenario => switch (_scenario) {
+        _OutfitScenario.all => null,
+        _OutfitScenario.daily => 'daily',
+        _OutfitScenario.office => 'office',
+        _OutfitScenario.evening => 'evening',
+        _OutfitScenario.casual => 'casual',
+        _OutfitScenario.minimal => 'minimal',
+      };
+
   bool _matches(Map<String, dynamic> o) {
     if (_scenario == _OutfitScenario.all) return true;
     final dir = '${o['style_direction'] ?? ''}'.toLowerCase();
-    return switch (_scenario) {
-      _OutfitScenario.daily => dir.contains('daily') || dir.contains('повсед'),
-      _OutfitScenario.office => dir.contains('office') || dir.contains('офис'),
-      _OutfitScenario.evening =>
-        dir.contains('evening') || dir.contains('вечер'),
-      _OutfitScenario.all => true,
-    };
+    return dir == _apiScenario;
+  }
+
+  Future<void> _generate() async {
+    final scenario = _apiScenario ?? 'daily';
+    await widget.controller.generateOutfitsV2(count: 3, scenario: scenario);
+    if (!mounted) return;
+    final err = widget.controller.error?.trim();
+    if (err != null && err.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+      return;
+    }
+    final n = widget.controller.outfits.where(_matches).length;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(n > 0 ? 'Обновлено: $n образов' : 'Не удалось собрать образы — мало товаров в каталоге')),
+    );
   }
 
   @override
@@ -54,129 +83,141 @@ class _OutfitsScreenState extends State<OutfitsScreen> {
       children: [
         ScreenHeader(
           title: 'Образы',
-          subtitle: 'Подборки под ваш стиль и сценарий',
-          trailing: IconButton(
-            icon: const Icon(Icons.auto_awesome_outlined),
-            onPressed: c.isLoading ? null : () => c.generateOutfitsV2(count: 3),
-          ),
+          subtitle: 'Верх · низ · обувь · аксессуар',
+          trailing: c.isLoading
+              ? const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.accent),
+                  ),
+                )
+              : IconButton(
+                  icon: const Icon(Icons.auto_awesome_outlined),
+                  onPressed: _generate,
+                ),
         ),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             children: [
-              ModishChip(
-                label: 'Для вас',
-                selected: _scenario == _OutfitScenario.all,
-                onTap: () => setState(() => _scenario = _OutfitScenario.all),
-              ),
-              ModishChip(
-                label: 'Каждый день',
-                selected: _scenario == _OutfitScenario.daily,
-                onTap: () => setState(() => _scenario = _OutfitScenario.daily),
-              ),
-              ModishChip(
-                label: 'В офис',
-                selected: _scenario == _OutfitScenario.office,
-                onTap: () => setState(() => _scenario = _OutfitScenario.office),
-              ),
-              ModishChip(
-                label: 'Вечер',
-                selected: _scenario == _OutfitScenario.evening,
-                onTap: () =>
-                    setState(() => _scenario = _OutfitScenario.evening),
-              ),
+              for (final chip in [
+                ('Для вас', _OutfitScenario.all),
+                ('Каждый день', _OutfitScenario.daily),
+                ('В офис', _OutfitScenario.office),
+                ('Вечер', _OutfitScenario.evening),
+                ('Casual', _OutfitScenario.casual),
+                ('Минимализм', _OutfitScenario.minimal),
+              ])
+                ModishChip(
+                  label: chip.$1,
+                  selected: _scenario == chip.$2,
+                  onTap: () => setState(() => _scenario = chip.$2),
+                ),
             ],
           ),
         ),
         const SizedBox(height: 12),
         if (outfits.isEmpty)
-          const Padding(
-            padding: EdgeInsets.all(20),
+          Padding(
+            padding: const EdgeInsets.all(20),
             child: SoftCard(
-              child: Text(
-                'Пока нет образов. Нажмите ✨, чтобы сгенерировать.',
-                style: AppTextStyles.bodyMuted,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Пока нет образов', style: AppTextStyles.sectionTitle),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Нажмите ✨ — соберём лук из вашей подборки (${_scenarioLabel(_apiScenario ?? 'daily')}).',
+                    style: AppTextStyles.bodyMuted,
+                  ),
+                  const SizedBox(height: 14),
+                  PrimaryButton(
+                    label: 'Сгенерировать',
+                    icon: Icons.auto_awesome_outlined,
+                    expanded: false,
+                    onPressed: c.isLoading ? null : _generate,
+                  ),
+                ],
               ),
             ),
           )
         else
-          ...outfits.map((o) {
-            final title = (o['style_direction'] ?? 'Образ').toString();
-            final total = (o['total_price'] ?? 0).toString();
-            final saved = o['is_saved'] == true;
-            final raw = o['products'];
-            final pmap = raw is Map
-                ? Map<String, dynamic>.from(raw)
-                : <String, dynamic>{};
-            final itemCount = pmap.length;
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-              child: SoftCard(
-                padding: const EdgeInsets.all(14),
-                child: InkWell(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          OutfitDetailScreen(outfit: o, controller: c),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        height: 180,
-                        child: Row(
-                          children: [
-                            for (final slot in [
-                              ('top', Icons.checkroom_outlined),
-                              ('bottom', Icons.view_week_outlined),
-                              ('shoes', Icons.ice_skating_outlined),
-                            ])
-                              Expanded(
-                                child: Padding(
-                                  padding: EdgeInsets.only(
-                                    right: slot.$1 == 'shoes' ? 0 : 8,
-                                  ),
-                                  child: _OutfitSlotImage(
-                                    imageUrl: _slotImageUrl(pmap, slot.$1),
-                                    icon: slot.$2,
-                                  ),
-                                ),
-                              ),
-                          ],
+          ...outfits.map((o) => _OutfitCard(outfit: o, controller: c)),
+      ],
+    );
+  }
+}
+
+class _OutfitCard extends StatelessWidget {
+  const _OutfitCard({required this.outfit, required this.controller});
+  final Map<String, dynamic> outfit;
+  final AppController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final scenario = '${outfit['style_direction'] ?? ''}';
+    final title = _scenarioLabel(scenario);
+    final total = (outfit['total_price'] ?? 0).toString();
+    final saved = outfit['is_saved'] == true;
+    final pmap = outfit['products'] is Map
+        ? Map<String, dynamic>.from(outfit['products'] as Map)
+        : <String, dynamic>{};
+    final slots = [
+      ('top', Icons.checkroom_outlined, 'Верх'),
+      ('bottom', Icons.view_week_outlined, 'Низ'),
+      ('shoes', Icons.ice_skating_outlined, 'Обувь'),
+      ('accessory', Icons.shopping_bag_outlined, 'Аксессуар'),
+    ];
+    final filled = slots.where((s) => pmap[s.$1] is Map).length;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      child: SoftCard(
+        padding: const EdgeInsets.all(14),
+        child: InkWell(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => OutfitDetailScreen(outfit: outfit, controller: controller),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 168,
+                child: Row(
+                  children: [
+                    for (var i = 0; i < slots.length; i++)
+                      Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.only(right: i == slots.length - 1 ? 0 : 6),
+                          child: _OutfitSlotImage(
+                            imageUrl: _slotImageUrl(pmap, slots[i].$1),
+                            icon: slots[i].$2,
+                            label: slots[i].$3,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              title,
-                              style: AppTextStyles.displaySm.copyWith(
-                                fontSize: 20,
-                              ),
-                            ),
-                          ),
-                          Icon(
-                            saved ? Icons.bookmark : Icons.bookmark_border,
-                            color: AppColors.ink,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$itemCount вещей · $total ₽',
-                        style: AppTextStyles.bodyMuted,
-                      ),
-                    ],
-                  ),
+                  ],
                 ),
               ),
-            );
-          }),
-      ],
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(child: Text(title, style: AppTextStyles.displaySm.copyWith(fontSize: 20))),
+                  Icon(saved ? Icons.bookmark : Icons.bookmark_border, color: AppColors.accent),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text('$filled вещей · $total ₽', style: AppTextStyles.bodyMuted),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -188,37 +229,35 @@ String _slotImageUrl(Map<String, dynamic> products, String slot) {
 }
 
 class _OutfitSlotImage extends StatelessWidget {
-  const _OutfitSlotImage({required this.imageUrl, required this.icon});
+  const _OutfitSlotImage({
+    required this.imageUrl,
+    required this.icon,
+    required this.label,
+  });
   final String imageUrl;
   final IconData icon;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          ProductFillImage(
-            imageUrl: imageUrl,
+    final empty = imageUrl.trim().isEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
+            child: empty
+                ? DecoratedBox(
+                    decoration: BoxDecoration(color: AppColors.chipBg),
+                    child: Icon(icon, color: AppColors.muted, size: 22),
+                  )
+                : ProductFillImage(imageUrl: imageUrl, borderRadius: BorderRadius.circular(8)),
           ),
-          if (_isGenericDemoUrl(imageUrl) || imageUrl.trim().isEmpty)
-            DecoratedBox(
-              decoration: BoxDecoration(color: AppColors.chipBg),
-              child: Icon(icon, color: AppColors.muted, size: 28),
-            ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 4),
+        Text(label, textAlign: TextAlign.center, style: AppTextStyles.caption, maxLines: 1),
+      ],
     );
   }
-}
-
-bool _isGenericDemoUrl(String raw) {
-  final uri = Uri.tryParse(raw.trim());
-  if (uri == null) return false;
-  final host = uri.host.toLowerCase();
-  return host.contains('picsum.photos') ||
-      host.contains('placehold.co') ||
-      host.contains('dummyimage.com');
 }

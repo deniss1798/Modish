@@ -43,7 +43,7 @@ class _DetailScreenState extends State<DetailScreen> {
                   icon: const Icon(Icons.arrow_back),
                 ),
                 const Spacer(),
-                const Brand(size: 40),
+                const Brand(width: 160),
                 const Spacer(),
                 const SizedBox(width: 48),
               ],

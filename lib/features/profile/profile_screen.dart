@@ -19,6 +19,7 @@ class ProfileScreen extends StatelessWidget {
     final fit = controller.fitProfile;
     final suitableColors = List<String>.from(summary['suitable_colors'] as List? ?? const []);
     final styleLines = List<String>.from(summary['style_direction_human'] as List? ?? const []);
+    final styleTags = _styleTags(styleLines, fit);
     final size = (fit['clothing_size'] ?? 'M').toString();
     final budgetMax = fit['budget_max'];
     final budgetLabel = budgetMax != null ? 'до $budgetMax ₽' : 'Средний';
@@ -53,10 +54,10 @@ class ProfileScreen extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: AppColors.ink,
+                              color: AppColors.accent,
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: const Text('Plus', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                            child: const Text('Plus', style: TextStyle(color: AppColors.onAccent, fontSize: 11, fontWeight: FontWeight.w600)),
                           ),
                         ],
                       ],
@@ -99,7 +100,7 @@ class ProfileScreen extends StatelessWidget {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: (styleLines.isEmpty ? ['Минимализм', 'Casual'] : styleLines.take(6)).map((s) {
+                children: styleTags.map((s) {
                   return Chip(label: Text(s), backgroundColor: AppColors.chipBg, side: BorderSide.none);
                 }).toList(),
               ),
@@ -175,6 +176,24 @@ class ProfileScreen extends StatelessWidget {
       ],
     );
   }
+}
+
+List<String> _styleTags(List<String> styleLines, Map<String, dynamic> fit) {
+  const labels = {
+    'daily': 'Каждый день',
+    'office': 'Офис',
+    'evening': 'Вечер',
+    'casual': 'Casual',
+    'minimal': 'Минимализм',
+    'streetwear': 'Streetwear',
+  };
+  final scenarios = List<String>.from(fit['style_scenarios'] as List? ?? const []);
+  if (scenarios.isNotEmpty) {
+    return scenarios.map((s) => labels[s] ?? s).take(6).toList();
+  }
+  final short = styleLines.where((s) => s.trim().isNotEmpty && s.length <= 28).take(6).toList();
+  if (short.isNotEmpty) return short;
+  return const ['Минимализм', 'Casual'];
 }
 
 class _InfoBox extends StatelessWidget {

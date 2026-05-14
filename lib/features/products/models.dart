@@ -116,15 +116,22 @@ class Product {
 }
 
 class FeedCard {
-  const FeedCard({required this.product, required this.reason});
+  const FeedCard({
+    required this.product,
+    required this.reason,
+    this.reasons = const [],
+  });
   final Product product;
   final String reason;
+  final List<String> reasons;
 
   factory FeedCard.fromApi(Map<String, dynamic> json) {
     final p = json['product'];
+    final rs = json['reasons'];
     return FeedCard(
       product: p is Map<String, dynamic> ? Product.fromApi(p) : Product.fromApi({}),
       reason: (json['reason'] ?? 'Подходит под ваш профиль').toString(),
+      reasons: rs is List ? rs.map((e) => e.toString()).toList() : const [],
     );
   }
 }

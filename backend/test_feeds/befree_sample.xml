@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<yml_catalog date="2026-05-13">
+  <shop>
+    <categories>
+      <category id="10">Куртки</category>
+      <category id="20">Футболки</category>
+    </categories>
+    <offers>
+      <offer id="1001" group_id="G-100" available="true">
+        <url>https://befree.ru/product/1001</url>
+        <price>2799</price>
+        <oldprice>3999</oldprice>
+        <currencyId>RUR</currencyId>
+        <categoryId>10</categoryId>
+        <picture>https://img.befree.ru/sample/jacket-1.jpg</picture>
+        <picture>https://img.befree.ru/sample/jacket-2.jpg</picture>
+        <name>Кардиган вискозный в длине макси</name>
+        <vendor>befree</vendor>
+        <param name="Размер">M</param>
+        <param name="Цвет">бежевый</param>
+        <param name="Пол">женский</param>
+      </offer>
+      <offer id="1002" available="true">
+        <url>https://befree.ru/product/1002</url>
+        <price>1999</price>
+        <currencyId>RUR</currencyId>
+        <categoryId>20</categoryId>
+        <collectionId>COL-55</collectionId>
+        <picture>//img.befree.ru/sample/tee-1.jpg</picture>
+        <name>Футболка базовая</name>
+        <vendor>befree</vendor>
+        <param name="Размер">S, M, L</param>
+        <param name="Цвет">белый, чёрный</param>
+      </offer>
+      <offer id="bad-no-picture" available="true">
+        <url>https://befree.ru/product/bad</url>
+        <price>500</price>
+        <currencyId>RUR</currencyId>
+        <categoryId>20</categoryId>
+        <name>Без фото</name>
+        <vendor>befree</vendor>
+      </offer>
+    </offers>
+  </shop>
+</yml_catalog>
