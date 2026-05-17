@@ -59,4 +59,4 @@ def persist_recommendation_caches(
     cache.top_product_ids = top_ids
     cache.updated_at = now
 
-  db.commit()
+  db.flush()

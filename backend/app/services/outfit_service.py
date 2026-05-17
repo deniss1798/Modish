@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from ..catalog_normalize import normalize_category
 from ..models import FitProfile, Outfit, Product, RecommendationEventV2, StyleProfile, User
 from ..schemas.photo_analysis import extract_analysis_section
-from .recommendation_engine import generate_feed
+from .recommendation_engine import ensure_style_profile, generate_feed
 
 _TOP_CATS = frozenset({"футболки", "рубашки", "верхний_слой"})
 _BOTTOM_CATS = frozenset({"джинсы", "брюки"})
@@ -178,7 +178,7 @@ def generate_outfits(
   if scenario_key not in _SCENARIO_LABELS:
     scenario_key = "daily"
 
-  profile = db.execute(select(StyleProfile).where(StyleProfile.user_id == user.id)).scalar_one()
+  profile = ensure_style_profile(db, user.id)
   analysis = extract_analysis_section(profile.profile_json or {})
   palette = _norm_list(analysis.get("color_palette"))[:4]
 
@@ -210,7 +210,7 @@ def generate_outfits(
     db.flush()
 
   need = max(1, min(10, int(count)))
-  scored = generate_feed(db, user, limit=200)
+  scored = generate_feed(db, user, limit=80)
   products = [s.product for s in scored if s.product.id not in excluded]
   buckets = _bucket_products(products, scenario_key)
   _extend_buckets(db, buckets, excluded=excluded, min_per_slot=need + 2)

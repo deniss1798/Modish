@@ -25,6 +25,8 @@ def _feed_scored_items(
 ) -> list[dict[str, Any]]:
   from datetime import datetime, timezone
 
+  from fastapi import HTTPException
+
   now = datetime.now(timezone.utc)
   hidden_ids = set(
     db.execute(
@@ -35,13 +37,21 @@ def _feed_scored_items(
       )
     ).scalars()
   )
-  scored = generate_feed(
-    db,
-    user,
-    limit=limit,
-    exclude_product_ids=set(map(str, hidden_ids)),
-    source=source,
-  )
+  try:
+    scored = generate_feed(
+      db,
+      user,
+      limit=limit,
+      exclude_product_ids=set(map(str, hidden_ids)),
+      source=source,
+    )
+  except Exception as exc:
+    db.rollback()
+    raise HTTPException(
+      status_code=500,
+      detail=f"Не удалось собрать ленту: {exc!s}",
+    ) from exc
+
   from ..services.product_analytics_service import log_feed_impressions
 
   log_feed_impressions(

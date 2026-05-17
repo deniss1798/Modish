@@ -17,20 +17,27 @@ def log_feed_impressions(
   product_ids: list[str],
   source: str | None = None,
 ) -> None:
-  now = datetime.now(timezone.utc)
-  src = (source or "").strip()[:64] or None
-  for pid in product_ids[:100]:
-    if not pid:
-      continue
-    db.add(
-      ProductImpression(
-        id=str(uuid4()),
-        user_id=user_id,
-        product_id=str(pid),
-        source=src,
-        created_at=now,
+  """Не ломает выдачу ленты, если миграция impressions ещё не применена."""
+  if not product_ids:
+    return
+  try:
+    now = datetime.now(timezone.utc)
+    src = (source or "").strip()[:64] or None
+    for pid in product_ids[:100]:
+      if not pid:
+        continue
+      db.add(
+        ProductImpression(
+          id=str(uuid4()),
+          user_id=user_id,
+          product_id=str(pid),
+          source=src,
+          created_at=now,
+        )
       )
-    )
+  except Exception:
+    # Аналитика не должна откатывать ленту, если таблица ещё не создана.
+    pass
 
 
 def analytics_summary(db: Session, *, days: int = 7) -> dict[str, Any]:

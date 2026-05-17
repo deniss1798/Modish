@@ -34,8 +34,15 @@ def outfits_generate(
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> list[dict[str, Any]]:
   user = user_from_token(credentials, db)
-  items = generate_outfits(db, user, count=count, scenario=scenario)
-  db.commit()
+  try:
+    items = generate_outfits(db, user, count=count, scenario=scenario)
+    db.commit()
+  except Exception as exc:
+    db.rollback()
+    raise HTTPException(
+      status_code=500,
+      detail=f"Не удалось собрать образы: {exc!s}",
+    ) from exc
   return [outfit_to_api(o, _outfit_products(db, o)) for o in items]
 
 

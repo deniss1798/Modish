@@ -37,6 +37,25 @@ def _norm_list(values: Any) -> list[str]:
   return out
 
 
+def ensure_style_profile(db: Session, user_id: str) -> StyleProfile:
+  row = db.execute(select(StyleProfile).where(StyleProfile.user_id == user_id)).scalar_one_or_none()
+  if row:
+    return row
+  now = datetime.now(timezone.utc)
+  row = StyleProfile(
+    id=str(uuid4()),
+    user_id=user_id,
+    style_target="unknown",
+    confidence_score=0.5,
+    profile_json={},
+    created_at=now,
+    updated_at=now,
+  )
+  db.add(row)
+  db.flush()
+  return row
+
+
 def ensure_taste_profile(db: Session, user_id: str) -> TasteProfile:
   row = db.execute(select(TasteProfile).where(TasteProfile.user_id == user_id)).scalar_one_or_none()
   if row:
@@ -135,7 +154,7 @@ def score_product(db: Session, user: User, product: Product) -> ScoredProduct:
   + liked_brand_boost + saved_category_boost
   - disliked_color_penalty - disliked_category_penalty - already_seen_penalty
   """
-  profile = db.execute(select(StyleProfile).where(StyleProfile.user_id == user.id)).scalar_one()
+  profile = ensure_style_profile(db, user.id)
   analysis = extract_analysis_section(profile.profile_json or {})
   taste = ensure_taste_profile(db, user.id)
   fit = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
@@ -362,6 +381,25 @@ def generate_feed(
     if not product_passes_hard_filters(p, fit):
       continue
     filtered.append(p)
+
+  # Если выбраны категории в профиле и лента пустая — ослабляем только фильтр категорий.
+  if not filtered and fit and fit.interest_categories:
+    for p in products:
+      if not product_is_feed_eligible(p):
+        continue
+      if not product_passes_source_rules(p, rules_by_source):
+        continue
+      from .catalog.rule_filters import product_gender_compatible
+      from .feed_filters import product_passes_budget, product_passes_size
+
+      if not product_gender_compatible(p, fit.gender_target if fit else None):
+        continue
+      if not product_passes_budget(p, fit):
+        continue
+      if not product_passes_size(p, fit):
+        continue
+      filtered.append(p)
+
   scored = [score_product(db, user, p) for p in filtered]
   scored.sort(key=lambda x: x.final_score, reverse=True)
   lim = max(1, min(100, int(limit)))
