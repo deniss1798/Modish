@@ -42,6 +42,14 @@ def _feed_scored_items(
     exclude_product_ids=set(map(str, hidden_ids)),
     source=source,
   )
+  from ..services.product_analytics_service import log_feed_impressions
+
+  log_feed_impressions(
+    db,
+    user_id=user.id,
+    product_ids=[s.product.id for s in scored],
+    source=source,
+  )
   out: list[dict[str, Any]] = []
   for s in scored:
     out.append(
@@ -53,6 +61,7 @@ def _feed_scored_items(
         "reasons": s.reasons,
       }
     )
+  db.commit()
   return out
 
 

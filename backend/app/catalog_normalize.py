@@ -85,9 +85,67 @@ _CATEGORY_ALIASES: dict[str, str] = {
   "accessories": "аксессуары",
   "аксессуар": "аксессуары",
   "аксессуары": "аксессуары",
+  "hoodie": "худи",
+  "hoodies": "худи",
+  "худи": "худи",
+  "sweatshirt": "худи",
+  "dress": "платья",
+  "dresses": "платья",
+  "платье": "платья",
+  "платья": "платья",
+  "skirt": "юбки",
+  "skirts": "юбки",
+  "юбка": "юбки",
+  "sport": "спорт",
+  "sportswear": "спорт",
+  "спорт": "спорт",
 }
 
 _CANONICAL_CATEGORIES = frozenset(_CATEGORY_ALIASES.values())
+
+# Onboarding / fit-profile interest tags (English keys from TZ)
+_INTEREST_TAG_ALIASES: dict[str, str] = {
+  "casual": "футболки",
+  "sport": "спорт",
+  "office": "брюки",
+  "streetwear": "футболки",
+  "outerwear": "верхний_слой",
+  "street": "футболки",
+  "minimal": "футболки",
+  "classic": "рубашки",
+  "smart_casual": "рубашки",
+  "smart casual": "рубашки",
+}
+
+_STYLE_SCENARIO_ALIASES: dict[str, str] = {
+  "daily": "daily",
+  "office": "office",
+  "evening": "evening",
+  "casual": "daily",
+  "minimal": "daily",
+  "classic": "office",
+  "street": "daily",
+  "smart_casual": "office",
+  "smart casual": "office",
+}
+
+_MALE_HINTS = (
+  "мужск",
+  "mens",
+  "men's",
+  " men ",
+  "male",
+  "для мужчин",
+)
+_FEMALE_HINTS = (
+  "женск",
+  "womens",
+  "women's",
+  " women ",
+  "female",
+  "для женщин",
+  "ladies",
+)
 
 
 def normalize_category(raw: str | None) -> str:
@@ -189,6 +247,72 @@ def normalize_size_system(raw: str | None) -> str | None:
     "LETTERS": "LETTER",
   }
   return aliases.get(s, s if len(s) <= 16 else s[:16])
+
+
+def normalize_interest_category(tag: str | None) -> str:
+  if tag is None:
+    return ""
+  s = str(tag).strip().lower().replace(" ", "_")
+  if not s:
+    return ""
+  if s in _INTEREST_TAG_ALIASES:
+    return _INTEREST_TAG_ALIASES[s]
+  return normalize_category(s)
+
+
+def normalize_style_scenario(tag: str | None) -> str:
+  if tag is None:
+    return ""
+  s = str(tag).strip().lower().replace(" ", "_")
+  if not s:
+    return ""
+  return _STYLE_SCENARIO_ALIASES.get(s, s)
+
+
+def normalize_gender_target(raw: str | None, *, title: str = "", category: str = "") -> str | None:
+  if raw:
+    g = str(raw).strip().lower()
+    if g in ("male", "m", "man", "mens", "menswear", "мужской", "муж"):
+      return "menswear"
+    if g in ("female", "f", "woman", "womens", "womenswear", "женский", "жен"):
+      return "womenswear"
+    if g in ("unisex", "uni", "унисекс"):
+      return "unisex"
+    if g in ("menswear", "womenswear"):
+      return g
+  return infer_gender_from_text(f"{title} {category}")
+
+
+def infer_gender_from_text(text: str) -> str | None:
+  t = (text or "").lower()
+  if not t.strip():
+    return None
+  has_m = any(h in t for h in _MALE_HINTS)
+  has_f = any(h in t for h in _FEMALE_HINTS)
+  if has_m and not has_f:
+    return "menswear"
+  if has_f and not has_m:
+    return "womenswear"
+  return None
+
+
+_LETTER_SIZE_ORDER: dict[str, int] = {
+  "XXS": 0,
+  "XS": 1,
+  "S": 2,
+  "M": 3,
+  "L": 4,
+  "XL": 5,
+  "XXL": 6,
+  "XXXL": 7,
+}
+
+
+def letter_size_index(size: str) -> int | None:
+  u = normalize_size_token(size)
+  if not u:
+    return None
+  return _LETTER_SIZE_ORDER.get(u.upper())
 
 
 def infer_size_system(sizes: list[str]) -> str | None:

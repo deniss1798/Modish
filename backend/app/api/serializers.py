@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from ..catalog_normalize import normalize_interest_category, normalize_style_scenario
 from ..models import FitProfile, Outfit, Recommendation, TasteProfile
 
 
@@ -23,7 +24,16 @@ def as_user_payload(user: Any) -> dict[str, Any]:
 def norm_fit_tag_list(raw: list[str], *, max_items: int = 24) -> list[str]:
   out: list[str] = []
   for x in raw[:max_items]:
-    s = str(x).strip()[:64]
+    s = normalize_interest_category(str(x).strip())
+    if s and s not in out:
+      out.append(s)
+  return out
+
+
+def norm_style_scenario_list(raw: list[str], *, max_items: int = 24) -> list[str]:
+  out: list[str] = []
+  for x in raw[:max_items]:
+    s = normalize_style_scenario(str(x).strip())
     if s and s not in out:
       out.append(s)
   return out

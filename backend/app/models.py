@@ -325,6 +325,16 @@ class MetricEvent(Base):
   created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
+class ProductImpression(Base):
+  """Показ товара в персональной ленте (P7 analytics)."""
+  __tablename__ = "product_impressions"
+  id: Mapped[str] = mapped_column(String(36), primary_key=True)
+  user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+  product_id: Mapped[str] = mapped_column(ForeignKey("products.id"), index=True)
+  source: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+  created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
 class UserProductState(Base):
   __tablename__ = "user_product_states"
   id: Mapped[str] = mapped_column(String(36), primary_key=True)

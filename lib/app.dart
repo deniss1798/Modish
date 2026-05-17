@@ -7,6 +7,7 @@ import 'core/theme/app_colors.dart';
 import 'core/widgets/modish_widgets.dart';
 import 'features/auth/auth_screen.dart';
 import 'features/onboarding/analysis_screen.dart';
+import 'features/onboarding/fit_quiz_screen.dart';
 import 'features/onboarding/intro_onboarding_screen.dart';
 import 'features/onboarding/upload_screen.dart';
 import 'features/onboarding/welcome_screen.dart';
@@ -164,6 +165,7 @@ class RootScreen extends StatelessWidget {
       AppStage.splash => const SplashScreen(),
       AppStage.welcome => WelcomeScreen(controller: app),
       AppStage.onboarding => IntroOnboardingScreen(controller: app),
+      AppStage.fitQuiz => FitQuizScreen(controller: app),
       AppStage.auth => AuthScreen(controller: app),
       AppStage.upload => UploadScreen(controller: app),
       AppStage.analysis => AnalysisScreen(controller: app),
@@ -172,7 +174,7 @@ class RootScreen extends StatelessWidget {
   }
 }
 
-enum AppStage { splash, welcome, onboarding, auth, upload, analysis, home }
+enum AppStage { splash, welcome, onboarding, fitQuiz, auth, upload, analysis, home }
 
 class AppController extends ChangeNotifier {
   final api = ApiClient();
@@ -212,6 +214,7 @@ class AppController extends ChangeNotifier {
   String? visualImageUrl;
   Map<String, dynamic> fitProfile = {};
   Map<String, dynamic> tasteProfile = {};
+  Map<String, dynamic>? pendingFitPrefs;
 
   Outfit? get currentOutfit => feed.isEmpty ? null : feed.first;
   prod.FeedCard? get currentProduct =>
@@ -297,6 +300,48 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void goToFitQuiz() {
+    stage = AppStage.fitQuiz;
+    notifyListeners();
+  }
+
+  void setPendingFitPrefs({
+    required String genderTarget,
+    required String clothingSize,
+    required int budgetMin,
+    required int budgetMax,
+    List<String> interestCategories = const [],
+    List<String> styleScenarios = const [],
+  }) {
+    pendingFitPrefs = {
+      'gender_target': genderTarget,
+      'clothing_size': clothingSize,
+      'budget_min': budgetMin,
+      'budget_max': budgetMax,
+      'interest_categories': interestCategories,
+      'style_scenarios': styleScenarios,
+    };
+    styleTarget = genderTarget;
+    notifyListeners();
+  }
+
+  Future<void> applyPendingFitPrefsIfAny() async {
+    final p = pendingFitPrefs;
+    if (p == null || token == null) return;
+    try {
+      await api.fitProfilePatch(
+        height: 170,
+        genderTarget: '${p['gender_target'] ?? 'unisex'}',
+        clothingSize: '${p['clothing_size'] ?? 'M'}',
+        budgetMin: (p['budget_min'] as num?)?.toInt() ?? 0,
+        budgetMax: (p['budget_max'] as num?)?.toInt() ?? 10000,
+        interestCategories: List<String>.from(p['interest_categories'] as List? ?? []),
+        styleScenarios: List<String>.from(p['style_scenarios'] as List? ?? []),
+      );
+      pendingFitPrefs = null;
+    } catch (_) {}
+  }
+
   void goToAuth({required bool registerMode}) {
     authRegisterMode = registerMode;
     stage = AppStage.auth;
@@ -325,6 +370,7 @@ class AppController extends ChangeNotifier {
       try {
         await api.metricsEvent('user_registered');
       } catch (_) {}
+      await applyPendingFitPrefsIfAny();
       stage = AppStage.upload;
     });
   }
@@ -334,6 +380,7 @@ class AppController extends ChangeNotifier {
       final t = await api.login(email, password);
       token = t;
       await TokenStorage.write(t);
+      await applyPendingFitPrefsIfAny();
       stage = AppStage.upload;
     });
   }

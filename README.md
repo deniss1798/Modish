@@ -47,7 +47,24 @@ uvicorn app.main:app --reload --port 8000
 
 Список маршрутов см. `backend/README.md`.
 
-**Импорт каталога Befree:** задайте `ADMIN_TOKEN` и опционально `BEFREE_FEED_URL` в `.env`. Затем `POST /admin/catalog/alpha-bootstrap` и `POST .../sources/{id}/sync` или `sync-upload` (см. `backend/README.md`).
+**Импорт каталога Befree:** задайте `ADMIN_CATALOG_TOKEN` и опционально `BEFREE_FEED_URL` в `.env`. Затем `POST /admin/catalog/alpha-bootstrap` и `POST .../sources/{id}/sync` или `sync-upload` (см. `backend/README.md`).
+
+**После импорта — нормализация каталога (P2):**
+
+```http
+POST /admin/catalog/renormalize?source=befree
+Authorization: Bearer <ADMIN_CATALOG_TOKEN>
+```
+
+**Production HTTPS (P1):** см. `deploy/README.md`. Сборка приложения:
+
+```powershell
+flutter build apk --release --dart-define=MODISH_API_BASE_URL=https://api.YOUR_DOMAIN.com
+```
+
+**Аналитика (P7):** `GET /analytics/summary?days=7` (нужен admin token) — impressions, clicks, CTR, топ сохранённых/кликов.
+
+**Миграции:** `alembic upgrade head` (таблица `product_impressions`).
 
 ## Очистка артефактов
 

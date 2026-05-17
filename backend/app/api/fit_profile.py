@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from ..models import FitProfile, User
 from .deps import auth_scheme, get_db, user_from_token
-from .serializers import fit_to_api, norm_fit_tag_list
+from .serializers import fit_to_api, norm_fit_tag_list, norm_style_scenario_list
 
 router = APIRouter(tags=["fit-profile"])
 
@@ -91,7 +91,7 @@ def fit_profile_patch(
       avoid_fit=[],
       style_constraints={},
       interest_categories=norm_fit_tag_list(payload.interest_categories),
-      style_scenarios=norm_fit_tag_list(payload.style_scenarios),
+      style_scenarios=norm_style_scenario_list(payload.style_scenarios),
       budget_min=payload.budget_min,
       budget_max=payload.budget_max,
       created_at=now,
@@ -106,7 +106,7 @@ def fit_profile_patch(
     fp.budget_min = payload.budget_min
     fp.budget_max = payload.budget_max
     fp.interest_categories = norm_fit_tag_list(payload.interest_categories)
-    fp.style_scenarios = norm_fit_tag_list(payload.style_scenarios)
+    fp.style_scenarios = norm_style_scenario_list(payload.style_scenarios)
     fp.updated_at = now
   db.commit()
   return fit_to_api(fp)

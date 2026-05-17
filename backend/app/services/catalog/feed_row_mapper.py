@@ -3,6 +3,14 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from ...catalog_normalize import (
+  infer_gender_from_text,
+  infer_size_system,
+  normalize_category,
+  normalize_gender_target,
+  normalize_product_colors,
+  normalize_sizes,
+)
 from ...models import ProductSource
 from .normalized_product import NormalizedProduct
 
@@ -132,7 +140,7 @@ def row_to_normalized(row: dict[str, Any], source: ProductSource) -> NormalizedP
   url = str(_pick(d, "url", "product_url", "link", "deeplink", "available_url") or "").strip()
   affiliate = str(_pick(d, "affiliate_url", "partner_link", "admitad_url", "gotolink", "goto_link") or "").strip()
 
-  sizes = _split_sizes(
+  raw_sizes = _split_sizes(
     _pick(
       d,
       "sizes",
@@ -143,6 +151,7 @@ def row_to_normalized(row: dict[str, Any], source: ProductSource) -> NormalizedP
       "param_size",
     )
   )
+  sizes = normalize_sizes(raw_sizes)
   colors = _split_colors(
     _pick(
       d,
@@ -156,11 +165,13 @@ def row_to_normalized(row: dict[str, Any], source: ProductSource) -> NormalizedP
   )
 
   gender = _pick(d, "gender", "sex", "target_gender", "param_пол")
-  gender_s = str(gender).strip().lower()[:32] if gender else None
-  if gender_s in ("male", "m", "мужской"):
-    gender_s = "menswear"
-  elif gender_s in ("female", "f", "женский"):
-    gender_s = "womenswear"
+  gender_s = normalize_gender_target(
+    str(gender) if gender else None,
+    title=title,
+    category=category,
+  )
+  if not gender_s:
+    gender_s = infer_gender_from_text(f"{title} {category} {brand}")
 
   avail = str(_pick(d, "available", "availability", "stock", "instock", "in_stock") or "").lower()
   availability_status = None
@@ -204,12 +215,15 @@ def row_to_normalized(row: dict[str, Any], source: ProductSource) -> NormalizedP
 
   raw_copy: dict[str, Any] = {str(k): v for k, v in row.items()}
 
+  norm_cat = normalize_category(category)
+  norm_colors = normalize_product_colors(colors)
+
   n = NormalizedProduct(
     external_id=eid,
     source_code=source.code,
     title=title,
     brand=brand,
-    category=category,
+    category=norm_cat or category,
     subcategory=sub_s,
     price=max(0, price),
     old_price=old_price if old_price and old_price > price else None,
@@ -218,7 +232,7 @@ def row_to_normalized(row: dict[str, Any], source: ProductSource) -> NormalizedP
     original_url=url or affiliate,
     affiliate_url=affiliate or None,
     sizes=sizes,
-    colors=colors,
+    colors=norm_colors or colors,
     gender_target=gender_s,
     material=str(_pick(d, "material", "fabric") or "")[:64] or None,
     season=str(_pick(d, "season", "collection") or "")[:32] or None,

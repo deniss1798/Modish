@@ -1,54 +1,91 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http_parser/http_parser.dart';
+
 import '../../features/recommendations/models.dart';
 
 /// Базовый URL API.
 ///
-/// На **Android-эмуляторе** `127.0.0.1` — это сам эмулятор, не ваш ПК → по умолчанию
-/// используется `http://10.0.2.2:8000` (алиас к localhost хоста).
+/// Production (HTTPS):
+/// `flutter build apk --release --dart-define=MODISH_API_BASE_URL=https://api.YOUR_DOMAIN.com`
 ///
-/// Переопределение: `--dart-define=MODISH_API_BASE_URL=http://192.168.x.x:8000`
+/// Локально / эмулятор: по умолчанию `10.0.2.2:8000` (Android) или `127.0.0.1:8000`.
 class ApiClient {
   ApiClient()
-    : _dio = Dio(
-        BaseOptions(
-          baseUrl: resolvedBaseUrl(),
-          connectTimeout: const Duration(seconds: 12),
-          receiveTimeout: const Duration(seconds: 20),
-          headers: {'Accept': 'application/json'},
-        ),
-      );
+      : _dio = Dio(
+          BaseOptions(
+            baseUrl: resolvedBaseUrl(),
+            connectTimeout: const Duration(seconds: 30),
+            sendTimeout: const Duration(seconds: 30),
+            receiveTimeout: const Duration(seconds: 30),
+            headers: const {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+          ),
+        ) {
+    if (kDebugMode) {
+      debugPrint('Modish API baseUrl: ${_dio.options.baseUrl}');
+    }
+  }
 
-  /// Базовый URL API (без завершающего `/`).
+  final Dio _dio;
+
+  /// Базовый URL API без завершающего `/`.
   static String resolvedBaseUrl() {
     const fromEnv = String.fromEnvironment(
       'MODISH_API_BASE_URL',
       defaultValue: '',
     );
+
     if (fromEnv.trim().isNotEmpty) {
-      return fromEnv.trim();
+      return _normalizeBaseUrl(fromEnv);
     }
+
     if (kIsWeb) {
       return 'http://127.0.0.1:8000';
     }
+
     if (defaultTargetPlatform == TargetPlatform.android) {
       return 'http://10.0.2.2:8000';
     }
+
     return 'http://127.0.0.1:8000';
   }
 
-  /// Загрузка картинок через `GET /media/proxy-image` (эмулятор без исходящего HTTPS).
-  /// `--dart-define=MODISH_IMAGE_PROXY=true|false` переопределяет авто-режим.
-  static bool useImageProxyForProductImages() {
-    const override = String.fromEnvironment('MODISH_IMAGE_PROXY', defaultValue: '');
-    final v = override.trim().toLowerCase();
-    if (v == '1' || v == 'true' || v == 'yes') return true;
-    if (v == '0' || v == 'false' || v == 'no') return false;
-    return resolvedBaseUrl().contains('10.0.2.2');
+  static String _normalizeBaseUrl(String raw) {
+    var value = raw.trim();
+
+    while (value.endsWith('/')) {
+      value = value.substring(0, value.length - 1);
+    }
+
+    value = value.replaceAll('localhost', '127.0.0.1');
+
+    return value;
   }
 
-  final Dio _dio;
+  /// Загрузка картинок через `GET /media/proxy-image`.
+  ///
+  /// `--dart-define=MODISH_IMAGE_PROXY=true|false` переопределяет авто-режим.
+  static bool useImageProxyForProductImages() {
+    const override = String.fromEnvironment(
+      'MODISH_IMAGE_PROXY',
+      defaultValue: '',
+    );
+
+    final value = override.trim().toLowerCase();
+
+    if (value == '1' || value == 'true' || value == 'yes') {
+      return true;
+    }
+
+    if (value == '0' || value == 'false' || value == 'no') {
+      return false;
+    }
+
+    return resolvedBaseUrl().contains('10.0.2.2');
+  }
 
   void applyToken(String token) {
     _dio.options.headers['Authorization'] = 'Bearer $token';
@@ -61,8 +98,12 @@ class ApiClient {
   Future<String> register(String email, String password) async {
     final response = await _dio.post(
       '/auth/register',
-      data: {'email': email, 'password': password},
+      data: {
+        'email': email.trim(),
+        'password': password,
+      },
     );
+
     final token = '${response.data['access_token']}';
     applyToken(token);
     return token;
@@ -71,8 +112,12 @@ class ApiClient {
   Future<String> login(String email, String password) async {
     final response = await _dio.post(
       '/auth/login',
-      data: {'email': email, 'password': password},
+      data: {
+        'email': email.trim(),
+        'password': password,
+      },
     );
+
     final token = '${response.data['access_token']}';
     applyToken(token);
     return token;
@@ -94,16 +139,21 @@ class ApiClient {
   }
 
   Future<void> setStyleTarget(String target) async {
-    await _dio.patch('/style-profile/target', data: {'style_target': target});
+    await _dio.patch(
+      '/style-profile/target',
+      data: {'style_target': target},
+    );
   }
 
   Future<void> analyzeStyleProfile(String photoPath) async {
     final lower = photoPath.toLowerCase();
+
     final subtype = lower.endsWith('.png')
         ? 'png'
         : lower.endsWith('.webp')
-        ? 'webp'
-        : 'jpeg';
+            ? 'webp'
+            : 'jpeg';
+
     final form = FormData.fromMap({
       'photo': await MultipartFile.fromFile(
         photoPath,
@@ -111,6 +161,7 @@ class ApiClient {
         contentType: MediaType('image', subtype),
       ),
     });
+
     await _dio.post('/style-profile/analyze', data: form);
   }
 
@@ -127,8 +178,13 @@ class ApiClient {
   }) async {
     final response = await _dio.post(
       '/recommendations/generate',
-      data: {'type': type, 'count': count, 'scenario': scenario},
+      data: {
+        'type': type,
+        'count': count,
+        'scenario': scenario,
+      },
     );
+
     final list = (response.data as List).cast<Map<String, dynamic>>();
     return list.map(Outfit.fromApi).toList();
   }
@@ -160,12 +216,21 @@ class ApiClient {
     return Map<String, dynamic>.from(response.data as Map);
   }
 
-  Future<List<Map<String, dynamic>>> productFeed({int limit = 30, String? source}) async {
-    final qp = <String, dynamic>{'limit': limit};
+  Future<List<Map<String, dynamic>>> productFeed({
+    int limit = 30,
+    String? source,
+  }) async {
+    final queryParameters = <String, dynamic>{'limit': limit};
+
     if (source != null && source.trim().isNotEmpty) {
-      qp['source'] = source.trim();
+      queryParameters['source'] = source.trim();
     }
-    final response = await _dio.get('/feed', queryParameters: qp);
+
+    final response = await _dio.get(
+      '/feed',
+      queryParameters: queryParameters,
+    );
+
     final list = (response.data as List).cast<Map<String, dynamic>>();
     return list;
   }
@@ -185,6 +250,7 @@ class ApiClient {
         'meta': meta ?? {},
       },
     );
+
     return Map<String, dynamic>.from(response.data as Map);
   }
 
@@ -200,20 +266,40 @@ class ApiClient {
     String? source,
     String? brand,
   }) async {
-    final qp = <String, dynamic>{
+    final queryParameters = <String, dynamic>{
       'limit': limit,
       'offset': offset,
     };
-    if (category != null && category.trim().isNotEmpty) qp['category'] = category.trim();
-    if (source != null && source.trim().isNotEmpty) qp['source'] = source.trim();
-    if (brand != null && brand.trim().isNotEmpty) qp['brand'] = brand.trim();
-    final response = await _dio.get('/products', queryParameters: qp);
+
+    if (category != null && category.trim().isNotEmpty) {
+      queryParameters['category'] = category.trim();
+    }
+
+    if (source != null && source.trim().isNotEmpty) {
+      queryParameters['source'] = source.trim();
+    }
+
+    if (brand != null && brand.trim().isNotEmpty) {
+      queryParameters['brand'] = brand.trim();
+    }
+
+    final response = await _dio.get(
+      '/products',
+      queryParameters: queryParameters,
+    );
+
     final list = (response.data as List).cast<Map<String, dynamic>>();
     return list;
   }
 
   Future<void> metricsEvent(String name, {Map<String, dynamic>? meta}) async {
-    await _dio.post('/metrics/events', data: {'name': name, 'meta': meta ?? {}});
+    await _dio.post(
+      '/metrics/events',
+      data: {
+        'name': name,
+        'meta': meta ?? {},
+      },
+    );
   }
 
   Future<Map<String, dynamic>> profileBrief() async {
@@ -255,6 +341,7 @@ class ApiClient {
         'style_scenarios': styleScenarios,
       },
     );
+
     return Map<String, dynamic>.from(response.data as Map);
   }
 
@@ -276,6 +363,7 @@ class ApiClient {
         'preferred_fit': preferredFit,
       },
     );
+
     return Map<String, dynamic>.from(response.data as Map);
   }
 
@@ -283,12 +371,21 @@ class ApiClient {
     String? scenario,
     bool savedOnly = false,
   }) async {
-    final qp = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+
     if (scenario != null && scenario.trim().isNotEmpty) {
-      qp['scenario'] = scenario.trim();
+      queryParameters['scenario'] = scenario.trim();
     }
-    if (savedOnly) qp['saved_only'] = true;
-    final response = await _dio.get('/outfits', queryParameters: qp);
+
+    if (savedOnly) {
+      queryParameters['saved_only'] = true;
+    }
+
+    final response = await _dio.get(
+      '/outfits',
+      queryParameters: queryParameters,
+    );
+
     final list = (response.data as List).cast<Map<String, dynamic>>();
     return list;
   }
@@ -299,22 +396,43 @@ class ApiClient {
   }) async {
     final response = await _dio.post(
       '/outfits/generate',
-      queryParameters: {'count': count, 'scenario': scenario},
+      queryParameters: {
+        'count': count,
+        'scenario': scenario,
+      },
+      options: Options(
+        sendTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 45),
+      ),
     );
+
     final list = (response.data as List).cast<Map<String, dynamic>>();
     return list;
   }
 
   Future<void> outfitsSave(String outfitId) async {
-    await _dio.post('/outfits/save', queryParameters: {'outfit_id': outfitId});
+    await _dio.post(
+      '/outfits/save',
+      queryParameters: {'outfit_id': outfitId},
+    );
   }
 
   Future<void> outfitsUnsave(String outfitId) async {
-    await _dio.post('/outfits/unsave', queryParameters: {'outfit_id': outfitId});
+    await _dio.post(
+      '/outfits/unsave',
+      queryParameters: {'outfit_id': outfitId},
+    );
   }
 
   Future<Map<String, dynamic>> visualAnalysis() async {
-    final response = await _dio.post('/visual-analysis');
+    final response = await _dio.post(
+      '/visual-analysis',
+      options: Options(
+        sendTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 45),
+      ),
+    );
+
     return Map<String, dynamic>.from(response.data as Map);
   }
 
@@ -327,6 +445,7 @@ class ApiClient {
         receiveTimeout: const Duration(seconds: 30),
       ),
     );
+
     return Map<String, dynamic>.from(response.data as Map);
   }
 
@@ -334,25 +453,34 @@ class ApiClient {
   static String formatError(Object e) {
     if (e is DioException) {
       if (e.type == DioExceptionType.connectionError ||
-          e.type == DioExceptionType.connectionTimeout) {
-        return 'Нет связи с сервером. Запустите backend (uvicorn) и на эмуляторе '
-            'используйте адрес 10.0.2.2 вместо 127.0.0.1 (в приложении это уже учтено).';
+          e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.sendTimeout) {
+        return 'Нет связи с сервером. Проверьте интернет и адрес API.';
       }
+
       final data = e.response?.data;
+
       if (data is Map && data['detail'] != null) {
-        final d = data['detail'];
-        if (d is String) {
-          if (d.contains('недоступен') || d.contains('недоступ')) {
+        final detail = data['detail'];
+
+        if (detail is String) {
+          if (detail.contains('недоступен') || detail.contains('недоступ')) {
             return 'Товар временно недоступен';
           }
-          return d;
+
+          return detail;
         }
-        if (d is List && d.isNotEmpty && d.first is Map) {
-          return '${(d.first as Map)['msg'] ?? d}';
+
+        if (detail is List && detail.isNotEmpty && detail.first is Map) {
+          final first = detail.first as Map;
+          return '${first['msg'] ?? detail}';
         }
       }
+
       return e.message ?? e.toString();
     }
+
     return e.toString();
   }
 }

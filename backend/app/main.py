@@ -1,13 +1,18 @@
 """Точка входа FastAPI: health, visual-analysis, подключение роутеров."""
 from __future__ import annotations
 
+import logging
+import os
+
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .api.admin_products import router as admin_products_router
 from .api.affiliate import router as affiliate_router
+from .api.analytics import router as analytics_router
 from .api.auth import router as auth_router
 from .api.catalog_admin import router as catalog_admin_router
 from .api.deps import auth_scheme, get_db, user_from_token
@@ -18,10 +23,28 @@ from .api.products import router as products_router
 from .api.profile import router as profile_router
 from .api.recommendations import router as recommendations_router
 from .api.taste_profile import router as taste_profile_router
+from .middleware import RateLimitMiddleware, RequestLogMiddleware
 from .models import StyleProfile
 from .services.visual_analysis_service import generate_style_visual
 
-app = FastAPI(title="Modish API", version="0.9.0-pre")
+logging.basicConfig(
+  level=logging.INFO,
+  format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
+
+app = FastAPI(title="Modish API", version="1.0.0-alpha")
+
+_cors_raw = (os.getenv("CORS_ORIGINS") or "*").strip()
+_cors_origins = [o.strip() for o in _cors_raw.split(",") if o.strip()] or ["*"]
+app.add_middleware(
+  CORSMiddleware,
+  allow_origins=_cors_origins,
+  allow_credentials=True,
+  allow_methods=["*"],
+  allow_headers=["*"],
+)
+app.add_middleware(RateLimitMiddleware)
+app.add_middleware(RequestLogMiddleware)
 
 app.include_router(auth_router)
 app.include_router(media_proxy_router)
@@ -33,6 +56,7 @@ app.include_router(taste_profile_router)
 app.include_router(outfits_router)
 app.include_router(affiliate_router)
 app.include_router(catalog_admin_router)
+app.include_router(analytics_router)
 app.include_router(admin_products_router)
 
 

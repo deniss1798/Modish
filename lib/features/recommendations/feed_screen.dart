@@ -487,6 +487,24 @@ class _ProductCardView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
+                if (p.availableSizes.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'Размер: ${p.availableSizes.take(6).join(', ')}',
+                    style: AppTextStyles.caption,
+                  ),
+                ],
+                if (p.shopLabel.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    p.shopLabel.toUpperCase(),
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.accent,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 6),
                 Row(
                   children: [
                     Text(

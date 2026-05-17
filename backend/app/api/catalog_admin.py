@@ -583,6 +583,20 @@ def admin_catalog_sync_mock_lamoda(
   return {**_sync_run_to_api(run), "mock_file": str(path)}
 
 
+@router.post("/renormalize")
+def admin_catalog_renormalize(
+  source: str | None = None,
+  limit: int | None = None,
+  db: Session = Depends(get_db),
+  authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+  """P2: пересчитать категории, размеры, пол; деактивировать неполные карточки."""
+  _admin_auth(authorization)
+  from ..services.catalog.renormalize_service import renormalize_catalog
+
+  return renormalize_catalog(db, source=source, limit=limit)
+
+
 @router.post("/alpha-bootstrap")
 def admin_catalog_alpha_bootstrap(
   db: Session = Depends(get_db),

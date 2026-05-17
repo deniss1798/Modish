@@ -56,15 +56,16 @@ def recommendations_events(
   from ..models import Outfit, Product
 
   user = user_from_token(credentials, db)
+  # click/open/buy сильнее save/like (P6)
   weights = {
     "view": 0,
     "skip": -1,
-    "dislike": -3,
-    "like": 2,
-    "save": 4,
-    "unsave": -4,
-    "open_product": 5,
-    "buy_click": 8,
+    "dislike": -4,
+    "like": 3,
+    "save": 5,
+    "unsave": -5,
+    "open_product": 10,
+    "buy_click": 15,
   }
   weight = weights[payload.event_type]
   if payload.product_id is None and payload.outfit_id is None:
@@ -272,6 +273,20 @@ def recommendations_generate(
 
 @router.get("/recommendations/feed")
 def recommendations_feed(
+  limit: int = 30,
+  source: str | None = None,
+  db: Session = Depends(get_db),
+  credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+) -> list[dict[str, Any]]:
+  """Персонализированная товарная лента (alias для GET /feed)."""
+  from .products import _feed_scored_items
+
+  user = user_from_token(credentials, db)
+  return _feed_scored_items(db, user, limit=limit, source=source)
+
+
+@router.get("/recommendations/outfits-legacy")
+def recommendations_outfits_legacy(
   db: Session = Depends(get_db),
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> list[dict[str, Any]]:

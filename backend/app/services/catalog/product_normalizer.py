@@ -3,13 +3,22 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from ...catalog_normalize import normalize_category, normalize_product_colors
+from ...catalog_normalize import (
+  infer_size_system,
+  normalize_category,
+  normalize_gender_target,
+  normalize_product_colors,
+  normalize_sizes,
+)
 from .normalized_product import NormalizedProduct
 
 
 def normalized_to_dict(n: NormalizedProduct) -> dict[str, Any]:
   """Поля для ORM Product / upsert (без id)."""
   cat = normalize_category(n.category)
+  sizes = normalize_sizes(n.sizes)
+  size_system = infer_size_system(sizes)
+  gender = normalize_gender_target(n.gender_target, title=n.title, category=cat) or n.gender_target
   return {
     "external_id": n.external_id,
     "source": n.source_code,
@@ -36,9 +45,10 @@ def normalized_to_dict(n: NormalizedProduct) -> dict[str, Any]:
     "raw_params_json": dict(n.raw_params or {}),
     "size_original": (n.size_original[:64] if n.size_original else None),
     "color_original": (n.color_original[:128] if n.color_original else None),
-    "available_sizes": n.sizes,
+    "available_sizes": sizes,
+    "size_system": size_system,
     "colors": normalize_product_colors(n.colors),
-    "gender_target": n.gender_target,
+    "gender_target": gender,
     "material": n.material,
     "season": n.season,
     "style_tags": n.style_tags,

@@ -47,7 +47,7 @@ class _IntroOnboardingScreenState extends State<IntroOnboardingScreen> {
         curve: Curves.easeOut,
       );
     } else {
-      widget.controller.goToAuth(registerMode: true);
+      widget.controller.goToFitQuiz();
     }
   }
 
@@ -60,7 +60,7 @@ class _IntroOnboardingScreenState extends State<IntroOnboardingScreen> {
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
-                onPressed: () => widget.controller.goToAuth(registerMode: true),
+                onPressed: () => widget.controller.goToFitQuiz(),
                 child: const Text('Пропустить', style: TextStyle(color: AppColors.muted)),
               ),
             ),

@@ -11,7 +11,9 @@ from sqlalchemy.orm import Session
 
 from ..catalog_normalize import normalize_category
 from ..models import FitProfile, Product, RecommendationEventV2, StyleProfile, TasteProfile, User
-from .catalog.rule_filters import load_rules_by_source_id, product_gender_compatible, product_passes_source_rules
+from .catalog.rule_filters import load_rules_by_source_id, product_passes_source_rules
+from .catalog.catalog_quality import product_is_feed_eligible
+from .feed_filters import product_passes_hard_filters
 from ..schemas.photo_analysis import extract_analysis_section
 
 
@@ -351,22 +353,14 @@ def generate_feed(
     products = [p for p in products if p.id not in exclude_product_ids]
   rules_by_source = load_rules_by_source_id(db)
   fit = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
-  user_gender = fit.gender_target if fit else None
-  interest_norm: set[str] = set()
-  if fit and fit.interest_categories:
-    interest_norm = {
-      normalize_category(str(x).strip()) for x in fit.interest_categories if str(x).strip()
-    }
   filtered: list[Product] = []
   for p in products:
+    if not product_is_feed_eligible(p):
+      continue
     if not product_passes_source_rules(p, rules_by_source):
       continue
-    if not product_gender_compatible(p, user_gender):
+    if not product_passes_hard_filters(p, fit):
       continue
-    if interest_norm:
-      p_cats = _product_category_norms(p)
-      if p_cats and not (p_cats & interest_norm):
-        continue
     filtered.append(p)
   scored = [score_product(db, user, p) for p in filtered]
   scored.sort(key=lambda x: x.final_score, reverse=True)
