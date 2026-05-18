@@ -177,7 +177,11 @@ class RootScreen extends StatelessWidget {
 enum AppStage { splash, welcome, onboarding, fitQuiz, auth, upload, analysis, home }
 
 class AppController extends ChangeNotifier {
-  final api = ApiClient();
+  AppController() {
+    api = ApiClient(onUnauthorized: _handleUnauthorized);
+  }
+
+  late final ApiClient api;
 
   AppStage stage = AppStage.splash;
 
@@ -254,19 +258,19 @@ class AppController extends ChangeNotifier {
     await Future<void>.delayed(const Duration(milliseconds: 200));
     try {
       final stored = await TokenStorage.read().timeout(
-        const Duration(seconds: 1),
+        const Duration(seconds: 3),
         onTimeout: () => null,
       );
       if (stored != null && stored.isNotEmpty) {
         api.applyToken(stored);
         token = stored;
         final me = await api.usersMe().timeout(
-          const Duration(seconds: 1),
+          const Duration(seconds: 10),
           onTimeout: () => throw TimeoutException('usersMe'),
         );
         email = '${me['email'] ?? email}';
         final profile = await api.styleProfileMe().timeout(
-          const Duration(seconds: 1),
+          const Duration(seconds: 10),
           onTimeout: () => throw TimeoutException('styleProfileMe'),
         );
         final raw = profile['profile_json'];
@@ -274,20 +278,58 @@ class AppController extends ChangeNotifier {
         final analyzed =
             rawMap != null && rawMap.isNotEmpty && _profileHasAnalysis(rawMap);
         await refreshRemoteData().timeout(
-          const Duration(seconds: 3),
+          const Duration(seconds: 25),
           onTimeout: () => throw TimeoutException('refresh'),
         );
         stage = analyzed ? AppStage.home : AppStage.upload;
         notifyListeners();
         return;
       }
-    } catch (_) {
-      await TokenStorage.clear();
-      api.clearToken();
-      token = null;
+    } on TimeoutException catch (e) {
+      error = 'Медленное соединение (${e.message ?? 'timeout'}). '
+          'Проверьте интернет и войдите снова.';
+    } catch (e) {
+      error = ApiClient.formatError(e);
+      await _clearSession();
     }
     stage = AppStage.welcome;
     notifyListeners();
+  }
+
+  void _handleUnauthorized() {
+    token = null;
+    api.clearToken();
+    unawaited(TokenStorage.clear());
+    stage = AppStage.auth;
+    authRegisterMode = false;
+    error = 'Сессия истекла — войдите снова.';
+    notifyListeners();
+  }
+
+  Future<void> _clearSession() async {
+    await TokenStorage.clear();
+    api.clearToken();
+    token = null;
+  }
+
+  Future<void> _routeAfterAuth() async {
+    await applyPendingFitPrefsIfAny();
+    try {
+      final profile = await api.styleProfileMe();
+      final raw = profile['profile_json'];
+      final rawMap = raw is Map ? Map<String, dynamic>.from(raw) : null;
+      final analyzed =
+          rawMap != null && rawMap.isNotEmpty && _profileHasAnalysis(rawMap);
+      if (analyzed) {
+        await refreshRemoteData();
+        stage = AppStage.home;
+        tab = 0;
+      } else {
+        stage = AppStage.upload;
+      }
+    } catch (_) {
+      stage = AppStage.upload;
+    }
   }
 
   void goToWelcome() {
@@ -339,7 +381,9 @@ class AppController extends ChangeNotifier {
         styleScenarios: List<String>.from(p['style_scenarios'] as List? ?? []),
       );
       pendingFitPrefs = null;
-    } catch (_) {}
+    } catch (e) {
+      error = ApiClient.formatError(e);
+    }
   }
 
   void goToAuth({required bool registerMode}) {
@@ -365,13 +409,13 @@ class AppController extends ChangeNotifier {
     await _run(() async {
       final t = await api.register(email, password);
       token = t;
-      await TokenStorage.write(t);
-      // metrics
+      if (!await TokenStorage.write(t)) {
+        throw Exception('Не удалось сохранить сессию на устройстве');
+      }
       try {
         await api.metricsEvent('user_registered');
       } catch (_) {}
-      await applyPendingFitPrefsIfAny();
-      stage = AppStage.upload;
+      await _routeAfterAuth();
     });
   }
 
@@ -379,9 +423,10 @@ class AppController extends ChangeNotifier {
     await _run(() async {
       final t = await api.login(email, password);
       token = t;
-      await TokenStorage.write(t);
-      await applyPendingFitPrefsIfAny();
-      stage = AppStage.upload;
+      if (!await TokenStorage.write(t)) {
+        throw Exception('Не удалось сохранить сессию на устройстве');
+      }
+      await _routeAfterAuth();
     });
   }
 
@@ -422,11 +467,6 @@ class AppController extends ChangeNotifier {
 
   Future<void> refreshRemoteData() async {
     try {
-      feed = await api.feed();
-    } catch (_) {
-      feed = [];
-    }
-    try {
       final rows = await api.productFeed(limit: 30);
       productFeed = rows.map(prod.FeedCard.fromApi).toList();
       productFeedError = null;
@@ -434,10 +474,12 @@ class AppController extends ChangeNotifier {
       productFeed = [];
       productFeedError = ApiClient.formatError(e);
     }
-    if (productFeed.isNotEmpty) {
-      try {
-        await api.metricsEvent('feed_opened');
-      } catch (_) {}
+    notifyListeners();
+
+    try {
+      feed = await api.feed();
+    } catch (_) {
+      feed = [];
     }
     try {
       summary = await api.summary();
@@ -475,6 +517,11 @@ class AppController extends ChangeNotifier {
     } catch (_) {
       outfits = [];
       savedOutfits = [];
+    }
+    if (productFeed.isNotEmpty) {
+      try {
+        await api.metricsEvent('feed_opened');
+      } catch (_) {}
     }
     savedIds
       ..clear()

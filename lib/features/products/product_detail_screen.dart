@@ -70,10 +70,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget build(BuildContext context) {
     final p = _card.product;
     final gallery = p.galleryUrls;
-    final sizes = p.availableSizes.isEmpty
-        ? ['XS', 'S', 'M', 'L', 'XL']
-        : p.availableSizes;
-    final colors = p.colors.isEmpty ? ['Чёрный', 'Белый', 'Бежевый'] : p.colors;
+    final sizes = p.availableSizes;
+    final colors = p.colors;
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
@@ -197,22 +195,28 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        children: sizes.map((s) {
-                          final on = _selectedSize == s;
-                          return ChoiceChip(
-                            label: Text(s),
-                            selected: on,
-                            onSelected: (_) =>
-                                setState(() => _selectedSize = s),
-                            selectedColor: AppColors.accent,
-                            labelStyle: TextStyle(
-                              color: on ? AppColors.onAccent : AppColors.ink,
-                            ),
-                          );
-                        }).toList(),
-                      ),
+                      if (sizes.isEmpty)
+                        Text(
+                          'Размеры уточняйте на сайте магазина',
+                          style: AppTextStyles.bodyMuted,
+                        )
+                      else
+                        Wrap(
+                          spacing: 8,
+                          children: sizes.map((s) {
+                            final on = _selectedSize == s;
+                            return ChoiceChip(
+                              label: Text(s),
+                              selected: on,
+                              onSelected: (_) =>
+                                  setState(() => _selectedSize = s),
+                              selectedColor: AppColors.accent,
+                              labelStyle: TextStyle(
+                                color: on ? AppColors.onAccent : AppColors.ink,
+                              ),
+                            );
+                          }).toList(),
+                        ),
                       const SizedBox(height: 18),
                       Text(
                         'Цвет',
@@ -221,18 +225,24 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        children: colors.map((c) {
-                          final on = _selectedColor == c;
-                          return ChoiceChip(
-                            label: Text(c),
-                            selected: on,
-                            onSelected: (_) =>
-                                setState(() => _selectedColor = c),
-                          );
-                        }).toList(),
-                      ),
+                      if (colors.isEmpty)
+                        Text(
+                          'Цвет не указан в каталоге',
+                          style: AppTextStyles.bodyMuted,
+                        )
+                      else
+                        Wrap(
+                          spacing: 8,
+                          children: colors.map((c) {
+                            final on = _selectedColor == c;
+                            return ChoiceChip(
+                              label: Text(c),
+                              selected: on,
+                              onSelected: (_) =>
+                                  setState(() => _selectedColor = c),
+                            );
+                          }).toList(),
+                        ),
                       if (_card.reasons.isNotEmpty || _card.reason.trim().isNotEmpty) ...[
                         const SizedBox(height: 20),
                         Text('Почему рекомендовано', style: AppTextStyles.sectionTitle.copyWith(fontSize: 14)),

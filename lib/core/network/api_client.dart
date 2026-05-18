@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http_parser/http_parser.dart';
 
+import '../config/api_config.dart';
 import '../../features/recommendations/models.dart';
 
 /// Базовый URL API.
@@ -11,25 +12,61 @@ import '../../features/recommendations/models.dart';
 ///
 /// Локально / эмулятор: по умолчанию `10.0.2.2:8000` (Android) или `127.0.0.1:8000`.
 class ApiClient {
-  ApiClient()
+  ApiClient({this.onUnauthorized})
       : _dio = Dio(
           BaseOptions(
             baseUrl: resolvedBaseUrl(),
-            connectTimeout: const Duration(seconds: 30),
-            sendTimeout: const Duration(seconds: 30),
-            receiveTimeout: const Duration(seconds: 30),
+            connectTimeout: const Duration(seconds: 45),
+            sendTimeout: const Duration(seconds: 45),
+            receiveTimeout: const Duration(seconds: 45),
             headers: const {
               'Accept': 'application/json',
               'Content-Type': 'application/json',
             },
           ),
         ) {
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onError: (error, handler) async {
+          if (error.response?.statusCode == 401 &&
+              onUnauthorized != null &&
+              error.requestOptions.path != '/auth/login' &&
+              error.requestOptions.path != '/auth/register') {
+            onUnauthorized!();
+          }
+          if (_shouldRetry(error) && error.requestOptions.extra['retried'] != true) {
+            error.requestOptions.extra['retried'] = true;
+            await Future<void>.delayed(const Duration(milliseconds: 800));
+            try {
+              final response = await _dio.fetch(error.requestOptions);
+              handler.resolve(response);
+              return;
+            } catch (_) {}
+          }
+          handler.next(error);
+        },
+      ),
+    );
     if (kDebugMode) {
       debugPrint('Modish API baseUrl: ${_dio.options.baseUrl}');
     }
   }
 
   final Dio _dio;
+
+  /// Вызывается при 401 (кроме login/register) — сброс сессии в приложении.
+  VoidCallback? onUnauthorized;
+
+  static bool _shouldRetry(DioException e) {
+    if (e.type == DioExceptionType.connectionError ||
+        e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.receiveTimeout) {
+      return true;
+    }
+    final inner = '${e.error ?? ''}';
+    return inner.contains('Connection closed') ||
+        inner.contains('Connection reset');
+  }
 
   /// Базовый URL API без завершающего `/`.
   static String resolvedBaseUrl() {
@@ -42,15 +79,31 @@ class ApiClient {
       return _normalizeBaseUrl(fromEnv);
     }
 
+    if (kReleaseMode && productionApiBaseUrl.trim().isNotEmpty) {
+      return _normalizeBaseUrl(productionApiBaseUrl);
+    }
+
+    // 10.0.2.2 — только Android-эмулятор на том же ПК, где крутится uvicorn.
+    // На реальном телефоне без dart-define сюда не попасть — нужен LAN IP или HTTPS домен.
     if (kIsWeb) {
       return 'http://127.0.0.1:8000';
     }
 
     if (defaultTargetPlatform == TargetPlatform.android) {
+      // На реальном телефоне в debug — VPS из api_config; эмулятор может переопределить dart-define.
+      if (productionApiBaseUrl.trim().isNotEmpty) {
+        return _normalizeBaseUrl(productionApiBaseUrl);
+      }
       return 'http://10.0.2.2:8000';
     }
 
     return 'http://127.0.0.1:8000';
+  }
+
+  /// Подсказка, если на телефоне остался адрес эмулятора.
+  static bool get isLikelyEmulatorOnlyUrl {
+    final u = resolvedBaseUrl();
+    return u.contains('10.0.2.2') || u.contains('127.0.0.1');
   }
 
   static String _normalizeBaseUrl(String raw) {
@@ -102,6 +155,10 @@ class ApiClient {
         'email': email.trim(),
         'password': password,
       },
+      options: Options(
+        sendTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(seconds: 60),
+      ),
     );
 
     final token = '${response.data['access_token']}';
@@ -116,11 +173,33 @@ class ApiClient {
         'email': email.trim(),
         'password': password,
       },
+      options: Options(
+        sendTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(seconds: 60),
+      ),
     );
 
     final token = '${response.data['access_token']}';
     applyToken(token);
     return token;
+  }
+
+  Future<bool> pingHealth() async {
+    try {
+      final response = await _dio.get(
+        '/health',
+        options: Options(
+          sendTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 10),
+        ),
+      );
+      final data = response.data;
+      if (data is Map && data['status'] == 'ok') return true;
+      if (data is Map && data['status'] == 'degraded') return true;
+      return false;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<Map<String, dynamic>> usersMe() async {
@@ -401,8 +480,8 @@ class ApiClient {
         'scenario': scenario,
       },
       options: Options(
-        sendTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 45),
+        sendTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(seconds: 90),
       ),
     );
 
@@ -450,35 +529,73 @@ class ApiClient {
   }
 
   /// Сообщение об ошибке для UI.
+  static String? _detailFromResponse(dynamic data) {
+    if (data is Map && data['detail'] != null) {
+      final detail = data['detail'];
+      if (detail is String && detail.trim().isNotEmpty) {
+        return detail.trim();
+      }
+      if (detail is List && detail.isNotEmpty && detail.first is Map) {
+        final first = detail.first as Map;
+        final msg = '${first['msg'] ?? ''}'.trim();
+        if (msg.isNotEmpty) return msg;
+      }
+    }
+    if (data is String && data.trim().isNotEmpty) {
+      return data.trim();
+    }
+    return null;
+  }
+
   static String formatError(Object e) {
     if (e is DioException) {
+      final inner = '${e.error ?? ''}';
+      if (inner.contains('Connection closed') ||
+          inner.contains('Connection reset') ||
+          inner.contains('Software caused connection abort')) {
+        final host = resolvedBaseUrl();
+        return 'Сервер недоступен или перезагружается.\n\n'
+            'Проверьте интернет и VPN. Сервер: $host';
+      }
+
       if (e.type == DioExceptionType.connectionError ||
           e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout ||
           e.type == DioExceptionType.sendTimeout) {
-        return 'Нет связи с сервером. Проверьте интернет и адрес API.';
+        final host = resolvedBaseUrl();
+        final emulatorHint = isLikelyEmulatorOnlyUrl
+            ? '\n\nСейчас указан адрес для эмулятора ($host). '
+                'На телефоне нужен IP компьютера в Wi‑Fi или https://api.ваш-домен.ru '
+                '(см. README, MODISH_API_BASE_URL).'
+            : '\n\nСервер: $host';
+        return 'Нет связи с сервером. Проверьте интернет и что backend запущен.$emulatorHint';
       }
 
-      final data = e.response?.data;
-
-      if (data is Map && data['detail'] != null) {
-        final detail = data['detail'];
-
-        if (detail is String) {
-          if (detail.contains('недоступен') || detail.contains('недоступ')) {
-            return 'Товар временно недоступен';
-          }
-
-          return detail;
+      final status = e.response?.statusCode;
+      final detail = _detailFromResponse(e.response?.data);
+      if (detail != null) {
+        if (detail.contains('недоступен') || detail.contains('недоступ')) {
+          return 'Товар временно недоступен';
         }
-
-        if (detail is List && detail.isNotEmpty && detail.first is Map) {
-          final first = detail.first as Map;
-          return '${first['msg'] ?? detail}';
-        }
+        return detail;
       }
 
-      return e.message ?? e.toString();
+      if (status != null && status >= 500) {
+        return 'Ошибка на сервере ($status). Обновите экран или попробуйте позже.';
+      }
+      if (status == 401 || status == 403) {
+        return 'Сессия истекла — войдите снова.';
+      }
+
+      final msg = e.message?.trim();
+      if (msg != null &&
+          msg.isNotEmpty &&
+          !msg.contains('status code of') &&
+          !msg.contains('This exception was thrown')) {
+        return msg;
+      }
+
+      return 'Не удалось выполнить запрос. Проверьте интернет и сервер.';
     }
 
     return e.toString();

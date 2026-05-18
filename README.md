@@ -56,7 +56,7 @@ POST /admin/catalog/renormalize?source=befree
 Authorization: Bearer <ADMIN_CATALOG_TOKEN>
 ```
 
-**Production HTTPS (P1):** см. `deploy/README.md`. Сборка приложения:
+**Production HTTPS (P1):** см. `deploy/README.md`. Release APK по умолчанию бьёт в `productionApiBaseUrl` из `lib/core/config/api_config.dart` (сейчас VPS). Явно при сборке:
 
 ```powershell
 flutter build apk --release --dart-define=MODISH_API_BASE_URL=https://api.YOUR_DOMAIN.com

@@ -16,10 +16,14 @@ class TokenStorage {
     }
   }
 
-  static Future<void> write(String token) async {
+  /// `true`, если токен записан; `false` при ошибке хранилища.
+  static Future<bool> write(String token) async {
     try {
       await _storage.write(key: _kToken, value: token);
-    } catch (_) {}
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   static Future<void> clear() async {

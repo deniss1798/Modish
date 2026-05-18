@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../app.dart';
+import 'package:flutter/foundation.dart';
+
+import '../../core/network/api_client.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/modish_widgets.dart';
@@ -110,11 +113,18 @@ class _AuthScreenState extends State<AuthScreen> {
                       }
                     },
             ),
+            if (kDebugMode || !ApiClient.isLikelyEmulatorOnlyUrl) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Сервер: ${ApiClient.resolvedBaseUrl()}',
+                style: AppTextStyles.caption,
+              ),
+            ],
             if (c.error != null) ...[
               const SizedBox(height: 12),
               Text(
                 c.error!,
-                style: const TextStyle(color: AppColors.error),
+                style: const TextStyle(color: AppColors.error, height: 1.35),
               ),
             ],
             const SizedBox(height: 24),

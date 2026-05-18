@@ -7,7 +7,7 @@ import os
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials
-from sqlalchemy import select
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from .api.admin_products import router as admin_products_router
@@ -24,7 +24,7 @@ from .api.profile import router as profile_router
 from .api.recommendations import router as recommendations_router
 from .api.taste_profile import router as taste_profile_router
 from .middleware import RateLimitMiddleware, RequestLogMiddleware
-from .models import StyleProfile
+from .services.recommendation_engine import ensure_style_profile
 from .services.visual_analysis_service import generate_style_visual
 
 logging.basicConfig(
@@ -61,8 +61,14 @@ app.include_router(admin_products_router)
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
-  return {"status": "ok"}
+def health(db: Session = Depends(get_db)) -> dict[str, str]:
+  try:
+    db.execute(text("SELECT 1"))
+    db_ok = "ok"
+  except Exception:
+    db_ok = "error"
+  status = "ok" if db_ok == "ok" else "degraded"
+  return {"status": status, "database": db_ok, "version": "1.0.0-alpha"}
 
 
 @app.post("/visual-analysis")
@@ -71,7 +77,7 @@ async def visual_analysis(
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> dict[str, str]:
   user = user_from_token(credentials, db)
-  profile = db.execute(select(StyleProfile).where(StyleProfile.user_id == user.id)).scalar_one()
+  profile = ensure_style_profile(db, user.id)
   analysis = profile.profile_json.get("analysis") if isinstance(profile.profile_json, dict) else None
   if not isinstance(analysis, dict) or not analysis:
     raise HTTPException(status_code=400, detail="Сначала выполните анализ стиля по фото.")

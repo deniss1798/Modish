@@ -78,8 +78,6 @@ def login(payload: AuthRequest, db: Session = Depends(get_db)) -> TokenResponse:
   if user is None or not verify_password(payload.password, user.password_hash):
     raise HTTPException(status_code=401, detail="Неверный email или пароль")
   business.get_or_refresh_limits(db, user.id)
-  db.commit()
-  seed_recommendations(db, user.id)
   ensure_style_profile(db, user.id)
   ensure_taste_profile(db, user.id)
   db.commit()

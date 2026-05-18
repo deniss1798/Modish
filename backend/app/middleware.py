@@ -35,7 +35,14 @@ class RequestLogMiddleware(BaseHTTPMiddleware):
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
   async def dispatch(self, request: Request, call_next: Callable) -> Response:
-    if request.url.path in ("/health", "/docs", "/openapi.json", "/redoc"):
+    if request.url.path in (
+      "/health",
+      "/docs",
+      "/openapi.json",
+      "/redoc",
+      "/auth/login",
+      "/auth/register",
+    ):
       return await call_next(request)
 
     ip = request.client.host if request.client else "anon"
