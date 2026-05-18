@@ -198,6 +198,7 @@ class AppController extends ChangeNotifier {
   String? selectedPhotoPath;
   final photoPaths = <String>[];
   bool isLoading = false;
+  bool feedRefreshing = false;
   String? error;
   int analysisProgress = 0;
 
@@ -210,6 +211,7 @@ class AppController extends ChangeNotifier {
 
   /// Ошибка последней загрузки `/feed` (сеть, 401, сервер).
   String? productFeedError;
+
   List<Map<String, dynamic>> savedProductRows = [];
   List<Map<String, dynamic>> outfits = [];
   List<Map<String, dynamic>> savedOutfits = [];
@@ -466,6 +468,38 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> refreshRemoteData() async {
+    await _refreshProductFeed();
+    notifyListeners();
+    unawaited(_refreshSecondaryRemoteData());
+  }
+
+  /// Обновление ленты по кнопке «Обновить» — со спиннером и понятным результатом.
+  /// Возвращает текст для SnackBar или null, если всё ок и есть товары.
+  Future<String?> refreshFeedFromUser() async {
+    feedRefreshing = true;
+    productFeedError = null;
+    notifyListeners();
+
+    await _refreshProductFeed();
+    feedRefreshing = false;
+    notifyListeners();
+    unawaited(_refreshSecondaryRemoteData());
+
+    if (productFeedError != null) {
+      return productFeedError;
+    }
+    if (productFeed.isEmpty) {
+      return 'Лента пустая. Возможные причины:\n'
+          '• каталог не импортирован на сервер;\n'
+          '• фильтры профиля (бюджет, категории) скрыли товары — сбросьте фильтры ⚙';
+    }
+    if (filteredProductFeed.isEmpty && productFeed.isNotEmpty) {
+      return 'Товары есть, но фильтры скрыли все карточки. Сбросьте фильтры (иконка справа вверху).';
+    }
+    return null;
+  }
+
+  Future<void> _refreshProductFeed() async {
     try {
       final rows = await api.productFeed(limit: 30);
       productFeed = rows.map(prod.FeedCard.fromApi).toList();
@@ -474,8 +508,9 @@ class AppController extends ChangeNotifier {
       productFeed = [];
       productFeedError = ApiClient.formatError(e);
     }
-    notifyListeners();
+  }
 
+  Future<void> _refreshSecondaryRemoteData() async {
     try {
       feed = await api.feed();
     } catch (_) {
@@ -855,22 +890,26 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pages = [
-      FeedScreen(controller: controller),
-      OutfitsScreen(controller: controller),
-      SavedScreen(controller: controller),
-      ProfileScreen(controller: controller),
-    ];
-
-    return MobileViewport(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: pages[controller.tab],
-        bottomNavigationBar: ModishBottomNav(
-          index: controller.tab,
-          onChanged: controller.setTab,
-        ),
-      ),
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        final pages = [
+          FeedScreen(controller: controller),
+          OutfitsScreen(controller: controller),
+          SavedScreen(controller: controller),
+          ProfileScreen(controller: controller),
+        ];
+        return MobileViewport(
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            body: pages[controller.tab],
+            bottomNavigationBar: ModishBottomNav(
+              index: controller.tab,
+              onChanged: controller.setTab,
+            ),
+          ),
+        );
+      },
     );
   }
 }

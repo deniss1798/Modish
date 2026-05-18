@@ -23,6 +23,37 @@ class _FeedScreenState extends State<FeedScreen> {
   String? _lastViewRecordedId;
 
   @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_rebuild);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_rebuild);
+    super.dispose();
+  }
+
+  void _rebuild() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _onRefresh() async {
+    final msg = await widget.controller.refreshFeedFromUser();
+    if (!mounted) return;
+    if (msg != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg)),
+      );
+    } else {
+      final n = widget.controller.filteredProductFeed.length;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Обновлено: $n вещей')),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final controller = widget.controller;
     final card = controller.currentProduct;
@@ -70,11 +101,26 @@ class _FeedScreenState extends State<FeedScreen> {
           ),
         ),
         Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: card == null
-                ? _EmptyFeed(controller: controller)
-                : _SwipeProductCard(controller: controller, card: card),
+          child: RefreshIndicator(
+            color: AppColors.accent,
+            onRefresh: _onRefresh,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: card == null
+                  ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        SizedBox(
+                          height: MediaQuery.sizeOf(context).height * 0.45,
+                          child: _EmptyFeed(
+                            controller: controller,
+                            onRefresh: _onRefresh,
+                          ),
+                        ),
+                      ],
+                    )
+                  : _SwipeProductCard(controller: controller, card: card),
+            ),
           ),
         ),
         if (card != null && related.isNotEmpty) ...[
@@ -195,12 +241,17 @@ class _ActionBtn extends StatelessWidget {
 }
 
 class _EmptyFeed extends StatelessWidget {
-  const _EmptyFeed({required this.controller});
+  const _EmptyFeed({
+    required this.controller,
+    required this.onRefresh,
+  });
   final AppController controller;
+  final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
     final err = controller.productFeedError?.trim();
+    final busy = controller.feedRefreshing || controller.isLoading;
     return Center(
       child: SoftCard(
         child: Column(
@@ -216,19 +267,28 @@ class _EmptyFeed extends StatelessWidget {
             Text(
               err != null && err.isNotEmpty
                   ? err
-                  : 'Импортируйте каталог или обновите экран.',
+                  : 'Импортируйте каталог на сервере или нажмите «Обновить».',
               textAlign: TextAlign.center,
               style: AppTextStyles.bodyMuted,
             ),
             const SizedBox(height: 18),
             PrimaryButton(
-              label: 'Обновить',
-              icon: Icons.refresh,
+              label: busy ? 'Загрузка…' : 'Обновить',
+              icon: busy ? null : Icons.refresh,
               expanded: false,
-              onPressed: controller.isLoading
-                  ? null
-                  : () => controller.refreshRemoteData(),
+              onPressed: busy ? null : onRefresh,
             ),
+            if (busy) ...[
+              const SizedBox(height: 14),
+              const SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: AppColors.accent,
+                ),
+              ),
+            ],
           ],
         ),
       ),

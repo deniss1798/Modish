@@ -10,7 +10,9 @@ from sqlalchemy.orm import Session
 from ..catalog_normalize import normalize_category
 from ..models import FitProfile, Outfit, Product, RecommendationEventV2, StyleProfile, User
 from ..schemas.photo_analysis import extract_analysis_section
-from .recommendation_engine import ensure_style_profile, generate_feed
+from .catalog.catalog_quality import product_is_feed_eligible
+from .catalog.rule_filters import load_rules_by_source_id, product_gender_compatible, product_passes_source_rules
+from .recommendation_engine import ensure_style_profile
 
 _TOP_CATS = frozenset({"футболки", "рубашки", "верхний_слой"})
 _BOTTOM_CATS = frozenset({"джинсы", "брюки"})
@@ -165,6 +167,43 @@ def _pick_unique(
   return p
 
 
+def _catalog_products_for_outfits(
+  db: Session,
+  user: User,
+  *,
+  excluded: set[str],
+  limit: int = 200,
+) -> list[Product]:
+  """Быстрый набор товаров для образов — без тяжёлого скоринга всей ленты."""
+  rows = db.execute(
+    select(Product)
+    .where(
+      Product.is_active == 1,
+      Product.is_available == 1,
+      Product.is_deleted_from_feed == 0,
+      Product.source != "demo",
+    )
+    .order_by(Product.created_at.desc())
+    .limit(600)
+  ).scalars().all()
+  fit = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
+  rules = load_rules_by_source_id(db)
+  out: list[Product] = []
+  for p in rows:
+    if p.id in excluded:
+      continue
+    if not product_is_feed_eligible(p):
+      continue
+    if not product_passes_source_rules(p, rules):
+      continue
+    if fit and not product_gender_compatible(p, fit.gender_target):
+      continue
+    out.append(p)
+    if len(out) >= limit:
+      break
+  return out
+
+
 def generate_outfits(
   db: Session,
   user: User,
@@ -210,8 +249,7 @@ def generate_outfits(
     db.flush()
 
   need = max(1, min(10, int(count)))
-  scored = generate_feed(db, user, limit=80)
-  products = [s.product for s in scored if s.product.id not in excluded]
+  products = _catalog_products_for_outfits(db, user, excluded=excluded, limit=200)
   buckets = _bucket_products(products, scenario_key)
   _extend_buckets(db, buckets, excluded=excluded, min_per_slot=need + 2)
 

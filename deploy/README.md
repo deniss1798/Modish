@@ -1,6 +1,48 @@
 # Деплой Modish (Alpha)
 
-## P1 — HTTPS
+## Первый запуск на VPS (с нуля)
+
+На сервере **нет** `/opt/modish` — его нужно создать и загрузить проект.
+
+### Шаг 1 — загрузить файлы с ПК (PowerShell)
+
+```powershell
+scp -r C:\Users\User\Desktop\modish\backend root@194.87.118.236:/opt/modish/
+scp -r C:\Users\User\Desktop\modish\deploy root@194.87.118.236:/opt/modish/
+scp C:\Users\User\Desktop\modish\deploy\setup-vps.sh root@194.87.118.236:/root/
+```
+
+### Шаг 2 — на сервере (SSH)
+
+```bash
+bash /root/setup-vps.sh
+```
+
+Скрипт установит Docker, создаст `.env`, поднимет PostgreSQL + API на **порту 80**.
+
+### Шаг 3 — проверка
+
+```bash
+curl http://127.0.0.1/health
+curl http://194.87.118.236/health
+```
+
+Должно вернуть: `{"status":"ok","database":"ok",...}`
+
+### Шаг 4 — импорт каталога
+
+В `backend/.env` задайте `ADMIN_CATALOG_TOKEN`, затем:
+
+```bash
+curl -X POST http://127.0.0.1/admin/catalog/alpha-bootstrap \
+  -H "Authorization: Bearer ВАШ_ADMIN_TOKEN"
+```
+
+Без каталога лента будет пустой («0 вещей»), но кнопка «Обновить» покажет понятное сообщение.
+
+---
+
+## P1 — HTTPS (когда будет домен)
 
 1. DNS: `api.YOUR_DOMAIN.com` → IP VPS.
 2. На сервере: `sudo apt install nginx certbot python3-certbot-nginx`

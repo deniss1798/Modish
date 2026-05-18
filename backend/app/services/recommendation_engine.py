@@ -348,6 +348,7 @@ def generate_feed(
   limit: int = 30,
   exclude_product_ids: set[str] | None = None,
   source: str | None = None,
+  max_to_score: int = 200,
 ) -> list[ScoredProduct]:
   exclude_product_ids = exclude_product_ids or set()
   min_price = 500
@@ -400,7 +401,24 @@ def generate_feed(
         continue
       filtered.append(p)
 
-  scored = [score_product(db, user, p) for p in filtered]
+  # Всё ещё пусто — только пол и базовое качество карточки (не блокируем ленту).
+  if not filtered and products:
+    from .catalog.rule_filters import product_gender_compatible
+
+    for p in products:
+      if not product_is_feed_eligible(p):
+        continue
+      if not product_passes_source_rules(p, rules_by_source):
+        continue
+      if fit and not product_gender_compatible(p, fit.gender_target):
+        continue
+      filtered.append(p)
+      if len(filtered) >= 500:
+        break
+
+  score_cap = max(30, min(400, int(max_to_score)))
+  score_pool = filtered[:score_cap]
+  scored = [score_product(db, user, p) for p in score_pool]
   scored.sort(key=lambda x: x.final_score, reverse=True)
   lim = max(1, min(100, int(limit)))
   top = scored[:lim]
