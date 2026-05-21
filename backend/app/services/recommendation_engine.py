@@ -9,9 +9,9 @@ from uuid import uuid4
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
-from ..catalog_normalize import normalize_category
+from ..catalog_normalize import normalize_category, product_gender_from_model
 from ..models import FitProfile, Product, RecommendationEventV2, StyleProfile, TasteProfile, User
-from .catalog.rule_filters import load_rules_by_source_id, product_passes_source_rules
+from .catalog.rule_filters import load_rules_by_source_id, product_gender_compatible, product_passes_source_rules
 from .catalog.catalog_quality import product_is_feed_eligible
 from .feed_filters import product_passes_hard_filters
 from ..schemas.photo_analysis import extract_analysis_section
@@ -169,6 +169,21 @@ def score_product(db: Session, user: User, product: Product) -> ScoredProduct:
   bd: dict[str, float] = {}
 
   score = 0.0
+
+  # gender_match — приоритет для персонализации
+  gender_match = 0.0
+  if fit and (fit.gender_target or "").strip().lower() in ("menswear", "womenswear"):
+    ug = fit.gender_target.strip().lower()
+    pg = product_gender_from_model(product)
+    if pg == ug:
+      gender_match = 18.0
+      reasons.append("Под ваш профиль")
+    elif pg == "unisex":
+      gender_match = 6.0
+    elif pg and pg != ug:
+      gender_match = -80.0
+  score += gender_match
+  bd["gender_match"] = gender_match
 
   # category_match
   cat_match = 0.0
@@ -401,16 +416,18 @@ def generate_feed(
         continue
       filtered.append(p)
 
-  # Всё ещё пусто — только пол и базовое качество карточки (не блокируем ленту).
-  if not filtered and products:
-    from .catalog.rule_filters import product_gender_compatible
+  # Всё ещё пусто — ослабляем бюджет/размер, пол и категории не трогаем.
+  if not filtered and products and fit:
+    from .feed_filters import product_passes_budget, product_passes_size
 
     for p in products:
       if not product_is_feed_eligible(p):
         continue
       if not product_passes_source_rules(p, rules_by_source):
         continue
-      if fit and not product_gender_compatible(p, fit.gender_target):
+      if not product_gender_compatible(p, fit.gender_target):
+        continue
+      if not product_passes_size(p, fit):
         continue
       filtered.append(p)
       if len(filtered) >= 500:

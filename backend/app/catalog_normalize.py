@@ -283,6 +283,45 @@ def normalize_gender_target(raw: str | None, *, title: str = "", category: str =
   return infer_gender_from_text(f"{title} {category}")
 
 
+_FEMALE_LEANING_CATEGORIES = frozenset({"платья", "юбки"})
+
+
+def resolve_product_gender(
+  *,
+  gender_target: str | None = None,
+  title: str = "",
+  category: str = "",
+  category_name: str = "",
+  merchant_category: str = "",
+) -> str | None:
+  """Определяет пол товара: поле gender_target → категория → текст."""
+  gt = normalize_gender_target(
+    gender_target,
+    title=title,
+    category=f"{category} {category_name}",
+  )
+  if gt in ("menswear", "womenswear", "unisex"):
+    return gt
+  for raw in (category, category_name, merchant_category):
+    c = normalize_category(str(raw or "").strip())
+    if c in _FEMALE_LEANING_CATEGORIES:
+      return "womenswear"
+  return infer_gender_from_text(
+    f"{title} {category} {category_name} {merchant_category}"
+  )
+
+
+def product_gender_from_model(product) -> str | None:
+  """Product ORM → resolved gender."""
+  return resolve_product_gender(
+    gender_target=getattr(product, "gender_target", None),
+    title=getattr(product, "title", "") or "",
+    category=getattr(product, "category", "") or "",
+    category_name=getattr(product, "category_name", "") or "",
+    merchant_category=getattr(product, "merchant_category", "") or "",
+  )
+
+
 def infer_gender_from_text(text: str) -> str | None:
   t = (text or "").lower()
   if not t.strip():

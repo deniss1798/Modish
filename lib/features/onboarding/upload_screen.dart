@@ -37,9 +37,10 @@ class _UploadScreenState extends State<UploadScreen> {
   final picker = ImagePicker();
   String? _localError;
   final _height = TextEditingController(text: '170');
+  final _weight = TextEditingController();
   final _size = TextEditingController(text: 'M');
   final _budgetMax = TextEditingController(text: '10000');
-  String _genderTarget = 'unisex';
+  String _genderTarget = 'menswear';
   final Set<String> _interestCategories = {};
   final Set<String> _styleScenarios = {};
 
@@ -47,11 +48,25 @@ class _UploadScreenState extends State<UploadScreen> {
   void initState() {
     super.initState();
     widget.controller.addListener(_onCtrl);
+    final f = widget.controller.fitProfile;
+    if (f.isNotEmpty) {
+      _height.text = '${f['height_cm'] ?? 170}';
+      final w = f['weight_kg'];
+      if (w != null) _weight.text = '$w';
+      _size.text = '${f['clothing_size'] ?? 'M'}';
+      _budgetMax.text = '${f['budget_max'] ?? 10000}';
+      final g = '${f['gender_target'] ?? 'menswear'}';
+      if (g == 'menswear' || g == 'womenswear') {
+        _genderTarget = g;
+        widget.controller.setStyleTarget(g);
+      }
+    }
   }
 
   @override
   void dispose() {
     _height.dispose();
+    _weight.dispose();
     _size.dispose();
     _budgetMax.dispose();
     widget.controller.removeListener(_onCtrl);
@@ -105,13 +120,19 @@ class _UploadScreenState extends State<UploadScreen> {
             ),
             const SizedBox(height: 24),
             const Text(
-              'Создадим ваш\nпервый стиль-профиль',
+              'Фото для AI-анализа (необязательно)',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Georgia',
-                fontSize: 42,
+                fontSize: 28,
                 color: AppColors.ink,
               ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Можно пропустить и сразу открыть ленту — параметры выше уже учтены',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.muted, fontSize: 13),
             ),
             const SizedBox(height: 20),
             SoftCard(
@@ -126,23 +147,24 @@ class _UploadScreenState extends State<UploadScreen> {
                   Wrap(
                     spacing: 10,
                     runSpacing: 10,
-                    children:
-                        const [
-                          ('menswear', 'Мужские вещи'),
-                          ('womenswear', 'Женские вещи'),
-                          ('unisex', 'Универсальные вещи'),
-                          ('unknown', 'Пока не знаю'),
-                        ].map((value) {
-                          final selected = c.styleTarget == value.$1;
-                          return ChoiceChip(
-                            label: Text(value.$2),
-                            selected: selected,
-                            onSelected: (_) => c.setStyleTarget(value.$1),
-                            selectedColor: AppColors.accent.withValues(
-                              alpha: .1,
-                            ),
-                          );
-                        }).toList(),
+                    children: const [
+                      ('menswear', 'Мужские вещи'),
+                      ('womenswear', 'Женские вещи'),
+                    ].map((value) {
+                      final selected = c.styleTarget == value.$1 ||
+                          _genderTarget == value.$1;
+                      return ChoiceChip(
+                        label: Text(value.$2),
+                        selected: selected,
+                        onSelected: (_) {
+                          c.setStyleTarget(value.$1);
+                          setState(() => _genderTarget = value.$1);
+                        },
+                        selectedColor: AppColors.accent.withValues(
+                          alpha: .1,
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ],
               ),
@@ -268,14 +290,23 @@ class _UploadScreenState extends State<UploadScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: TextField(
-                          controller: _size,
+                          controller: _weight,
+                          keyboardType: TextInputType.number,
                           decoration: const InputDecoration(
-                            labelText: 'Размер',
-                            prefixIcon: Icon(Icons.straighten),
+                            labelText: 'Вес (кг)',
+                            prefixIcon: Icon(Icons.monitor_weight_outlined),
                           ),
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _size,
+                    decoration: const InputDecoration(
+                      labelText: 'Размер одежды',
+                      prefixIcon: Icon(Icons.straighten),
+                    ),
                   ),
                   const SizedBox(height: 10),
                   TextField(
@@ -372,15 +403,17 @@ class _UploadScreenState extends State<UploadScreen> {
             ),
             const SizedBox(height: 14),
             PrimaryButton(
-              label: 'Начать анализ',
+              label: 'Начать анализ по фото',
               icon: Icons.auto_awesome,
               onPressed: c.photoPaths.isNotEmpty && !c.isLoading
                   ? () async {
                       final h = int.tryParse(_height.text.trim()) ?? 170;
+                      final wRaw = _weight.text.trim();
                       final bMax =
                           int.tryParse(_budgetMax.text.trim()) ?? 10000;
                       await c.updateFitProfile(
                         height: h,
+                        weight: wRaw.isEmpty ? null : int.tryParse(wRaw),
                         genderTarget: _genderTarget,
                         clothingSize: _size.text.trim().isEmpty
                             ? 'M'
@@ -393,6 +426,40 @@ class _UploadScreenState extends State<UploadScreen> {
                       await c.analyze();
                     }
                   : null,
+            ),
+            const SizedBox(height: 10),
+            SecondaryButton(
+              label: c.isLoading ? 'Подождите…' : 'В ленту без фото',
+              onPressed: c.isLoading
+                  ? null
+                  : () async {
+                      final h = int.tryParse(_height.text.trim()) ?? 170;
+                      final wRaw = _weight.text.trim();
+                      final bMax =
+                          int.tryParse(_budgetMax.text.trim()) ?? 10000;
+                      if (_genderTarget != 'menswear' &&
+                          _genderTarget != 'womenswear') {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Выберите мужское или женское'),
+                          ),
+                        );
+                        return;
+                      }
+                      await c.updateFitProfile(
+                        height: h,
+                        weight: wRaw.isEmpty ? null : int.tryParse(wRaw),
+                        genderTarget: _genderTarget,
+                        clothingSize: _size.text.trim().isEmpty
+                            ? 'M'
+                            : _size.text.trim(),
+                        budgetMin: 0,
+                        budgetMax: bMax,
+                        interestCategories: _interestCategories.toList(),
+                        styleScenarios: _styleScenarios.toList(),
+                      );
+                      await c.finishBasicOnboarding();
+                    },
             ),
             if (_localError != null) ...[
               const SizedBox(height: 12),

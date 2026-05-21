@@ -5,7 +5,7 @@ from collections import defaultdict
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ...catalog_normalize import normalize_category
+from ...catalog_normalize import infer_gender_from_text, product_gender_from_model, resolve_product_gender
 from ...models import Product, SourceRule
 
 
@@ -76,10 +76,57 @@ def product_passes_source_rules(product: Product, rules_by_source_id: dict[str, 
 
 
 def product_gender_compatible(product: Product, user_gender: str | None) -> bool:
-  """user_gender: fit_profiles.gender_target."""
-  if not user_gender or user_gender in ("unisex", "unknown"):
+  """user_gender: fit_profiles.gender_target (menswear / womenswear / unisex)."""
+  ug = (user_gender or "").strip().lower()
+  if not ug or ug in ("unisex", "unknown"):
     return True
-  gt = (product.gender_target or "").strip().lower()
-  if not gt or gt == "unisex":
+
+  pg = product_gender_from_model(product)
+  if pg == ug:
     return True
-  return gt == user_gender.strip().lower()
+  if pg == "unisex":
+    return True
+  if pg and pg != ug:
+    return False
+
+  # gender не задан в каталоге — эвристика по названию/категории
+  inferred = resolve_product_gender(
+    gender_target=None,
+    title=product.title or "",
+    category=product.category or "",
+    category_name=product.category_name or "",
+    merchant_category=product.merchant_category or "",
+  )
+  if inferred and inferred != "unisex" and inferred != ug:
+    return False
+
+  # Явные маркеры противоположного пола в названии
+  hay = f"{product.title or ''} {product.category_name or ''} {product.category or ''}".lower()
+  if ug == "menswear":
+    if any(h in hay for h in _FEMALE_ONLY_HAYSTACK):
+      return False
+  if ug == "womenswear":
+    if any(h in hay for h in _MALE_ONLY_HAYSTACK):
+      return False
+  return True
+
+
+_FEMALE_ONLY_HAYSTACK = (
+  "женск",
+  "для женщин",
+  "women",
+  "womens",
+  "ladies",
+  "платье",
+  "юбка",
+  "блуз",
+  "лиф",
+)
+
+_MALE_ONLY_HAYSTACK = (
+  "мужск",
+  "для мужчин",
+  " mens ",
+  "men's",
+  "menswear",
+)

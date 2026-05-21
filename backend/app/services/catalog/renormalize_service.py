@@ -4,12 +4,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ...catalog_normalize import (
-  infer_gender_from_text,
   infer_size_system,
   normalize_category,
-  normalize_gender_target,
   normalize_product_colors,
   normalize_sizes,
+  product_gender_from_model,
 )
 from ...models import Product
 from .catalog_quality import deactivate_ineligible_products
@@ -38,13 +37,7 @@ def renormalize_product_row(p: Product) -> bool:
     p.colors = colors
     changed = True
 
-  gt = normalize_gender_target(
-    p.gender_target,
-    title=p.title or "",
-    category=f"{p.category_name or ''} {p.category or ''}",
-  )
-  if not gt:
-    gt = infer_gender_from_text(f"{p.title} {p.brand} {p.category_name} {p.description or ''}")
+  gt = product_gender_from_model(p)
   if gt and gt != (p.gender_target or ""):
     p.gender_target = gt
     changed = True

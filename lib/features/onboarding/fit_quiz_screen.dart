@@ -4,7 +4,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/modish_widgets.dart';
 
-/// P4: параметры до регистрации — применяются к fit-profile после входа.
+/// Базовый онбординг до регистрации — пол, размер, бюджет (без фото).
 class FitQuizScreen extends StatefulWidget {
   const FitQuizScreen({super.key, required this.controller});
   final AppController controller;
@@ -14,8 +14,10 @@ class FitQuizScreen extends StatefulWidget {
 }
 
 class _FitQuizScreenState extends State<FitQuizScreen> {
-  String _gender = 'unisex';
+  String _gender = 'menswear';
   String _size = 'M';
+  final _height = TextEditingController(text: '170');
+  final _weight = TextEditingController();
   final _budgetMax = TextEditingController(text: '10000');
   final Set<String> _categories = {};
   final Set<String> _styles = {};
@@ -31,25 +33,37 @@ class _FitQuizScreenState extends State<FitQuizScreen> {
   };
 
   static const _stylePrefs = {
-    'minimal': 'Минимализм',
-    'classic': 'Классика',
-    'street': 'Стрит',
-    'smart_casual': 'Smart casual',
+    'daily': 'Каждый день',
+    'office': 'В офис',
+    'evening': 'Вечер',
   };
 
   @override
   void dispose() {
+    _height.dispose();
+    _weight.dispose();
     _budgetMax.dispose();
     super.dispose();
   }
 
   void _continue() {
+    if (_gender != 'menswear' && _gender != 'womenswear') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Выберите «Мужское» или «Женское» — иначе лента будет случайной'),
+        ),
+      );
+      return;
+    }
     final bMax = int.tryParse(_budgetMax.text.trim()) ?? 10000;
+    final wRaw = _weight.text.trim();
     widget.controller.setPendingFitPrefs(
       genderTarget: _gender,
       clothingSize: _size,
       budgetMin: 0,
       budgetMax: bMax,
+      height: int.tryParse(_height.text.trim()) ?? 170,
+      weight: wRaw.isEmpty ? null : int.tryParse(wRaw),
       interestCategories: _categories.toList(),
       styleScenarios: _styles.toList(),
     );
@@ -68,7 +82,7 @@ class _FitQuizScreenState extends State<FitQuizScreen> {
             Text('Ваш профиль', style: AppTextStyles.display.copyWith(fontSize: 28)),
             const SizedBox(height: 8),
             Text(
-              'Ответы сразу влияют на подборку в ленте',
+              'Подборка строится по полу, размеру и бюджету. Фото — позже, по желанию.',
               style: AppTextStyles.bodyMuted,
             ),
             const SizedBox(height: 20),
@@ -77,16 +91,37 @@ class _FitQuizScreenState extends State<FitQuizScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text('Пол', style: AppTextStyles.sectionTitle),
+                  const SizedBox(height: 4),
+                  Text('Обязательно', style: AppTextStyles.caption),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     children: [
                       _genderChip('menswear', 'Мужское'),
                       _genderChip('womenswear', 'Женское'),
-                      _genderChip('unisex', 'Универсальное'),
                     ],
                   ),
                   const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _height,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'Рост (см)'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: _weight,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'Вес (кг)'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
                   const Text('Размер', style: AppTextStyles.sectionTitle),
                   const SizedBox(height: 8),
                   Wrap(
@@ -113,7 +148,7 @@ class _FitQuizScreenState extends State<FitQuizScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text('Категории', style: AppTextStyles.sectionTitle),
+                  const Text('Категории (необязательно)', style: AppTextStyles.sectionTitle),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
@@ -134,7 +169,7 @@ class _FitQuizScreenState extends State<FitQuizScreen> {
                     }).toList(),
                   ),
                   const SizedBox(height: 12),
-                  const Text('Стиль', style: AppTextStyles.sectionTitle),
+                  const Text('Сценарии (необязательно)', style: AppTextStyles.sectionTitle),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
@@ -159,11 +194,6 @@ class _FitQuizScreenState extends State<FitQuizScreen> {
             ),
             const SizedBox(height: 20),
             PrimaryButton(label: 'Продолжить', onPressed: _continue),
-            const SizedBox(height: 10),
-            TextButton(
-              onPressed: () => widget.controller.goToAuth(registerMode: true),
-              child: const Text('Пропустить', style: TextStyle(color: AppColors.muted)),
-            ),
           ],
         ),
       ),

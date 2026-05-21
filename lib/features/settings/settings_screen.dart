@@ -3,6 +3,7 @@ import '../../app.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/modish_widgets.dart';
+import '../profile/edit_profile_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key, required this.controller});
@@ -26,7 +27,19 @@ class SettingsScreen extends StatelessWidget {
           SoftCard(
             child: Column(
               children: [
-                MenuTile(icon: Icons.person_outline, title: 'Личные данные', subtitle: controller.email, onTap: () {}),
+                MenuTile(
+                  icon: Icons.tune,
+                  title: 'Параметры подборки',
+                  subtitle: 'Рост, вес, пол, размер, бюджет',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => EditProfileScreen(controller: controller),
+                    ),
+                  ),
+                ),
+                const Divider(color: AppColors.line),
+                MenuTile(icon: Icons.person_outline, title: 'Email', subtitle: controller.email, onTap: () {}),
                 const Divider(color: AppColors.line),
                 MenuTile(icon: Icons.lock_outline, title: 'Безопасность', onTap: () {}),
               ],

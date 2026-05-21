@@ -1,7 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../app.dart';
-import 'package:flutter/foundation.dart';
-
 import '../../core/network/api_client.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -39,17 +38,25 @@ class _AuthScreenState extends State<AuthScreen> {
     return MobileViewport(
       child: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
           children: [
-            Align(
+            IconButton(
               alignment: Alignment.centerLeft,
-              child: IconButton(
-                onPressed: () => c.goToWelcome(),
-                icon: const Icon(Icons.arrow_back),
-              ),
+              onPressed: () => c.goToWelcome(),
+              icon: const Icon(Icons.arrow_back),
             ),
-            const SizedBox(height: 20),
-            const Center(child: Brand(width: 180)),
+            const SizedBox(height: 8),
+            Text(
+              registerMode ? 'Создайте аккаунт' : 'С возвращением',
+              style: AppTextStyles.displaySm.copyWith(fontSize: 28),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              registerMode
+                  ? 'Сохраним ваш стиль и подборки'
+                  : 'Войдите, чтобы продолжить подбор',
+              style: AppTextStyles.bodyMuted,
+            ),
             const SizedBox(height: 28),
             Container(
               height: 44,
@@ -74,38 +81,30 @@ class _AuthScreenState extends State<AuthScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 26),
+            const SizedBox(height: 24),
             ModishTextField(
               label: 'Email',
               controller: email,
-              hint: 'Введите ваш email',
+              hint: 'you@email.com',
               icon: Icons.mail_outline,
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
             ModishTextField(
               label: 'Пароль',
               controller: password,
               obscure: true,
-              hint: 'Введите пароль',
+              hint: 'Минимум 8 символов',
               icon: Icons.lock_outline,
             ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () => _soon(context),
-                child: const Text(
-                  'Забыли пароль?',
-                  style: TextStyle(color: AppColors.muted, fontSize: 12),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             PrimaryButton(
-              label: c.isLoading ? 'Подождите...' : 'Продолжить',
+              label: c.isLoading
+                  ? 'Подождите...'
+                  : (registerMode ? 'Создать аккаунт' : 'Войти'),
               onPressed: c.isLoading
                   ? null
                   : () async {
-                      c.email = email.text;
+                      c.email = email.text.trim();
                       if (registerMode) {
                         await c.register(password.text);
                       } else {
@@ -113,66 +112,33 @@ class _AuthScreenState extends State<AuthScreen> {
                       }
                     },
             ),
-            if (kDebugMode || !ApiClient.isLikelyEmulatorOnlyUrl) ...[
-              const SizedBox(height: 8),
+            if (kDebugMode) ...[
+              const SizedBox(height: 10),
               Text(
-                'Сервер: ${ApiClient.resolvedBaseUrl()}',
+                'API: ${ApiClient.resolvedBaseUrl()}',
                 style: AppTextStyles.caption,
               ),
             ],
             if (c.error != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                c.error!,
-                style: const TextStyle(color: AppColors.error, height: 1.35),
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.error.withValues(alpha: 0.35)),
+                ),
+                child: Text(
+                  c.error!,
+                  style: const TextStyle(color: AppColors.error, height: 1.35, fontSize: 13),
+                ),
               ),
             ],
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                const Expanded(child: Divider(color: AppColors.line)),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Text(
-                    'или продолжить через',
-                    style: AppTextStyles.caption,
-                  ),
-                ),
-                const Expanded(child: Divider(color: AppColors.line)),
-              ],
-            ),
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                Expanded(
-                  child: SocialButton(
-                    label: 'Apple',
-                    icon: Icons.apple,
-                    onPressed: () => _soon(context),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: SocialButton(
-                    label: 'Google',
-                    icon: Icons.g_mobiledata,
-                    onPressed: () => _soon(context),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: SocialButton(
-                    label: 'Email',
-                    icon: Icons.mail_outline,
-                    onPressed: () => _soon(context),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             Center(
               child: Text(
-                'Продолжая, вы соглашаетесь\nс Условиями и Политикой конфиденциальности',
+                'Продолжая, вы соглашаетесь с Условиями и Политикой конфиденциальности',
                 textAlign: TextAlign.center,
                 style: AppTextStyles.caption,
               ),
@@ -182,12 +148,6 @@ class _AuthScreenState extends State<AuthScreen> {
       ),
     );
   }
-}
-
-void _soon(BuildContext context) {
-  ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(const SnackBar(content: Text('Скоро подключим')));
 }
 
 class _AuthTab extends StatelessWidget {

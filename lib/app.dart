@@ -35,6 +35,12 @@ bool _profileHasAnalysis(Map<String, dynamic> pj) {
       pj.containsKey('summary');
 }
 
+/// Базовый профиль для ленты: указан мужской или женский пол.
+bool _fitProfileReady(Map<String, dynamic> fit) {
+  final g = '${fit['gender_target'] ?? ''}'.trim().toLowerCase();
+  return g == 'menswear' || g == 'womenswear';
+}
+
 class ModishBootstrap extends StatefulWidget {
   const ModishBootstrap({super.key});
 
@@ -271,19 +277,35 @@ class AppController extends ChangeNotifier {
           onTimeout: () => throw TimeoutException('usersMe'),
         );
         email = '${me['email'] ?? email}';
-        final profile = await api.styleProfileMe().timeout(
-          const Duration(seconds: 10),
-          onTimeout: () => throw TimeoutException('styleProfileMe'),
-        );
-        final raw = profile['profile_json'];
-        final rawMap = raw is Map ? Map<String, dynamic>.from(raw) : null;
-        final analyzed =
-            rawMap != null && rawMap.isNotEmpty && _profileHasAnalysis(rawMap);
+        try {
+          fitProfile = await api.fitProfileMe().timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => throw TimeoutException('fitProfileMe'),
+          );
+        } catch (_) {
+          fitProfile = {};
+        }
+        var styleAnalyzed = false;
+        try {
+          final profile = await api.styleProfileMe().timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => throw TimeoutException('styleProfileMe'),
+          );
+          final raw = profile['profile_json'];
+          final rawMap = raw is Map ? Map<String, dynamic>.from(raw) : null;
+          styleAnalyzed =
+              rawMap != null && rawMap.isNotEmpty && _profileHasAnalysis(rawMap);
+        } catch (_) {
+          styleAnalyzed = false;
+        }
         await refreshRemoteData().timeout(
           const Duration(seconds: 25),
           onTimeout: () => throw TimeoutException('refresh'),
         );
-        stage = analyzed ? AppStage.home : AppStage.upload;
+        stage = _fitProfileReady(fitProfile) || styleAnalyzed
+            ? AppStage.home
+            : AppStage.upload;
+        tab = 0;
         notifyListeners();
         return;
       }
@@ -317,21 +339,30 @@ class AppController extends ChangeNotifier {
   Future<void> _routeAfterAuth() async {
     await applyPendingFitPrefsIfAny();
     try {
-      final profile = await api.styleProfileMe();
-      final raw = profile['profile_json'];
-      final rawMap = raw is Map ? Map<String, dynamic>.from(raw) : null;
-      final analyzed =
-          rawMap != null && rawMap.isNotEmpty && _profileHasAnalysis(rawMap);
-      if (analyzed) {
-        await refreshRemoteData();
-        stage = AppStage.home;
-        tab = 0;
-      } else {
-        stage = AppStage.upload;
-      }
+      fitProfile = await api.fitProfileMe();
     } catch (_) {
+      fitProfile = {};
+    }
+    await refreshRemoteData();
+    if (_fitProfileReady(fitProfile)) {
+      stage = AppStage.home;
+      tab = 0;
+    } else {
       stage = AppStage.upload;
     }
+    notifyListeners();
+  }
+
+  /// Лента без фото-анализа (базовый онбординг).
+  Future<void> finishBasicOnboarding() async {
+    await _run(() async {
+      if (!_fitProfileReady(fitProfile)) {
+        throw Exception('Укажите пол и параметры в профиле');
+      }
+      await refreshRemoteData();
+      stage = AppStage.home;
+      tab = 0;
+    });
   }
 
   void goToWelcome() {
@@ -354,6 +385,8 @@ class AppController extends ChangeNotifier {
     required String clothingSize,
     required int budgetMin,
     required int budgetMax,
+    int height = 170,
+    int? weight,
     List<String> interestCategories = const [],
     List<String> styleScenarios = const [],
   }) {
@@ -362,6 +395,8 @@ class AppController extends ChangeNotifier {
       'clothing_size': clothingSize,
       'budget_min': budgetMin,
       'budget_max': budgetMax,
+      'height': height,
+      'weight': weight,
       'interest_categories': interestCategories,
       'style_scenarios': styleScenarios,
     };
@@ -373,9 +408,10 @@ class AppController extends ChangeNotifier {
     final p = pendingFitPrefs;
     if (p == null || token == null) return;
     try {
-      await api.fitProfilePatch(
-        height: 170,
-        genderTarget: '${p['gender_target'] ?? 'unisex'}',
+      fitProfile = await api.fitProfilePatch(
+        height: (p['height'] as num?)?.toInt() ?? 170,
+        weight: (p['weight'] as num?)?.toInt(),
+        genderTarget: '${p['gender_target'] ?? 'menswear'}',
         clothingSize: '${p['clothing_size'] ?? 'M'}',
         budgetMin: (p['budget_min'] as num?)?.toInt() ?? 0,
         budgetMax: (p['budget_max'] as num?)?.toInt() ?? 10000,
@@ -409,6 +445,12 @@ class AppController extends ChangeNotifier {
 
   Future<void> register(String password) async {
     await _run(() async {
+      if (!await api.pingHealth()) {
+        throw Exception(
+          'Сервер не отвечает на ${ApiClient.resolvedBaseUrl()}/health. '
+          'Откройте этот адрес в браузере телефона.',
+        );
+      }
       final t = await api.register(email, password);
       token = t;
       if (!await TokenStorage.write(t)) {
@@ -423,6 +465,12 @@ class AppController extends ChangeNotifier {
 
   Future<void> login(String password) async {
     await _run(() async {
+      if (!await api.pingHealth()) {
+        throw Exception(
+          'Сервер не отвечает на ${ApiClient.resolvedBaseUrl()}/health. '
+          'Откройте этот адрес в браузере телефона.',
+        );
+      }
       final t = await api.login(email, password);
       token = t;
       if (!await TokenStorage.write(t)) {
@@ -612,12 +660,14 @@ class AppController extends ChangeNotifier {
   }
 
   void exitUploadFlow() {
-    // UploadScreen может быть корневым экраном (stage switch),
-    // поэтому Navigator.pop() не сработает. Возвращаем пользователя в Home/Profile,
-    // если он уже авторизован; иначе — на Auth.
     if (token != null && token!.isNotEmpty) {
-      stage = AppStage.home;
-      tab = 3; // Профиль
+      if (_fitProfileReady(fitProfile)) {
+        stage = AppStage.home;
+        tab = 0;
+      } else {
+        stage = AppStage.home;
+        tab = 3;
+      }
     } else {
       stage = AppStage.welcome;
     }
@@ -902,7 +952,10 @@ class HomeScreen extends StatelessWidget {
         return MobileViewport(
           child: Scaffold(
             backgroundColor: Colors.transparent,
-            body: pages[controller.tab],
+            body: IndexedStack(
+              index: controller.tab,
+              children: pages,
+            ),
             bottomNavigationBar: ModishBottomNav(
               index: controller.tab,
               onChanged: controller.setTab,

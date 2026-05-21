@@ -364,9 +364,9 @@ class ModishBottomNav extends StatelessWidget {
   final ValueChanged<int> onChanged;
 
   static const _items = [
-    (Icons.home_outlined, Icons.home, 'Подборка'),
-    (Icons.style_outlined, Icons.style, 'Образы'),
-    (Icons.bookmark_border, Icons.bookmark, 'Сохраненное'),
+    (Icons.swipe_outlined, Icons.swipe, 'Лента'),
+    (Icons.checkroom_outlined, Icons.checkroom, 'Образы'),
+    (Icons.bookmark_border, Icons.bookmark, 'Сохранено'),
     (Icons.person_outline, Icons.person, 'Профиль'),
   ];
 
@@ -374,50 +374,212 @@ class ModishBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: AppColors.card,
+        color: AppColors.bg,
         border: Border(top: BorderSide(color: AppColors.line)),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x33000000),
-            blurRadius: 12,
-            offset: Offset(0, -4),
-          ),
-        ],
       ),
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 5),
+          padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
           child: Row(
             children: List.generate(_items.length, (i) {
               final item = _items[i];
               final on = i == index;
               return Expanded(
-                child: InkWell(
-                  onTap: () => onChanged(i),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        on ? item.$2 : item.$1,
-                        color: on ? AppColors.accent : AppColors.muted,
-                        size: 22,
+                child: Material(
+                  color: on ? AppColors.card : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  child: InkWell(
+                    onTap: () => onChanged(i),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            on ? item.$2 : item.$1,
+                            color: on ? AppColors.accent : AppColors.muted,
+                            size: 22,
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            item.$3,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: on ? FontWeight.w700 : FontWeight.w500,
+                              color: on ? AppColors.accent : AppColors.muted,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        item.$3,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: on ? FontWeight.w600 : FontWeight.w400,
-                          color: on ? AppColors.accent : AppColors.muted,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               );
             }),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Пустое состояние — единый стиль по приложению.
+class EmptyState extends StatelessWidget {
+  const EmptyState({
+    super.key,
+    required this.title,
+    this.message,
+    this.icon = Icons.inbox_outlined,
+    this.actionLabel,
+    this.onAction,
+    this.busy = false,
+  });
+
+  final String title;
+  final String? message;
+  final IconData icon;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) {
+    return SoftCard(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 40, color: AppColors.accent.withValues(alpha: 0.85)),
+          const SizedBox(height: 14),
+          Text(title, style: AppTextStyles.sectionTitle, textAlign: TextAlign.center),
+          if (message != null && message!.trim().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              message!,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodyMuted,
+            ),
+          ],
+          if (actionLabel != null) ...[
+            const SizedBox(height: 18),
+            PrimaryButton(
+              label: busy ? 'Загрузка…' : actionLabel!,
+              expanded: false,
+              onPressed: busy ? null : onAction,
+            ),
+          ],
+          if (busy) ...[
+            const SizedBox(height: 14),
+            const SizedBox(
+              width: 26,
+              height: 26,
+              child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.accent),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Кнопки действий ленты (пропуск / сохранить / лайк).
+class FeedActionBar extends StatelessWidget {
+  const FeedActionBar({
+    super.key,
+    required this.onSkip,
+    required this.onSave,
+    required this.onOpen,
+    required this.onLike,
+  });
+
+  final VoidCallback onSkip;
+  final VoidCallback onSave;
+  final VoidCallback onOpen;
+  final VoidCallback onLike;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _FeedAction(
+            icon: Icons.close_rounded,
+            label: 'Пропуск',
+            color: AppColors.muted,
+            onTap: onSkip,
+          ),
+          _FeedAction(
+            icon: Icons.bookmark_border_rounded,
+            label: 'Сохранить',
+            color: AppColors.accentSoft,
+            onTap: onSave,
+          ),
+          _FeedAction(
+            icon: Icons.open_in_new_rounded,
+            label: 'Подробнее',
+            color: AppColors.accent,
+            onTap: onOpen,
+            highlight: true,
+          ),
+          _FeedAction(
+            icon: Icons.favorite_border_rounded,
+            label: 'Нравится',
+            color: AppColors.success,
+            onTap: onLike,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FeedAction extends StatelessWidget {
+  const _FeedAction({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+    this.highlight = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  final bool highlight;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: highlight ? 54 : 48,
+              height: highlight ? 54 : 48,
+              decoration: BoxDecoration(
+                color: highlight ? AppColors.accent : AppColors.card,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: highlight ? AppColors.accent : AppColors.line,
+                ),
+              ),
+              child: Icon(
+                icon,
+                color: highlight ? AppColors.onAccent : color,
+                size: highlight ? 24 : 22,
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(label, style: AppTextStyles.caption.copyWith(fontSize: 10)),
+          ],
         ),
       ),
     );

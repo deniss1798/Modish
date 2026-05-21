@@ -71,16 +71,32 @@ class _FeedScreenState extends State<FeedScreen> {
 
     return Column(
       children: [
-        ScreenHeader(
-          showBrand: true,
-          title: 'Подборка для вас',
-          subtitle:
-              'Сегодня подобрали ${controller.filteredProductFeed.length} вещей',
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 12, 4),
+          child: Row(
             children: [
+              const GoldWordmark(fontSize: 26),
+              const Spacer(),
+              if (controller.filteredProductFeed.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.line),
+                  ),
+                  child: Text(
+                    '${controller.filteredProductFeed.length}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.accent,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
               IconButton(
-                icon: const Icon(Icons.search),
+                tooltip: 'Поиск',
+                icon: const Icon(Icons.search, size: 22),
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -89,7 +105,12 @@ class _FeedScreenState extends State<FeedScreen> {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.tune),
+                tooltip: 'Фильтры',
+                icon: Badge(
+                  isLabelVisible: _hasActiveFilters(controller),
+                  smallSize: 8,
+                  child: const Icon(Icons.tune, size: 22),
+                ),
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -100,6 +121,17 @@ class _FeedScreenState extends State<FeedScreen> {
             ],
           ),
         ),
+        if (card != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 6),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Свайп вправо — нравится · влево — пропуск',
+                style: AppTextStyles.caption.copyWith(fontSize: 10),
+              ),
+            ),
+          ),
         Expanded(
           child: RefreshIndicator(
             color: AppColors.accent,
@@ -176,68 +208,22 @@ class _FeedScreenState extends State<FeedScreen> {
           ),
         ],
         if (card != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _ActionBtn(
-                  icon: Icons.close,
-                  onTap: () => controller.sendProductEvent(
-                    context,
-                    card.product.id,
-                    'skip',
-                  ),
-                ),
-                _ActionBtn(
-                  icon: Icons.bookmark_border,
-                  onTap: () => controller.sendProductEvent(
-                    context,
-                    card.product.id,
-                    'save',
-                  ),
-                ),
-                _ActionBtn(
-                  icon: Icons.info_outline,
-                  onTap: () => _openProduct(context, card, controller),
-                ),
-                _ActionBtn(
-                  icon: Icons.favorite_border,
-                  onTap: () => controller.sendProductEvent(
-                    context,
-                    card.product.id,
-                    'like',
-                  ),
-                ),
-              ],
-            ),
+          FeedActionBar(
+            onSkip: () => controller.sendProductEvent(context, card.product.id, 'skip'),
+            onSave: () => controller.sendProductEvent(context, card.product.id, 'save'),
+            onOpen: () => _openProduct(context, card, controller),
+            onLike: () => controller.sendProductEvent(context, card.product.id, 'like'),
           ),
       ],
     );
   }
 }
 
-class _ActionBtn extends StatelessWidget {
-  const _ActionBtn({required this.icon, required this.onTap});
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.card,
-      borderRadius: BorderRadius.circular(24),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(24),
-        child: SizedBox(
-          width: 52,
-          height: 46,
-          child: Icon(icon, color: AppColors.accent, size: 22),
-        ),
-      ),
-    );
-  }
+bool _hasActiveFilters(AppController c) {
+  return c.feedMinPrice != null ||
+      c.feedMaxPrice != null ||
+      c.feedFilterSizes.isNotEmpty ||
+      c.feedFilterColors.isNotEmpty;
 }
 
 class _EmptyFeed extends StatelessWidget {
@@ -253,44 +239,15 @@ class _EmptyFeed extends StatelessWidget {
     final err = controller.productFeedError?.trim();
     final busy = controller.feedRefreshing || controller.isLoading;
     return Center(
-      child: SoftCard(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              err != null && err.isNotEmpty
-                  ? 'Не удалось загрузить ленту'
-                  : 'Карточек пока нет',
-              style: AppTextStyles.sectionTitle,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              err != null && err.isNotEmpty
-                  ? err
-                  : 'Импортируйте каталог на сервере или нажмите «Обновить».',
-              textAlign: TextAlign.center,
-              style: AppTextStyles.bodyMuted,
-            ),
-            const SizedBox(height: 18),
-            PrimaryButton(
-              label: busy ? 'Загрузка…' : 'Обновить',
-              icon: busy ? null : Icons.refresh,
-              expanded: false,
-              onPressed: busy ? null : onRefresh,
-            ),
-            if (busy) ...[
-              const SizedBox(height: 14),
-              const SizedBox(
-                width: 28,
-                height: 28,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: AppColors.accent,
-                ),
-              ),
-            ],
-          ],
-        ),
+      child: EmptyState(
+        icon: err != null && err.isNotEmpty ? Icons.cloud_off_outlined : Icons.style_outlined,
+        title: err != null && err.isNotEmpty ? 'Не удалось загрузить' : 'Пока пусто',
+        message: err != null && err.isNotEmpty
+            ? err
+            : 'Подтянем вещи с сервера или подберём после импорта каталога.',
+        actionLabel: 'Обновить',
+        busy: busy,
+        onAction: busy ? null : onRefresh,
       ),
     );
   }
@@ -512,15 +469,6 @@ class _ProductCardView extends StatelessWidget {
                     borderRadius: radius,
                   ),
                 ),
-                Positioned(
-                  top: 10,
-                  right: 10,
-                  child: _RoundIcon(
-                    icon: Icons.favorite_border,
-                    onTap: () =>
-                        controller.sendProductEvent(context, p.id, 'like'),
-                  ),
-                ),
               ],
             ),
           ),
@@ -622,29 +570,6 @@ class _ProductCardView extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _RoundIcon extends StatelessWidget {
-  const _RoundIcon({required this.icon, required this.onTap});
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.card.withValues(alpha: 0.92),
-      shape: const CircleBorder(side: BorderSide(color: AppColors.line)),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: SizedBox(
-          width: 40,
-          height: 40,
-          child: Icon(icon, size: 20, color: AppColors.accent),
-        ),
       ),
     );
   }

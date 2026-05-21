@@ -6,6 +6,7 @@ import '../../core/widgets/modish_widgets.dart';
 import '../catalog/brands_screen.dart';
 import '../settings/settings_screen.dart';
 import '../subscription/plus_screen.dart';
+import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key, required this.controller});
@@ -26,8 +27,7 @@ class ProfileScreen extends StatelessWidget {
     final name = controller.email.split('@').first;
 
     final feedCount = controller.productFeed.length;
-    final savedCount = controller.savedProductRows.length + controller.savedRows.length;
-    final viewsCount = controller.productFeed.length;
+    final savedCount = controller.savedProductRows.length + controller.savedOutfits.length;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
@@ -73,9 +73,9 @@ class ProfileScreen extends StatelessWidget {
         SoftCard(
           child: Row(
             children: [
-              StatTile(value: '$feedCount', label: 'Подборки'),
+              StatTile(value: '$feedCount', label: 'В ленте'),
               StatTile(value: '$savedCount', label: 'Сохранено'),
-              StatTile(value: '$viewsCount', label: 'Просмотры'),
+              StatTile(value: '${controller.outfits.length}', label: 'Образов'),
             ],
           ),
         ),
@@ -90,9 +90,17 @@ class ProfileScreen extends StatelessWidget {
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
-                children: (suitableColors.isEmpty ? ['Бежевый', 'Чёрный', 'Белый'] : suitableColors.take(5)).map((c) {
-                  return Chip(label: Text(c), backgroundColor: AppColors.chipBg, side: BorderSide.none);
-                }).toList(),
+                children: suitableColors.isEmpty
+                    ? [
+                        Chip(
+                          label: const Text('Пройдите анализ фото'),
+                          backgroundColor: AppColors.chipBg,
+                          side: BorderSide.none,
+                        ),
+                      ]
+                    : suitableColors.take(5).map((c) {
+                        return Chip(label: Text(c), backgroundColor: AppColors.chipBg, side: BorderSide.none);
+                      }).toList(),
               ),
               const SizedBox(height: 14),
               Text('Предпочтения', style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w600)),
@@ -119,6 +127,18 @@ class ProfileScreen extends StatelessWidget {
         SoftCard(
           child: Column(
             children: [
+              MenuTile(
+                icon: Icons.tune,
+                title: 'Параметры подборки',
+                subtitle: 'Рост, вес, пол, размер, бюджет',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => EditProfileScreen(controller: controller),
+                  ),
+                ),
+              ),
+              const Divider(color: AppColors.line),
               MenuTile(
                 icon: Icons.style_outlined,
                 title: 'Мои образы',
@@ -167,7 +187,8 @@ class ProfileScreen extends StatelessWidget {
               const Divider(color: AppColors.line),
               MenuTile(
                 icon: Icons.auto_awesome_outlined,
-                title: 'Обновить фото-анализ',
+                title: 'Анализ по фото (дополнительно)',
+                subtitle: 'Улучшит цвета и стиль',
                 onTap: controller.isLoading ? null : controller.goToReanalyze,
               ),
             ],

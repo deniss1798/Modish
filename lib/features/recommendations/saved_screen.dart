@@ -8,7 +8,7 @@ import '../outfits/outfit_detail_screen.dart';
 import '../products/models.dart' as prod;
 import '../products/product_detail_screen.dart';
 
-enum _SavedFilter { all, products, looks, collections }
+enum _SavedFilter { all, products, looks }
 
 class SavedScreen extends StatefulWidget {
   const SavedScreen({super.key, required this.controller});
@@ -42,7 +42,10 @@ class _SavedScreenState extends State<SavedScreen> {
     return ListView(
       padding: const EdgeInsets.only(bottom: 20),
       children: [
-        const ScreenHeader(title: 'Сохраненное'),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
+          child: Text('Сохранённое', style: AppTextStyles.screenTitle),
+        ),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -63,11 +66,6 @@ class _SavedScreenState extends State<SavedScreen> {
                 selected: _filter == _SavedFilter.looks,
                 onTap: () => setState(() => _filter = _SavedFilter.looks),
               ),
-              ModishChip(
-                label: 'Коллекции',
-                selected: _filter == _SavedFilter.collections,
-                onTap: () => setState(() => _filter = _SavedFilter.collections),
-              ),
             ],
           ),
         ),
@@ -76,8 +74,6 @@ class _SavedScreenState extends State<SavedScreen> {
           _SavedProducts(controller: c),
         if (_filter == _SavedFilter.all || _filter == _SavedFilter.looks)
           _SavedOutfits(controller: c),
-        if (_filter == _SavedFilter.all || _filter == _SavedFilter.collections)
-          _SavedCollections(controller: c),
       ],
     );
   }
@@ -93,8 +89,10 @@ class _SavedProducts extends StatelessWidget {
     if (rows.isEmpty) {
       return const Padding(
         padding: EdgeInsets.all(20),
-        child: SoftCard(
-          child: Text('Сохранённых товаров пока нет', style: AppTextStyles.bodyMuted),
+        child: EmptyState(
+          icon: Icons.bookmark_border,
+          title: 'Нет сохранённых товаров',
+          message: 'Нажмите «Сохранить» на карточке в ленте',
         ),
       );
     }
@@ -186,7 +184,16 @@ class _SavedOutfits extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final outfits = controller.savedOutfits;
-    if (outfits.isEmpty) return const SizedBox.shrink();
+    if (outfits.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(20),
+        child: EmptyState(
+          icon: Icons.checkroom_outlined,
+          title: 'Нет сохранённых образов',
+          message: 'Сохраните понравившийся лук на экране «Образы»',
+        ),
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -252,78 +259,6 @@ class _SavedOutfits extends StatelessWidget {
                     onPressed: controller.isLoading
                         ? null
                         : () => controller.unsaveOutfit('${o['id']}'),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }),
-      ],
-    );
-  }
-}
-
-class _SavedCollections extends StatelessWidget {
-  const _SavedCollections({required this.controller});
-  final AppController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    final groups = <String, List<prod.Product>>{};
-    for (final row in controller.savedProductRows) {
-      final p = row['product'];
-      if (p is! Map) continue;
-      final product = prod.Product.fromApi(Map<String, dynamic>.from(p));
-      final key = (product.categoryName ?? product.category).trim();
-      if (key.isEmpty) continue;
-      groups.putIfAbsent(key, () => []).add(product);
-    }
-    if (groups.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(20),
-        child: SoftCard(
-          child: Text(
-            'Коллекции появятся, когда вы сохраните несколько товаров одной категории.',
-            style: AppTextStyles.bodyMuted,
-          ),
-        ),
-      );
-    }
-    final entries = groups.entries.toList()..sort((a, b) => b.value.length.compareTo(a.value.length));
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(20, 8, 20, 8),
-          child: Text('Коллекции', style: AppTextStyles.sectionTitle),
-        ),
-        ...entries.take(6).map((e) {
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-            child: SoftCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(e.key, style: AppTextStyles.displaySm.copyWith(fontSize: 18)),
-                  Text('${e.value.length} вещей', style: AppTextStyles.bodyMuted),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 88,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: e.value.length.clamp(0, 8),
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(width: 8),
-                      itemBuilder: (context, i) {
-                        return SizedBox(
-                          width: 72,
-                          child: ProductFillImage(
-                            imageUrl: e.value[i].imageUrl,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        );
-                      },
-                    ),
                   ),
                 ],
               ),

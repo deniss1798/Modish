@@ -6,7 +6,7 @@ import '../../core/widgets/modish_widgets.dart';
 import '../../core/widgets/product_image.dart';
 import 'outfit_detail_screen.dart';
 
-enum _OutfitScenario { all, daily, office, evening, casual, minimal }
+enum _OutfitScenario { all, daily, office, evening }
 
 String _scenarioLabel(String key) {
   return switch (key.toLowerCase()) {
@@ -49,8 +49,6 @@ class _OutfitsScreenState extends State<OutfitsScreen> {
         _OutfitScenario.daily => 'daily',
         _OutfitScenario.office => 'office',
         _OutfitScenario.evening => 'evening',
-        _OutfitScenario.casual => 'casual',
-        _OutfitScenario.minimal => 'minimal',
       };
 
   bool _matches(Map<String, dynamic> o) {
@@ -70,33 +68,39 @@ class _OutfitsScreenState extends State<OutfitsScreen> {
     }
     final n = widget.controller.outfits.where(_matches).length;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(n > 0 ? 'Обновлено: $n образов' : 'Не удалось собрать образы — мало товаров в каталоге')),
+      SnackBar(
+        content: Text(
+          n > 0 ? 'Готово: $n ${_pluralOutfits(n)}' : 'Не хватило товаров в каталоге для образа',
+        ),
+      ),
     );
+  }
+
+  String _pluralOutfits(int n) {
+    if (n % 10 == 1 && n % 100 != 11) return 'образ';
+    if (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) return 'образа';
+    return 'образов';
   }
 
   @override
   Widget build(BuildContext context) {
     final c = widget.controller;
     final outfits = c.outfits.where(_matches).toList();
+    final busy = c.isLoading;
+
     return ListView(
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.only(bottom: 24),
       children: [
-        ScreenHeader(
-          title: 'Образы',
-          subtitle: 'Верх · низ · обувь · аксессуар',
-          trailing: c.isLoading
-              ? const Padding(
-                  padding: EdgeInsets.all(12),
-                  child: SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2.2, color: AppColors.accent),
-                  ),
-                )
-              : IconButton(
-                  icon: const Icon(Icons.auto_awesome_outlined),
-                  onPressed: _generate,
-                ),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(20, 16, 20, 4),
+          child: Text('Образы', style: AppTextStyles.screenTitle),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          child: Text(
+            'Готовые луки из вашей ленты — верх, низ, обувь',
+            style: AppTextStyles.bodyMuted,
+          ),
         ),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -104,12 +108,10 @@ class _OutfitsScreenState extends State<OutfitsScreen> {
           child: Row(
             children: [
               for (final chip in [
-                ('Для вас', _OutfitScenario.all),
+                ('Все', _OutfitScenario.all),
                 ('Каждый день', _OutfitScenario.daily),
                 ('В офис', _OutfitScenario.office),
                 ('Вечер', _OutfitScenario.evening),
-                ('Casual', _OutfitScenario.casual),
-                ('Минимализм', _OutfitScenario.minimal),
               ])
                 ModishChip(
                   label: chip.$1,
@@ -119,33 +121,30 @@ class _OutfitsScreenState extends State<OutfitsScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         if (outfits.isEmpty)
           Padding(
-            padding: const EdgeInsets.all(20),
-            child: SoftCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Пока нет образов', style: AppTextStyles.sectionTitle),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Нажмите ✨ — соберём лук из вашей подборки (${_scenarioLabel(_apiScenario ?? 'daily')}).',
-                    style: AppTextStyles.bodyMuted,
-                  ),
-                  const SizedBox(height: 14),
-                  PrimaryButton(
-                    label: 'Сгенерировать',
-                    icon: Icons.auto_awesome_outlined,
-                    expanded: false,
-                    onPressed: c.isLoading ? null : _generate,
-                  ),
-                ],
-              ),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: EmptyState(
+              icon: Icons.checkroom_outlined,
+              title: 'Пока нет образов',
+              message: 'Соберём лук из подборки для сценария «${_scenarioLabel(_apiScenario ?? 'daily')}».',
+              actionLabel: 'Собрать образы',
+              busy: busy,
+              onAction: _generate,
             ),
           )
-        else
+        else ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: PrimaryButton(
+              label: busy ? 'Собираем…' : 'Обновить образы',
+              icon: Icons.auto_awesome_outlined,
+              onPressed: busy ? null : _generate,
+            ),
+          ),
           ...outfits.map((o) => _OutfitCard(outfit: o, controller: c)),
+        ],
       ],
     );
   }
@@ -187,6 +186,17 @@ class _OutfitCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Row(
+                children: [
+                  Text(title, style: AppTextStyles.sectionTitle),
+                  const Spacer(),
+                  if (saved)
+                    const Icon(Icons.bookmark, color: AppColors.accent, size: 18),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text('$filled из 4 · $total ₽', style: AppTextStyles.caption),
+              const SizedBox(height: 12),
               SizedBox(
                 height: 168,
                 child: Row(
@@ -205,15 +215,6 @@ class _OutfitCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(child: Text(title, style: AppTextStyles.displaySm.copyWith(fontSize: 20))),
-                  Icon(saved ? Icons.bookmark : Icons.bookmark_border, color: AppColors.accent),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text('$filled вещей · $total ₽', style: AppTextStyles.bodyMuted),
             ],
           ),
         ),
@@ -222,10 +223,10 @@ class _OutfitCard extends StatelessWidget {
   }
 }
 
-String _slotImageUrl(Map<String, dynamic> products, String slot) {
-  final v = products[slot];
-  if (v is! Map) return '';
-  return (v['image_url'] ?? '').toString();
+String _slotImageUrl(Map<String, dynamic> pmap, String slot) {
+  final raw = pmap[slot];
+  if (raw is! Map) return '';
+  return '${raw['image_url'] ?? ''}';
 }
 
 class _OutfitSlotImage extends StatelessWidget {
@@ -240,23 +241,25 @@ class _OutfitSlotImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final empty = imageUrl.trim().isEmpty;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: empty
-                ? DecoratedBox(
-                    decoration: BoxDecoration(color: AppColors.chipBg),
-                    child: Icon(icon, color: AppColors.muted, size: 22),
-                  )
-                : ProductFillImage(imageUrl: imageUrl, borderRadius: BorderRadius.circular(8)),
-          ),
+          child: imageUrl.trim().isEmpty
+              ? Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.bg,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.line),
+                  ),
+                  child: Icon(icon, color: AppColors.muted, size: 28),
+                )
+              : ProductFillImage(
+                  imageUrl: imageUrl,
+                  borderRadius: BorderRadius.circular(8),
+                ),
         ),
         const SizedBox(height: 4),
-        Text(label, textAlign: TextAlign.center, style: AppTextStyles.caption, maxLines: 1),
+        Text(label, style: AppTextStyles.caption.copyWith(fontSize: 9), maxLines: 1),
       ],
     );
   }
