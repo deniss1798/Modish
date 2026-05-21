@@ -615,7 +615,7 @@ def admin_catalog_bootstrap_admitad_csv(
   authorization: str | None = Header(default=None),
 ) -> dict[str, Any]:
   """
-  Admitad export_adv_products (CSV): FABLE (feed_id=25560), Aim Clo (21747).
+  Admitad export_adv_products (CSV): FABLE (feed_id=25560), Aim Clo (21738).
   Создаёт ProductSource + правила «только одежда» (без аксессуаров/сумок).
   """
   _admin_auth(authorization)

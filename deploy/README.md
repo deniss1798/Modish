@@ -71,7 +71,7 @@ curl -X POST http://127.0.0.1:8000/admin/catalog/renormalize \
   -H "Authorization: Bearer ${TOKEN}"
 ```
 
-Коды источников: `fable` (feed_id 25560), `aimclo` (21747).
+Коды источников: `fable` (feed_id 25560), `aimclo` (21738 — расширенный фид, вместо 21747).
 
 ### Шаг 5 — импорт каталога
 

@@ -30,6 +30,8 @@ class AdmitadCsvImportTests(unittest.TestCase):
   def test_presets_contain_fable_and_aimclo(self) -> None:
     codes = {p.code for p in ADMITAD_CSV_SOURCES}
     self.assertEqual(codes, {"fable", "aimclo"})
+    aim = next(p for p in ADMITAD_CSV_SOURCES if p.code == "aimclo")
+    self.assertIn("feed_id=21738", aim.feed_url)
     for p in ADMITAD_CSV_SOURCES:
       self.assertIn("format=csv", p.feed_url)
 

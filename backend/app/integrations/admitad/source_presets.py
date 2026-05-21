@@ -30,11 +30,11 @@ ADMITAD_CSV_SOURCES: tuple[AdmitadCsvSourcePreset, ...] = (
     code="aimclo",
     name="Aim Clo",
     network="admitad",
-    advertiser_id="21747",
+    advertiser_id="21738",
     feed_url=(
       "http://export.admitad.com/ru/webmaster/websites/2939491/products/"
       "export_adv_products/?user=denis_demianchuk0bded&code=bw80xy5bd3"
-      "&feed_id=21747&format=csv"
+      "&feed_id=21738&format=csv"
     ),
   ),
 )
