@@ -14,6 +14,8 @@ _SHOP_LABEL_BY_SOURCE: dict[str, str] = {
   "wb": "Wildberries",
   "admitad": "Партнёрский каталог",
   "befree": "Befree",
+  "fable": "FABLE",
+  "aimclo": "Aim Clo",
 }
 
 

@@ -55,6 +55,22 @@ def _split_sizes(raw: Any) -> list[str]:
   return [p.strip() for p in parts if p.strip()]
 
 
+_SIZE_IN_TITLE_RE = re.compile(
+  r"(?:^|[\s,/\-])(XXS|XS|S|M|L|XL|XXL|XXXL|OS)(?:[\s,./\-]|$)",
+  re.I,
+)
+
+
+def _infer_sizes_from_title(title: str) -> list[str]:
+  """Admitad CSV без param (Aim Clo): размер часто в name («… XS, цвет»)."""
+  found: list[str] = []
+  for m in _SIZE_IN_TITLE_RE.finditer(title or ""):
+    s = m.group(1).upper()
+    if s not in found:
+      found.append(s)
+  return found
+
+
 def _split_colors(raw: Any) -> list[str]:
   if raw is None:
     return []
@@ -152,6 +168,8 @@ def row_to_normalized(row: dict[str, Any], source: ProductSource) -> NormalizedP
     )
   )
   sizes = normalize_sizes(raw_sizes)
+  if not sizes:
+    sizes = normalize_sizes(_infer_sizes_from_title(title))
   colors = _split_colors(
     _pick(
       d,

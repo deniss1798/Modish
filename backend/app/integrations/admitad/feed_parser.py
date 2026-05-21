@@ -167,10 +167,51 @@ def parse_admitad_xml(feed_content: str) -> list[dict[str, Any]]:
   return out
 
 
+def _expand_admitad_param_column(row: dict[str, Any]) -> dict[str, Any]:
+  """
+  Admitad CSV: одна колонка param — «Цвет:черный|Размер:M|Размер:L».
+  Раскладываем в param_цвет / param_размер и sizes для feed_row_mapper.
+  """
+  raw = row.get("param") or row.get("Param")
+  if not raw or not isinstance(raw, str):
+    return row
+  out = dict(row)
+  sizes: list[str] = []
+  size_key = _param_row_key("размер")
+  for part in raw.split("|"):
+    piece = part.strip()
+    if not piece or ":" not in piece:
+      continue
+    name, val = piece.split(":", 1)
+    name = name.strip().lower()
+    val = val.strip()
+    if not name or not val:
+      continue
+    if name in ("размер", "size"):
+      sizes.append(val)
+      continue
+    out[_param_row_key(name)] = val
+  if sizes:
+    out[size_key] = sizes[0]
+    out["sizes"] = "|".join(sizes)
+  return out
+
+
 def parse_admitad_csv(feed_content: str) -> list[dict[str, Any]]:
-  """CSV с заголовком (Admitad export)."""
-  reader = csv.DictReader(io.StringIO(feed_content))
-  return [dict(r) for r in reader if r]
+  """CSV с заголовком (Admitad export_adv_products, разделитель ;)."""
+  text = feed_content.lstrip("\ufeff")
+  try:
+    dialect = csv.Sniffer().sniff(text[:8192], delimiters=";,\t")
+    delimiter = dialect.delimiter
+  except csv.Error:
+    delimiter = ";"
+  reader = csv.DictReader(io.StringIO(text), delimiter=delimiter)
+  rows: list[dict[str, Any]] = []
+  for r in reader:
+    if not r or all(not (v or "").strip() for v in r.values()):
+      continue
+    rows.append(_expand_admitad_param_column(dict(r)))
+  return rows
 
 
 def parse_admitad_yml(feed_content: str) -> list[dict[str, Any]]:

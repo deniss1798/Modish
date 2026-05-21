@@ -15,6 +15,7 @@ from ..catalog_demo import demo_picsum_image_url
 from ..catalog_normalize import normalize_category, normalize_product_colors
 from ..db import SessionLocal
 from ..models import CatalogSyncRun, Product, ProductSource, SourceRule
+from ..services.catalog.admitad_bootstrap import bootstrap_admitad_csv_sources
 from ..services.catalog.feed_import_service import sync_partner_feed, sync_partner_feed_from_text
 
 
@@ -595,6 +596,38 @@ def admin_catalog_renormalize(
   from ..services.catalog.renormalize_service import renormalize_catalog
 
   return renormalize_catalog(db, source=source, limit=limit)
+
+
+class AdmitadBootstrapBody(BaseModel):
+  """Опционально: только указанные code; sync=true — сразу скачать фиды."""
+
+  codes: list[str] | None = Field(
+    default=None,
+    description="Коды источников, напр. fable, aimclo. Пусто — оба пресета.",
+  )
+  sync: bool = Field(default=False, description="Сразу POST sync по каждому источнику")
+
+
+@router.post("/bootstrap-admitad-csv")
+def admin_catalog_bootstrap_admitad_csv(
+  body: AdmitadBootstrapBody | None = None,
+  db: Session = Depends(get_db),
+  authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+  """
+  Admitad export_adv_products (CSV): FABLE (feed_id=25560), Aim Clo (21747).
+  Создаёт ProductSource + правила «только одежда» (без аксессуаров/сумок).
+  """
+  _admin_auth(authorization)
+  payload = body or AdmitadBootstrapBody()
+  try:
+    return bootstrap_admitad_csv_sources(
+      db,
+      codes=payload.codes,
+      sync=payload.sync,
+    )
+  except ValueError as exc:
+    raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/alpha-bootstrap")

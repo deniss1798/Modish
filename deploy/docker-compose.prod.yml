@@ -1,13 +1,29 @@
+# Запуск из корня репозитория:
+#   docker compose -f deploy/docker-compose.prod.yml up -d --build
+#
+# В backend/.env обязательно:
+#   POSTGRES_PASSWORD=один_пароль
+#   DATABASE_URL=postgresql+psycopg://modish:один_пароль@db:5432/modish
+#   JWT_SECRET=...
+#   ADMIN_CATALOG_TOKEN=...
+
 services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
+    env_file:
+      - ../backend/.env
     environment:
       POSTGRES_USER: modish
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Задайте POSTGRES_PASSWORD в backend/.env}
       POSTGRES_DB: modish
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U modish -d modish"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   api:
     build:
@@ -19,7 +35,8 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
 volumes:
   pgdata:

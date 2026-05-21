@@ -40,7 +40,7 @@ class IngestResult:
 
 def _detect_parser(url: str, body: str):
   u = url.lower()
-  if u.endswith(".csv") or "text/csv" in u:
+  if u.endswith(".csv") or "text/csv" in u or "format=csv" in u:
     return parse_admitad_csv(body)
   if u.endswith(".yml") or u.endswith(".yaml"):
     return parse_admitad_yml(body)
