@@ -9,8 +9,10 @@ import 'features/auth/auth_screen.dart';
 import 'features/onboarding/analysis_screen.dart';
 import 'features/onboarding/fit_quiz_screen.dart';
 import 'features/onboarding/intro_onboarding_screen.dart';
+import 'features/onboarding/onboarding_v2_screen.dart';
 import 'features/onboarding/upload_screen.dart';
 import 'features/onboarding/welcome_screen.dart';
+import 'features/onboarding/wow_outfit.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/recommendations/detail_screen.dart';
 import 'features/recommendations/feed_screen.dart';
@@ -175,12 +177,23 @@ class RootScreen extends StatelessWidget {
       AppStage.auth => AuthScreen(controller: app),
       AppStage.upload => UploadScreen(controller: app),
       AppStage.analysis => AnalysisScreen(controller: app),
+      AppStage.onboardingV2 => OnboardingV2Screen(controller: app),
       AppStage.home => HomeScreen(controller: app),
     };
   }
 }
 
-enum AppStage { splash, welcome, onboarding, fitQuiz, auth, upload, analysis, home }
+enum AppStage {
+  splash,
+  welcome,
+  onboarding,
+  fitQuiz,
+  auth,
+  upload,
+  analysis,
+  onboardingV2,
+  home,
+}
 
 class AppController extends ChangeNotifier {
   AppController() {
@@ -227,6 +240,11 @@ class AppController extends ChangeNotifier {
   Map<String, dynamic> fitProfile = {};
   Map<String, dynamic> tasteProfile = {};
   Map<String, dynamic>? pendingFitPrefs;
+
+  /// Онбординг v2: 0 step1 … 4 wow progress, 5 wow result.
+  int onboardingV2SubStep = 0;
+  Map<String, dynamic>? photoConfirmPending;
+  List<WowOutfit> wowOutfits = const [];
 
   Outfit? get currentOutfit => feed.isEmpty ? null : feed.first;
   prod.FeedCard? get currentProduct =>
@@ -285,26 +303,27 @@ class AppController extends ChangeNotifier {
         } catch (_) {
           fitProfile = {};
         }
-        var styleAnalyzed = false;
+        Map<String, dynamic> obStatus = {};
         try {
-          final profile = await api.styleProfileMe().timeout(
-            const Duration(seconds: 10),
-            onTimeout: () => throw TimeoutException('styleProfileMe'),
+          obStatus = await api.onboardingStatus().timeout(
+            const Duration(seconds: 8),
+            onTimeout: () => throw TimeoutException('onboardingStatus'),
           );
-          final raw = profile['profile_json'];
-          final rawMap = raw is Map ? Map<String, dynamic>.from(raw) : null;
-          styleAnalyzed =
-              rawMap != null && rawMap.isNotEmpty && _profileHasAnalysis(rawMap);
         } catch (_) {
-          styleAnalyzed = false;
+          obStatus = {};
+        }
+        if (obStatus['completed'] != true) {
+          onboardingV2SubStep = _onboardingV2SubFromStatus(obStatus);
+          stage = AppStage.onboardingV2;
+          tab = 0;
+          notifyListeners();
+          return;
         }
         await refreshRemoteData().timeout(
           const Duration(seconds: 25),
           onTimeout: () => throw TimeoutException('refresh'),
         );
-        stage = _fitProfileReady(fitProfile) || styleAnalyzed
-            ? AppStage.home
-            : AppStage.upload;
+        stage = AppStage.home;
         tab = 0;
         notifyListeners();
         return;
@@ -343,13 +362,136 @@ class AppController extends ChangeNotifier {
     } catch (_) {
       fitProfile = {};
     }
-    await refreshRemoteData();
-    if (_fitProfileReady(fitProfile)) {
-      stage = AppStage.home;
-      tab = 0;
-    } else {
-      stage = AppStage.upload;
+    try {
+      final obStatus = await api.onboardingStatus();
+      if (obStatus['completed'] != true) {
+        onboardingV2SubStep = _onboardingV2SubFromStatus(obStatus);
+        photoConfirmPending = null;
+        wowOutfits = const [];
+        stage = AppStage.onboardingV2;
+        notifyListeners();
+        return;
+      }
+    } catch (_) {
+      /* старый бэкенд без /onboarding — fallback ниже */
     }
+    await refreshRemoteData();
+    stage = AppStage.home;
+    tab = 0;
+    notifyListeners();
+  }
+
+  int _onboardingV2SubFromStatus(Map<String, dynamic> status) {
+    final step = (status['onboarding_step'] as num?)?.toInt() ?? 0;
+    if (step < 1) return 0;
+    if (step < 3) {
+      final shape = '${status['body_shape'] ?? ''}'.trim();
+      if (shape.isNotEmpty && step >= 2) return 2;
+      return 1;
+    }
+    return 3;
+  }
+
+  void _goOnboardingV2Sub(int sub) {
+    onboardingV2SubStep = sub;
+    notifyListeners();
+  }
+
+  Future<void> onboardingV2Step1({
+    required String gender,
+    String? ageGroup,
+  }) async {
+    await _run(() async {
+      await api.onboardingStep1(gender: gender, ageGroup: ageGroup);
+      styleTarget = gender == 'female' ? 'womenswear' : 'menswear';
+      _goOnboardingV2Sub(1);
+    });
+  }
+
+  Future<void> onboardingV2AnalyzePhoto(String path) async {
+    isLoading = true;
+    error = null;
+    notifyListeners();
+    try {
+      final res = await api.onboardingPhoto(path);
+      photoConfirmPending = res;
+      _goOnboardingV2Sub(2);
+    } catch (e) {
+      error = ApiClient.formatError(e);
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  void onboardingV2SkipPhoto() {
+    photoConfirmPending = null;
+    _goOnboardingV2Sub(3);
+  }
+
+  Future<void> onboardingV2ConfirmPhoto({
+    String? bodyShape,
+    String? colorType,
+    String? heightCategory,
+  }) async {
+    await _run(() async {
+      await api.onboardingPhotoConfirm(
+        bodyShape: bodyShape,
+        colorType: colorType,
+        heightCategory: heightCategory,
+      );
+      photoConfirmPending = null;
+      _goOnboardingV2Sub(3);
+    });
+  }
+
+  Future<void> onboardingV2Step3({
+    List<String> stylePreferences = const [],
+    String? priceSegment,
+  }) async {
+    await _run(() async {
+      await api.onboardingStep3(
+        stylePreferences: stylePreferences,
+        priceSegment: priceSegment,
+      );
+    });
+  }
+
+  Future<void> onboardingV2CompleteWow() async {
+    _goOnboardingV2Sub(4);
+    isLoading = true;
+    error = null;
+    notifyListeners();
+    try {
+      final res = await api.onboardingComplete(count: 4);
+      final rows = res['outfits'];
+      wowOutfits = rows is List
+          ? rows
+              .whereType<Map>()
+              .map((e) => WowOutfit.fromApi(Map<String, dynamic>.from(e)))
+              .toList()
+          : const [];
+      try {
+        fitProfile = await api.fitProfileMe();
+      } catch (_) {}
+      await refreshRemoteData();
+      _goOnboardingV2Sub(5);
+      try {
+        await api.metricsEvent('onboarding_v2_completed');
+      } catch (_) {}
+    } catch (e) {
+      error = ApiClient.formatError(e);
+      _goOnboardingV2Sub(3);
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> finishOnboardingV2ToHome() async {
+    stage = AppStage.home;
+    tab = 0;
+    onboardingV2SubStep = 0;
     notifyListeners();
   }
 

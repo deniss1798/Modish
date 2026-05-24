@@ -397,6 +397,83 @@ class ApiClient {
     return Map<String, dynamic>.from(response.data as Map);
   }
 
+  Future<Map<String, dynamic>> onboardingStatus() async {
+    final response = await _dio.get('/onboarding/status');
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  Future<Map<String, dynamic>> onboardingStep1({
+    required String gender,
+    String? ageGroup,
+  }) async {
+    final response = await _dio.patch(
+      '/onboarding/step1',
+      data: {
+        'gender': gender,
+        if (ageGroup != null && ageGroup.isNotEmpty) 'age_group': ageGroup,
+      },
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  Future<Map<String, dynamic>> onboardingPhoto(String photoPath) async {
+    final lower = photoPath.toLowerCase();
+    final subtype = lower.endsWith('.png')
+        ? 'png'
+        : lower.endsWith('.webp')
+            ? 'webp'
+            : 'jpeg';
+    final form = FormData.fromMap({
+      'photo': await MultipartFile.fromFile(
+        photoPath,
+        filename: photoPath.split(RegExp(r'[/\\]')).last,
+        contentType: MediaType('image', subtype),
+      ),
+    });
+    final response = await _dio.post('/onboarding/photo', data: form);
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  Future<Map<String, dynamic>> onboardingPhotoConfirm({
+    String? bodyShape,
+    String? colorType,
+    String? heightCategory,
+    bool confirmed = true,
+  }) async {
+    final response = await _dio.patch(
+      '/onboarding/photo/confirm',
+      data: {
+        if (bodyShape != null) 'body_shape': bodyShape,
+        if (colorType != null) 'color_type': colorType,
+        if (heightCategory != null) 'height_category': heightCategory,
+        'confirmed': confirmed,
+      },
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  Future<Map<String, dynamic>> onboardingStep3({
+    List<String>? stylePreferences,
+    String? priceSegment,
+  }) async {
+    final response = await _dio.patch(
+      '/onboarding/step3',
+      data: {
+        if (stylePreferences != null) 'style_preferences': stylePreferences,
+        if (priceSegment != null) 'price_segment': priceSegment,
+      },
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  Future<Map<String, dynamic>> onboardingComplete({int count = 4}) async {
+    final response = await _dio.post(
+      '/onboarding/complete',
+      queryParameters: {'count': count},
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
   Future<Map<String, dynamic>> fitProfilePatch({
     required int height,
     int? weight,

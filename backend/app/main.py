@@ -17,6 +17,7 @@ from .api.auth import router as auth_router
 from .api.catalog_admin import router as catalog_admin_router
 from .api.deps import auth_scheme, get_db, user_from_token
 from .api.fit_profile import router as fit_profile_router
+from .api.onboarding import router as onboarding_router
 from .api.media_proxy import router as media_proxy_router
 from .api.outfits import router as outfits_router
 from .api.products import router as products_router
@@ -52,6 +53,7 @@ app.include_router(products_router)
 app.include_router(recommendations_router)
 app.include_router(profile_router)
 app.include_router(fit_profile_router)
+app.include_router(onboarding_router)
 app.include_router(taste_profile_router)
 app.include_router(outfits_router)
 app.include_router(affiliate_router)

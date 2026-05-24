@@ -53,7 +53,7 @@ class WelcomeScreen extends StatelessWidget {
                   SecondaryButton(
                     label: 'Создать аккаунт',
                     onDark: true,
-                    onPressed: () => controller.goToOnboarding(),
+                    onPressed: () => controller.goToAuth(registerMode: true),
                   ),
                   const SizedBox(height: 16),
                   Center(
