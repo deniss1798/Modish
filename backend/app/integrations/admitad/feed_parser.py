@@ -188,7 +188,10 @@ def _expand_admitad_param_column(row: dict[str, Any]) -> dict[str, Any]:
     if not name or not val:
       continue
     if name in ("размер", "size"):
-      sizes.append(val)
+      for piece_size in re.split(r"[,;]", val):
+        s = piece_size.strip()
+        if s:
+          sizes.append(s)
       continue
     out[_param_row_key(name)] = val
   if sizes:

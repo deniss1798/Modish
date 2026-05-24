@@ -71,7 +71,7 @@ curl -X POST http://127.0.0.1:8000/admin/catalog/renormalize \
   -H "Authorization: Bearer ${TOKEN}"
 ```
 
-Коды источников: `fable` (feed_id 25560), `aimclo` (21738 — расширенный фид, вместо 21747).
+Коды Admitad CSV: `fable` (25560), `aimclo` (21738), `sportmaster` (26327), `shoppinglive` (25461), `postmeridiem` (25200), `baon` (19982), `mongolshop` (26461), `serginnetti` (26417). Bootstrap без `codes` поднимает все восемь.
 
 ### Шаг 5 — импорт каталога
 

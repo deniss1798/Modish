@@ -4,6 +4,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+_ADMITAD_CSV_BASE = (
+  "http://export.admitad.com/ru/webmaster/websites/2939491/products/"
+  "export_adv_products/?user=denis_demianchuk0bded&code=bw80xy5bd3"
+)
+
+
+def admitad_csv_feed_url(feed_id: str) -> str:
+  return f"{_ADMITAD_CSV_BASE}&feed_id={feed_id}&format=csv"
+
 
 @dataclass(frozen=True)
 class AdmitadCsvSourcePreset:
@@ -20,21 +29,55 @@ ADMITAD_CSV_SOURCES: tuple[AdmitadCsvSourcePreset, ...] = (
     name="FABLE",
     network="admitad",
     advertiser_id="25560",
-    feed_url=(
-      "http://export.admitad.com/ru/webmaster/websites/2939491/products/"
-      "export_adv_products/?user=denis_demianchuk0bded&code=bw80xy5bd3"
-      "&feed_id=25560&format=csv"
-    ),
+    feed_url=admitad_csv_feed_url("25560"),
   ),
   AdmitadCsvSourcePreset(
     code="aimclo",
     name="Aim Clo",
     network="admitad",
     advertiser_id="21738",
-    feed_url=(
-      "http://export.admitad.com/ru/webmaster/websites/2939491/products/"
-      "export_adv_products/?user=denis_demianchuk0bded&code=bw80xy5bd3"
-      "&feed_id=21738&format=csv"
-    ),
+    feed_url=admitad_csv_feed_url("21738"),
+  ),
+  AdmitadCsvSourcePreset(
+    code="sportmaster",
+    name="Спортмастер",
+    network="admitad",
+    advertiser_id="26327",
+    feed_url=admitad_csv_feed_url("26327"),
+  ),
+  AdmitadCsvSourcePreset(
+    code="shoppinglive",
+    name="Shopping Live",
+    network="admitad",
+    advertiser_id="25461",
+    feed_url=admitad_csv_feed_url("25461"),
+  ),
+  AdmitadCsvSourcePreset(
+    code="postmeridiem",
+    name="Post Meridiem",
+    network="admitad",
+    advertiser_id="25200",
+    feed_url=admitad_csv_feed_url("25200"),
+  ),
+  AdmitadCsvSourcePreset(
+    code="baon",
+    name="BAON",
+    network="admitad",
+    advertiser_id="19982",
+    feed_url=admitad_csv_feed_url("19982"),
+  ),
+  AdmitadCsvSourcePreset(
+    code="mongolshop",
+    name="MONGOLSHOP",
+    network="admitad",
+    advertiser_id="26461",
+    feed_url=admitad_csv_feed_url("26461"),
+  ),
+  AdmitadCsvSourcePreset(
+    code="serginnetti",
+    name="SERGINNETTI",
+    network="admitad",
+    advertiser_id="26417",
+    feed_url=admitad_csv_feed_url("26417"),
   ),
 )

@@ -27,11 +27,34 @@ SAMPLE_AIMCLO_ROW = (
 
 
 class AdmitadCsvImportTests(unittest.TestCase):
-  def test_presets_contain_fable_and_aimclo(self) -> None:
+  def test_presets_contain_all_admitad_shops(self) -> None:
     codes = {p.code for p in ADMITAD_CSV_SOURCES}
-    self.assertEqual(codes, {"fable", "aimclo"})
+    self.assertEqual(
+      codes,
+      {
+        "fable",
+        "aimclo",
+        "sportmaster",
+        "shoppinglive",
+        "postmeridiem",
+        "baon",
+        "mongolshop",
+        "serginnetti",
+      },
+    )
     aim = next(p for p in ADMITAD_CSV_SOURCES if p.code == "aimclo")
     self.assertIn("feed_id=21738", aim.feed_url)
+    sm = next(p for p in ADMITAD_CSV_SOURCES if p.code == "sportmaster")
+    self.assertIn("feed_id=26327", sm.feed_url)
+
+  def test_param_comma_separated_sizes(self) -> None:
+    csv = (
+      "available;categoryId;id;name;param;picture;price;url;vendor\n"
+      "true;Платья;1;Платье;Цвет:Голубой|Размер:XS,S,M,L;"
+      "https://example.com/p.jpg;1000;https://example.com/x;PM\n"
+    )
+    rows = parse_admitad_csv(csv)
+    self.assertEqual(rows[0]["sizes"], "XS|S|M|L")
     for p in ADMITAD_CSV_SOURCES:
       self.assertIn("format=csv", p.feed_url)
 

@@ -16,6 +16,12 @@ _SHOP_LABEL_BY_SOURCE: dict[str, str] = {
   "befree": "Befree",
   "fable": "FABLE",
   "aimclo": "Aim Clo",
+  "sportmaster": "Спортмастер",
+  "shoppinglive": "Shopping Live",
+  "postmeridiem": "Post Meridiem",
+  "baon": "BAON",
+  "mongolshop": "MONGOLSHOP",
+  "serginnetti": "SERGINNETTI",
 }
 
 

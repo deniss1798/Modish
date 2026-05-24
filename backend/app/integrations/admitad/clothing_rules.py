@@ -16,6 +16,18 @@ DEFAULT_CLOTHING_ONLY_RULES: tuple[tuple[str, str], ...] = (
   ("blocked_keyword", "jewelry"),
   ("blocked_keyword", "посуда"),
   ("blocked_keyword", "игруш"),
+  # Спортмастер и др.: не одежда
+  ("blocked_category", "инвентарь"),
+  ("blocked_category", "снаряжен"),
+  ("blocked_category", "тренаж"),
+  ("blocked_keyword", "тренажер"),
+  ("blocked_keyword", "гантел"),
+  ("blocked_keyword", "гиря"),
+  ("blocked_keyword", "велосипед"),
+  ("blocked_keyword", "лыжи"),
+  ("blocked_keyword", "сноуборд"),
+  ("blocked_keyword", "ракетк"),
+  ("blocked_keyword", "мяч"),
   ("hide_without_image", "1"),
   ("hide_without_size", "1"),
 )
