@@ -98,7 +98,9 @@ class _OutfitsScreenState extends State<OutfitsScreen> {
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
           child: Text(
-            'Готовые луки из вашей ленты — верх, низ, обувь',
+            _scenario == _OutfitScenario.all
+                ? 'В «Все» видны образы разных сценариев — нажмите «Обновить» внутри «В офис» или «Вечер», чтобы собрать отдельные луки'
+                : 'Готовые луки — верх, низ, обувь. Нажмите «Обновить образы», чтобы пересобрать этот сценарий',
             style: AppTextStyles.bodyMuted,
           ),
         ),

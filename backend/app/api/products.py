@@ -5,7 +5,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 from fastapi.security import HTTPAuthorizationCredentials
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..models import Product, User, UserProductState
@@ -98,6 +98,29 @@ def products_list(
   q = q.order_by(Product.created_at.desc()).offset(max(0, offset)).limit(min(200, max(1, limit)))
   rows = db.execute(q).scalars().all()
   return [product_to_api(p) for p in rows]
+
+
+@router.get("/products/brands")
+def products_brands(
+  limit: int = 80,
+  db: Session = Depends(get_db),
+) -> list[dict[str, Any]]:
+  """Список брендов с количеством товаров (быстрый GROUP BY)."""
+  cap = min(200, max(1, limit))
+  rows = db.execute(
+    select(Product.brand, func.count(Product.id))
+    .where(
+      Product.is_active == 1,
+      Product.is_deleted_from_feed == 0,
+      Product.source != "demo",
+      Product.brand.is_not(None),
+      Product.brand != "",
+    )
+    .group_by(Product.brand)
+    .order_by(func.count(Product.id).desc())
+    .limit(cap)
+  ).all()
+  return [{"brand": str(b).strip(), "count": int(c)} for b, c in rows if str(b).strip()]
 
 
 @router.get("/products/{product_id}")

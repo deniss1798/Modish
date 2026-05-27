@@ -28,6 +28,16 @@ DEFAULT_CLOTHING_ONLY_RULES: tuple[tuple[str, str], ...] = (
   ("blocked_keyword", "сноуборд"),
   ("blocked_keyword", "ракетк"),
   ("blocked_keyword", "мяч"),
+  # Demix / спорт: инвентарь и аксессуары, не одежда
+  ("blocked_keyword", "эспандер"),
+  ("blocked_keyword", "шейкер"),
+  ("blocked_keyword", "коврик для"),
+  ("blocked_keyword", "массажер"),
+  ("blocked_keyword", "скакалк"),
+  ("blocked_keyword", "утяжелител"),
+  ("blocked_keyword", "очки для плавания"),
+  ("blocked_keyword", "шапочк для плавания"),
+  ("blocked_keyword", "кинезио-тейп"),
   ("hide_without_image", "1"),
   ("hide_without_size", "1"),
 )

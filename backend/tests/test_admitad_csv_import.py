@@ -40,6 +40,9 @@ class AdmitadCsvImportTests(unittest.TestCase):
         "baon",
         "mongolshop",
         "serginnetti",
+        "demix",
+        "tsumoutlet",
+        "vipavenue",
       },
     )
     aim = next(p for p in ADMITAD_CSV_SOURCES if p.code == "aimclo")

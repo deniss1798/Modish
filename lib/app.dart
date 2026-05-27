@@ -20,6 +20,7 @@ import 'features/recommendations/models.dart';
 import 'features/recommendations/saved_screen.dart';
 import 'features/visual/visual_analysis_screen.dart';
 import 'features/products/models.dart' as prod;
+import 'features/products/outfit_slots.dart' as slots;
 import 'features/outfits/outfits_screen.dart';
 import 'features/onboarding/result_screen.dart';
 
@@ -274,10 +275,62 @@ class AppController extends ChangeNotifier {
   }
 
   List<prod.FeedCard> relatedProducts(String productId, {int limit = 6}) {
-    return filteredProductFeed
+    prod.FeedCard? current;
+    for (final c in filteredProductFeed) {
+      if (c.product.id == productId) {
+        current = c;
+        break;
+      }
+    }
+    if (current == null) return const [];
+
+    final anchor = current.product;
+    final anchorSlot = slots.productSlotFromCategory(anchor.category);
+    final wantSlots = slots.complementSlotsFor(anchorSlot);
+    final anchorPrice = anchor.price;
+
+    int score(prod.Product p) {
+      if (p.id == productId) return -1;
+      if (slots.isKidsProductTitle(p.title)) return -1;
+      final slot = slots.productSlotFromCategory(p.category);
+      if (!wantSlots.contains(slot)) return 0;
+      var s = 10;
+      if (anchor.brand.isNotEmpty &&
+          p.brand.toLowerCase() == anchor.brand.toLowerCase()) {
+        s += 3;
+      }
+      if (anchorPrice > 0) {
+        final ratio = p.price / anchorPrice;
+        if (ratio >= 0.35 && ratio <= 2.8) s += 4;
+      }
+      return s;
+    }
+
+    final ranked = filteredProductFeed
         .where((c) => c.product.id != productId)
-        .take(limit)
-        .toList();
+        .map((c) => (card: c, s: score(c.product)))
+        .where((e) => e.s > 0)
+        .toList()
+      ..sort((a, b) => b.s.compareTo(a.s));
+
+    if (ranked.length >= limit) {
+      return ranked.take(limit).map((e) => e.card).toList();
+    }
+
+    final seen = ranked.map((e) => e.card.product.id).toSet();
+    final fallback = filteredProductFeed
+        .where((c) => c.product.id != productId && !seen.contains(c.product.id))
+        .take(limit - ranked.length);
+    return [...ranked.map((e) => e.card), ...fallback];
+  }
+
+  String relatedProductsHint(String productId) {
+    for (final c in filteredProductFeed) {
+      if (c.product.id == productId) {
+        return slots.complementHintRu(slots.productSlotFromCategory(c.product.category));
+      }
+    }
+    return 'Другие вещи из ленты';
   }
 
   Future<void> boot() async {
@@ -1057,15 +1110,33 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return const MobileViewport(
+    return MobileViewport(
       minimalBackdrop: true,
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Brand(width: 200),
-            SizedBox(height: 14),
-            Text(
+            ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: Image.asset(
+                'assets/icon/app_icon.png',
+                width: 120,
+                height: 120,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Modish',
+              style: TextStyle(
+                color: AppColors.ink,
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
               'Персональный AI-стилист',
               style: TextStyle(color: AppColors.muted, fontSize: 16),
             ),

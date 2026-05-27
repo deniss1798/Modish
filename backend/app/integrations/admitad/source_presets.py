@@ -80,4 +80,25 @@ ADMITAD_CSV_SOURCES: tuple[AdmitadCsvSourcePreset, ...] = (
     advertiser_id="26417",
     feed_url=admitad_csv_feed_url("26417"),
   ),
+  AdmitadCsvSourcePreset(
+    code="demix",
+    name="Demix",
+    network="admitad",
+    advertiser_id="25664",
+    feed_url=admitad_csv_feed_url("25664"),
+  ),
+  AdmitadCsvSourcePreset(
+    code="tsumoutlet",
+    name="TSUM Outlet",
+    network="admitad",
+    advertiser_id="26118",
+    feed_url=admitad_csv_feed_url("26118"),
+  ),
+  AdmitadCsvSourcePreset(
+    code="vipavenue",
+    name="VIP Avenue",
+    network="admitad",
+    advertiser_id="24512",
+    feed_url=admitad_csv_feed_url("24512"),
+  ),
 )

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
@@ -41,6 +42,25 @@ _SCENARIO_TOP_PREF: dict[str, list[str]] = {
   "casual": ["футболки", "рубашки"],
   "minimal": ["рубашки", "футболки"],
 }
+
+_SCENARIO_BOTTOM_PREF: dict[str, list[str]] = {
+  "daily": ["джинсы", "брюки"],
+  "office": ["брюки", "джинсы"],
+  "evening": ["брюки", "джинсы"],
+  "casual": ["джинсы", "брюки"],
+  "minimal": ["брюки", "джинсы"],
+}
+
+_SCENARIO_SHOES_PREF: dict[str, list[str]] = {
+  "daily": ["обувь"],
+  "office": ["обувь"],
+  "evening": ["обувь"],
+  "casual": ["обувь"],
+  "minimal": ["обувь"],
+}
+
+_KIDS_TITLE_MARKERS = ("детск", "для детей", "kids", "kid ", "junior", "малыш", "мальчик", "девочк")
+_OFFICE_AVOID_IN_TITLE = ("бокс", "boxing", "everlast", "борц", "штанга", "фитнес-перчат")
 
 
 def _norm_list(values: Any) -> list[str]:
@@ -86,7 +106,42 @@ def _dedupe_products(products: list[Product]) -> list[Product]:
   return out
 
 
-def _bucket_products(products: list[Product], scenario: str) -> dict[str, list[Product]]:
+def _scenario_rng(scenario: str) -> random.Random:
+  return random.Random(hash(f"modish-outfit:{scenario}") & 0xFFFFFFFF)
+
+
+def _scenario_product_ok(product: Product, scenario: str, budget_max: int | None) -> bool:
+  title = (product.title or "").lower()
+  if any(m in title for m in _KIDS_TITLE_MARKERS):
+    return False
+  if scenario in ("office", "evening") and any(m in title for m in _OFFICE_AVOID_IN_TITLE):
+    return False
+  price = int(product.price or 0)
+  if budget_max and budget_max > 0 and price > budget_max:
+    return False
+  if price > 500_000:
+    return False
+  return True
+
+
+def _sort_bucket(pool: list[Product], pref: list[str]) -> list[Product]:
+  return sorted(
+    pool,
+    key=lambda p: (
+      pref.index(normalize_category(p.category_name or p.category))
+      if normalize_category(p.category_name or p.category) in pref
+      else 99,
+      int(p.price or 0),
+    ),
+  )
+
+
+def _bucket_products(
+  products: list[Product],
+  scenario: str,
+  *,
+  budget_max: int | None = None,
+) -> dict[str, list[Product]]:
   buckets: dict[str, list[Product]] = {
     "top": [],
     "bottom": [],
@@ -94,7 +149,10 @@ def _bucket_products(products: list[Product], scenario: str) -> dict[str, list[P
     "accessory": [],
   }
   top_pref = _SCENARIO_TOP_PREF.get(scenario, _SCENARIO_TOP_PREF["daily"])
+  bottom_pref = _SCENARIO_BOTTOM_PREF.get(scenario, _SCENARIO_BOTTOM_PREF["daily"])
   for p in products:
+    if not _scenario_product_ok(p, scenario, budget_max):
+      continue
     slot = _product_slot(p)
     if slot:
       buckets[slot].append(p)
@@ -102,15 +160,27 @@ def _bucket_products(products: list[Product], scenario: str) -> dict[str, list[P
   for slot in buckets:
     buckets[slot] = _dedupe_products(buckets[slot])
 
-  buckets["top"] = sorted(
-    buckets["top"],
-    key=lambda p: (
-      top_pref.index(normalize_category(p.category_name or p.category))
-      if normalize_category(p.category_name or p.category) in top_pref
-      else 99
-    ),
-  )
+  buckets["top"] = _sort_bucket(buckets["top"], top_pref)
+  buckets["bottom"] = _sort_bucket(buckets["bottom"], bottom_pref)
+  rng = _scenario_rng(scenario)
+  for slot in buckets:
+    rng.shuffle(buckets[slot])
   return buckets
+
+
+def _product_ids_in_other_outfits(db: Session, user_id: str, *, scenario: str) -> set[str]:
+  """Товары из образов других сценариев — не повторять между «Офис» / «Вечер» / «Каждый день»."""
+  rows = db.execute(
+    select(Outfit).where(Outfit.user_id == user_id, Outfit.is_saved == 0)
+  ).scalars().all()
+  ids: set[str] = set()
+  for o in rows:
+    if (o.style_direction or "").strip().lower() == scenario:
+      continue
+    for pid in (o.items_json or {}).values():
+      if pid:
+        ids.add(str(pid))
+  return ids
 
 
 def _extend_buckets(
@@ -119,8 +189,12 @@ def _extend_buckets(
   *,
   excluded: set[str],
   min_per_slot: int,
+  scenario: str = "daily",
+  fit: FitProfile | None = None,
+  budget_max: int | None = None,
 ) -> None:
   """Добираем товары из каталога, если в ленте мало позиций для разнообразия."""
+  rules = load_rules_by_source_id(db)
   for slot, cats in _SLOT_CATEGORIES.items():
     if len(buckets[slot]) >= min_per_slot:
       continue
@@ -129,15 +203,24 @@ def _extend_buckets(
       select(Product)
       .where(
         Product.is_active == 1,
+        Product.is_available == 1,
         Product.is_deleted_from_feed == 0,
         Product.source != "demo",
         Product.category.in_(cats),
       )
       .order_by(Product.created_at.desc())
-      .limit(80)
+      .limit(120)
     ).scalars().all()
     for p in rows:
       if p.id in excluded or p.id in existing:
+        continue
+      if not product_is_feed_eligible(p):
+        continue
+      if not product_passes_source_rules(p, rules):
+        continue
+      if fit and not product_gender_compatible(p, fit.gender_target):
+        continue
+      if not _scenario_product_ok(p, scenario, budget_max):
         continue
       buckets[slot].append(p)
       existing.add(p.id)
@@ -237,6 +320,9 @@ def generate_outfits(
     ).scalars()
   )
   excluded = {str(x) for x in excluded if x}
+  excluded |= _product_ids_in_other_outfits(db, user.id, scenario=scenario_key)
+
+  budget_max = int(fit.budget_max) if fit and fit.budget_max else None
 
   if replace_existing:
     db.execute(
@@ -249,9 +335,21 @@ def generate_outfits(
     db.flush()
 
   need = max(1, min(10, int(count)))
-  products = _catalog_products_for_outfits(db, user, excluded=excluded, limit=200)
-  buckets = _bucket_products(products, scenario_key)
-  _extend_buckets(db, buckets, excluded=excluded, min_per_slot=need + 2)
+  products = _catalog_products_for_outfits(db, user, excluded=excluded, limit=280)
+  rng = _scenario_rng(scenario_key)
+  if len(products) > 40:
+    pivot = rng.randint(0, len(products) - 1)
+    products = products[pivot:] + products[:pivot]
+  buckets = _bucket_products(products, scenario_key, budget_max=budget_max)
+  _extend_buckets(
+    db,
+    buckets,
+    excluded=excluded,
+    min_per_slot=need + 4,
+    scenario=scenario_key,
+    fit=fit,
+    budget_max=budget_max,
+  )
 
   if not any(buckets[s] for s in ("top", "bottom", "shoes")):
     fallback = db.execute(
@@ -262,14 +360,27 @@ def generate_outfits(
       ).limit(300)
     ).scalars().all()
     fallback = [p for p in fallback if p.id not in excluded]
-    buckets = _bucket_products(fallback, scenario_key)
-    _extend_buckets(db, buckets, excluded=excluded, min_per_slot=need + 2)
+    buckets = _bucket_products(fallback, scenario_key, budget_max=budget_max)
+    _extend_buckets(
+      db,
+      buckets,
+      excluded=excluded,
+      min_per_slot=need + 4,
+      scenario=scenario_key,
+      fit=fit,
+      budget_max=budget_max,
+    )
 
   label = _SCENARIO_LABELS[scenario_key]
   created: list[Outfit] = []
   now = datetime.now(timezone.utc)
   used_in_batch: set[str] = set()
-  cursors = {"top": 0, "bottom": 0, "shoes": 0, "accessory": 0}
+  cursors = {
+    "top": rng.randint(0, max(0, len(buckets["top"]) - 1)) if buckets["top"] else 0,
+    "bottom": rng.randint(0, max(0, len(buckets["bottom"]) - 1)) if buckets["bottom"] else 0,
+    "shoes": rng.randint(0, max(0, len(buckets["shoes"]) - 1)) if buckets["shoes"] else 0,
+    "accessory": rng.randint(0, max(0, len(buckets["accessory"]) - 1)) if buckets["accessory"] else 0,
+  }
   seen_combos: set[tuple[str, ...]] = set()
   attempts = 0
   max_attempts = need * 40

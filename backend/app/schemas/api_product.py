@@ -22,6 +22,9 @@ _SHOP_LABEL_BY_SOURCE: dict[str, str] = {
   "baon": "BAON",
   "mongolshop": "MONGOLSHOP",
   "serginnetti": "SERGINNETTI",
+  "demix": "Demix",
+  "tsumoutlet": "TSUM Outlet",
+  "vipavenue": "VIP Avenue",
 }
 
 

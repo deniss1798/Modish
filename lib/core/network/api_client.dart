@@ -338,6 +338,15 @@ class ApiClient {
     return Map<String, dynamic>.from(response.data as Map);
   }
 
+  Future<List<Map<String, dynamic>>> productsBrands({int limit = 80}) async {
+    final response = await _dio.get(
+      '/products/brands',
+      queryParameters: {'limit': limit},
+    );
+    final list = (response.data as List).cast<Map<String, dynamic>>();
+    return list;
+  }
+
   Future<List<Map<String, dynamic>>> productsList({
     int limit = 50,
     int offset = 0,

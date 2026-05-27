@@ -157,10 +157,20 @@ class _FeedScreenState extends State<FeedScreen> {
         ),
         if (card != null && related.isNotEmpty) ...[
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text('С чем носить', style: AppTextStyles.sectionTitle),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                controller.relatedProductsHint(id!),
+                style: AppTextStyles.caption,
+              ),
             ),
           ),
           SizedBox(

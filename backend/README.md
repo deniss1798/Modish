@@ -67,7 +67,7 @@ Redis и Docker в этом предрелизе не обязательны; м
 
 ## Alpha: каталог (admin, `ADMIN_TOKEN`)
 
-- `POST /admin/catalog/bootstrap-admitad-csv` — Admitad CSV (8 магазинов: fable, aimclo, sportmaster, shoppinglive, postmeridiem, baon, mongolshop, serginnetti), правила «только одежда». Тело: `{"sync": true}` — сразу импорт фидов.
+- `POST /admin/catalog/bootstrap-admitad-csv` — Admitad CSV (11 магазинов, см. source_presets.py), правила «только одежда». Тело: `{"sync": true}` — сразу импорт фидов.
 - `POST /admin/catalog/alpha-bootstrap` — источник `befree` (один раз); URL из `BEFREE_FEED_URL` в `.env` (опционально)
 - `GET|POST|PATCH /admin/catalog/sources` — источники
 - `POST /admin/catalog/sources/{id}/sync` — импорт по `feed_url`
