@@ -96,9 +96,9 @@ def recommendations_events(
     st.event_strength = int(st.event_strength or 0) + int(weight or 0)
 
     if payload.event_type == "skip":
-      st.hidden_until = now + timedelta(hours=24)
+      st.hidden_until = now + timedelta(days=7)
     elif payload.event_type == "dislike":
-      st.hidden_until = now + timedelta(days=30)
+      st.hidden_until = now + timedelta(days=3650)
     elif payload.event_type == "like":
       st.hidden_until = now + timedelta(hours=6)
     elif payload.event_type == "save":

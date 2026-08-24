@@ -12,6 +12,7 @@ from ...catalog_normalize import (
 )
 from ...models import Product
 from .catalog_quality import deactivate_ineligible_products
+from .style_tagger import infer_style_tags
 
 
 def renormalize_product_row(p: Product) -> bool:
@@ -32,7 +33,11 @@ def renormalize_product_row(p: Product) -> bool:
     p.size_system = sys
     changed = True
 
-  colors = normalize_product_colors(p.colors or [])
+  # цвета: сначала из текущего поля, при пустом — из исходного цвета фида
+  color_sources = list(p.colors or [])
+  if p.color_original:
+    color_sources.append(p.color_original)
+  colors = normalize_product_colors(color_sources)
   if colors != (p.colors or []):
     p.colors = colors
     changed = True
@@ -40,6 +45,17 @@ def renormalize_product_row(p: Product) -> bool:
   gt = product_gender_from_model(p)
   if gt and gt != (p.gender_target or ""):
     p.gender_target = gt
+    changed = True
+
+  # style-теги: раньше при импорте всегда были пустыми — заполняем правилами
+  tags = infer_style_tags(
+    title=p.title,
+    description=p.description,
+    category=p.category or cat,
+    subcategory=p.subcategory,
+  )
+  if tags != (p.style_tags or []):
+    p.style_tags = tags
     changed = True
 
   return changed

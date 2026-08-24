@@ -5,7 +5,12 @@ from collections import defaultdict
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ...catalog_normalize import infer_gender_from_text, product_gender_from_model, resolve_product_gender
+from ...catalog_normalize import (
+  infer_gender_from_text,  # noqa: F401 — используется в других модулях через этот импорт
+  normalize_category,
+  product_gender_from_model,
+  resolve_product_gender,
+)
 from ...models import Product, SourceRule
 
 

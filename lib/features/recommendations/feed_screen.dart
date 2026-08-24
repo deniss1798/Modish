@@ -317,7 +317,7 @@ class _SwipeProductCardState extends State<_SwipeProductCard>
               if (_dx > 90 || (d.primaryVelocity ?? 0) > 500) {
                 _flyOut('like');
               } else if (_dx < -90 || (d.primaryVelocity ?? 0) < -500) {
-                _flyOut('skip');
+                _flyOut('dislike');
               } else {
                 setState(() => _dx = 0);
               }
@@ -348,7 +348,7 @@ class _SwipeProductCardState extends State<_SwipeProductCard>
               top: 40,
               child: Opacity(
                 opacity: skipOpacity,
-                child: const _SwipeStamp(label: 'ПРОПУСК', color: AppColors.muted),
+                child: const _SwipeStamp(label: 'НЕ НРАВИТСЯ', color: AppColors.muted),
               ),
             ),
         ],

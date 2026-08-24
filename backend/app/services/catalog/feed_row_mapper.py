@@ -13,6 +13,7 @@ from ...catalog_normalize import (
 )
 from ...models import ProductSource
 from .normalized_product import NormalizedProduct
+from .style_tagger import infer_style_tags
 
 
 def _lower_key_map(row: dict[str, Any]) -> dict[str, Any]:
@@ -254,7 +255,12 @@ def row_to_normalized(row: dict[str, Any], source: ProductSource) -> NormalizedP
     gender_target=gender_s,
     material=str(_pick(d, "material", "fabric") or "")[:64] or None,
     season=str(_pick(d, "season", "collection") or "")[:32] or None,
-    style_tags=[],
+    style_tags=infer_style_tags(
+      title=title,
+      description=description,
+      category=norm_cat or category,
+      subcategory=sub_s or str(_pick(d, "typeprefix", "type_prefix") or ""),
+    ),
     raw_data=raw_copy,
     discount_percent=discount,
     availability_status=availability_status,

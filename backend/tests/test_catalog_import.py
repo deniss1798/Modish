@@ -37,7 +37,8 @@ class BefreeImportTests(unittest.TestCase):
     self.assertEqual(len(n.image_urls), 2)
     self.assertTrue(n.image_url.startswith("https://"))
     self.assertIn("M", n.sizes)
-    self.assertIn("бежевый", n.colors)
+    # цвета теперь приводятся к каноническим: «бежевый» → cream
+    self.assertIn("cream", n.colors)
     self.assertEqual(n.gender_target, "womenswear")
     self.assertEqual(n.category_name, "Куртки")
 

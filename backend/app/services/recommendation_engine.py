@@ -1,7 +1,25 @@
-"""Rule-based product scoring for personalized feed (v2)."""
+"""Rule-based product scoring for personalized feed (v3).
+
+Формула по спецификации MIE (гл. 31.14–31.15, 33.26):
+  Final Score = Style + Category + Color + Budget + Popularity
+  + жёсткие фильтры (пол/размер/бюджет) до скоринга
+  + Diversity Layer (гл. 33.32): не более 3 подряд одной категории/бренда
+  + Explainability (гл. 33.33): причины для каждого товара.
+
+Отличия v3 от v2:
+  * пул кандидатов выбирается стабильным пригодным срезом каталога,
+    а не случайной лотереей перед персональным скорингом;
+  * цвета товара и палитра пользователя приводятся к одному словарю
+    канонических цветов (русский/английский/свободный текст);
+  * добавлен компонент Popularity (лайки/сохранения/переходы всех
+    пользователей за 60 дней);
+  * убраны запросы к БД на каждый товар (batch-префетч) — лента
+    считается на порядок быстрее;
+  * добавлен Diversity Layer.
+"""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
@@ -9,7 +27,12 @@ from uuid import uuid4
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
-from ..catalog_normalize import normalize_category, product_gender_from_model
+from ..catalog_normalize import (
+  canon_colors_from_text,
+  normalize_category,
+  normalize_product_colors,
+  product_gender_from_model,
+)
 from ..models import FitProfile, Product, RecommendationEventV2, StyleProfile, TasteProfile, User
 from .catalog.rule_filters import load_rules_by_source_id, product_gender_compatible, product_passes_source_rules
 from .catalog.catalog_quality import product_is_feed_eligible
@@ -24,6 +47,18 @@ class ScoredProduct:
   breakdown: dict[str, float]
   reason: str
   reasons: list[str]
+
+
+@dataclass
+class FeedContext:
+  """Всё, что нужно для скоринга, предзагруженное одним махом."""
+  taste: TasteProfile
+  fit: FitProfile | None
+  palette: set[str] = field(default_factory=set)
+  avoid_colors: set[str] = field(default_factory=set)
+  saved_categories: set[str] = field(default_factory=set)
+  seen_counts: dict[str, int] = field(default_factory=dict)
+  popularity: dict[str, float] = field(default_factory=dict)
 
 
 def _norm_list(values: Any) -> list[str]:
@@ -97,6 +132,41 @@ def _product_category_norms(product: Product) -> set[str]:
   return keys
 
 
+def expand_product_exclusions(db: Session, product_ids: set[str] | list[str] | None) -> set[str]:
+  """Expand hidden SKU ids to all variants of the same source/group_id item."""
+  ids = {str(pid).strip() for pid in (product_ids or set()) if str(pid).strip()}
+  if not ids:
+    return set()
+
+  rows = db.execute(
+    select(Product.source, Product.group_id).where(
+      Product.id.in_(ids),
+      Product.group_id.is_not(None),
+      Product.group_id != "",
+    )
+  ).all()
+  groups_by_source: dict[str, set[str]] = {}
+  for source, group_id in rows:
+    src = str(source or "").strip()
+    gid = str(group_id or "").strip()
+    if src and gid:
+      groups_by_source.setdefault(src, set()).add(gid)
+
+  if not groups_by_source:
+    return ids
+
+  group_conds = [
+    and_(Product.source == source, Product.group_id.in_(groups))
+    for source, groups in groups_by_source.items()
+    if groups
+  ]
+  if not group_conds:
+    return ids
+
+  sibling_ids = db.execute(select(Product.id).where(or_(*group_conds))).scalars().all()
+  return ids | {str(pid).strip() for pid in sibling_ids if str(pid).strip()}
+
+
 def _weight(d: Any, key: str) -> int:
   if not isinstance(d, dict):
     return 0
@@ -106,24 +176,35 @@ def _weight(d: Any, key: str) -> int:
     return 0
 
 
-def _recent_product_engagement(db: Session, *, user_id: str, product_id: str) -> int:
+def _product_canon_colors(product: Product) -> set[str]:
+  """Цвета товара: канонические + исходные строки (для старых весов вкуса)."""
+  raw = _norm_list(product.colors)
+  canon = normalize_product_colors(list(product.colors or []))
+  if not canon and getattr(product, "color_original", None):
+    canon = normalize_product_colors([product.color_original])
+  return set(raw) | set(canon)
+
+
+def _batch_seen_counts(db: Session, *, user_id: str, product_ids: list[str]) -> dict[str, int]:
+  """view/open_product за 30 дней по всем кандидатам одним запросом."""
+  if not product_ids:
+    return {}
   since = datetime.now(timezone.utc) - timedelta(days=30)
-  n = db.execute(
-    select(func.count())
-    .select_from(RecommendationEventV2)
+  rows = db.execute(
+    select(RecommendationEventV2.product_id, func.count())
     .where(
       RecommendationEventV2.user_id == user_id,
-      RecommendationEventV2.product_id == product_id,
+      RecommendationEventV2.product_id.in_(product_ids),
       RecommendationEventV2.event_type.in_(["view", "open_product"]),
       RecommendationEventV2.created_at >= since,
     )
-  ).scalar_one()
-  return int(n or 0)
+    .group_by(RecommendationEventV2.product_id)
+  ).all()
+  return {str(pid): int(n or 0) for pid, n in rows}
 
 
-def _user_saved_category_boost(db: Session, *, user_id: str, cat_keys: set[str]) -> float:
-  if not cat_keys:
-    return 0.0
+def _batch_saved_categories(db: Session, *, user_id: str) -> set[str]:
+  """Категории сохранённых товаров за 90 дней — один запрос на ленту."""
   since = datetime.now(timezone.utc) - timedelta(days=90)
   rows = db.execute(
     select(Product.category, Product.category_name)
@@ -135,34 +216,85 @@ def _user_saved_category_boost(db: Session, *, user_id: str, cat_keys: set[str])
     )
     .limit(200)
   ).all()
-  saved_cats: set[str] = set()
+  saved: set[str] = set()
   for cat, cat_name in rows:
     for raw in (cat_name, cat):
       if raw and str(raw).strip():
         k = normalize_category(str(raw).strip())
         if k:
-          saved_cats.add(k)
-  if saved_cats & cat_keys:
-    return 8.0
-  return 0.0
+          saved.add(k)
+  return saved
 
 
-def score_product(db: Session, user: User, product: Product) -> ScoredProduct:
-  """
-  Rule-based score (v2):
-  category_match + size_match + color_match + budget_match + style_match
-  + liked_brand_boost + saved_category_boost
-  - disliked_color_penalty - disliked_category_penalty - already_seen_penalty
-  """
+# Позитивные события для Popularity (гл. 33.31)
+_POPULARITY_EVENTS = ("like", "save", "open_product", "buy_click")
+
+
+def _batch_popularity(db: Session, *, product_ids: list[str]) -> dict[str, float]:
+  """Популярность 0..10 по позитивным событиям всех пользователей за 60 дней."""
+  if not product_ids:
+    return {}
+  since = datetime.now(timezone.utc) - timedelta(days=60)
+  rows = db.execute(
+    select(RecommendationEventV2.product_id, func.count())
+    .where(
+      RecommendationEventV2.product_id.in_(product_ids),
+      RecommendationEventV2.event_type.in_(list(_POPULARITY_EVENTS)),
+      RecommendationEventV2.created_at >= since,
+    )
+    .group_by(RecommendationEventV2.product_id)
+  ).all()
+  counts = {str(pid): int(n or 0) for pid, n in rows}
+  if not counts:
+    return {}
+  top = max(counts.values())
+  if top <= 0:
+    return {}
+  return {pid: 10.0 * n / top for pid, n in counts.items()}
+
+
+def build_feed_context(db: Session, user: User, *, product_ids: list[str] | None = None) -> FeedContext:
   profile = ensure_style_profile(db, user.id)
   analysis = extract_analysis_section(profile.profile_json or {})
   taste = ensure_taste_profile(db, user.id)
   fit = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
 
-  palette = set(_norm_list(analysis.get("color_palette")))
-  avoid_colors = set(_norm_list(analysis.get("avoid_colors")))
+  # палитра из фото-анализа — свободный текст → канонические цвета
+  palette = set(canon_colors_from_text(analysis.get("color_palette")))
+  avoid = set(canon_colors_from_text(analysis.get("avoid_colors")))
+  if fit is not None:
+    palette |= set(canon_colors_from_text(getattr(fit, "color_palette", None)))
+    avoid |= set(canon_colors_from_text(getattr(fit, "avoid_colors", None)))
+
+  pids = list(product_ids or [])
+  return FeedContext(
+    taste=taste,
+    fit=fit,
+    palette=palette,
+    avoid_colors=avoid,
+    saved_categories=_batch_saved_categories(db, user_id=user.id),
+    seen_counts=_batch_seen_counts(db, user_id=user.id, product_ids=pids),
+    popularity=_batch_popularity(db, product_ids=pids),
+  )
+
+
+def score_product(db: Session, user: User, product: Product, ctx: FeedContext | None = None) -> ScoredProduct:
+  """
+  Rule-based score (v3):
+  gender + category + size + color + budget + style + brand
+  + saved_category_boost + popularity
+  - disliked_* penalties - already_seen_penalty
+  """
+  if ctx is None:
+    ctx = build_feed_context(db, user, product_ids=[product.id])
+
+  taste = ctx.taste
+  fit = ctx.fit
+  palette = ctx.palette
+  avoid_colors = ctx.avoid_colors
+
   cat_keys = _product_category_norms(product)
-  p_colors = set(_norm_list(product.colors))
+  p_colors = _product_canon_colors(product)
   brand = (product.brand or "").strip().lower()
   style_tags = set(_norm_list(product.style_tags))
   reasons: list[str] = []
@@ -242,7 +374,7 @@ def score_product(db: Session, user: User, product: Product) -> ScoredProduct:
         color_match += min(8.0, float(w))
       if w >= 6:
         reasons.append("Похожий цвет вам нравится")
-  elif p_colors and (set(_norm_list(taste.liked_colors)) & p_colors):
+  if p_colors and (set(_norm_list(taste.liked_colors)) & p_colors):
     color_match = max(color_match, 10.0)
   score += color_match
   bd["color_match"] = color_match
@@ -291,19 +423,25 @@ def score_product(db: Session, user: User, product: Product) -> ScoredProduct:
   bd["budget_lo"] = float(lo)
   bd["budget_hi"] = float(hi)
 
-  # style_match
+  # style_match — главный компонент персонализации (гл. 31.15: 40%)
   style_match = 0.0
   fit_styles = set(_norm_list(fit.style_scenarios if fit else []))
   if fit_styles and style_tags and (fit_styles & style_tags):
-    style_match = 8.0
+    style_match += 10.0
     reasons.append("Подходит под ваш сценарий")
-  elif taste.style_weights:
+  if taste.style_weights and style_tags:
+    w_sum = 0.0
     for t in style_tags:
       w = _weight(taste.style_weights, t)
       if w > 0:
-        style_match += min(6.0, float(w))
-  elif style_tags and (set(_norm_list(taste.liked_styles)) & style_tags):
-    style_match = max(style_match, 8.0)
+        w_sum += min(6.0, float(w))
+    if w_sum > 0:
+      style_match += min(12.0, w_sum)
+      if w_sum >= 6:
+        reasons.append("Похоже на то, что вам нравится")
+  if style_tags and (set(_norm_list(taste.liked_styles)) & style_tags):
+    style_match = max(style_match, 10.0)
+    reasons.append("Подходит вашему стилю")
   score += style_match
   bd["style_match"] = style_match
 
@@ -322,14 +460,21 @@ def score_product(db: Session, user: User, product: Product) -> ScoredProduct:
   bd["liked_brand_boost"] = brand_boost
 
   # saved_category_boost
-  saved_boost = _user_saved_category_boost(db, user_id=user.id, cat_keys=cat_keys)
+  saved_boost = 8.0 if (ctx.saved_categories and (ctx.saved_categories & cat_keys)) else 0.0
   if saved_boost > 0:
     reasons.append("Похоже на сохранённые вещи")
   score += saved_boost
   bd["saved_category_boost"] = saved_boost
 
+  # popularity (гл. 33.31)
+  pop = float(ctx.popularity.get(product.id, 0.0))
+  if pop >= 6.0:
+    reasons.append("Популярно у пользователей")
+  score += pop
+  bd["popularity"] = pop
+
   # already_seen_penalty
-  eng_n = _recent_product_engagement(db, user_id=user.id, product_id=product.id)
+  eng_n = int(ctx.seen_counts.get(product.id, 0))
   seen_pen = min(15.0, float(eng_n) * 5.0)
   if seen_pen > 0:
     reasons.append("Вы уже смотрели этот товар")
@@ -356,6 +501,53 @@ def score_product(db: Session, user: User, product: Product) -> ScoredProduct:
   )
 
 
+def _apply_diversity(scored: list[ScoredProduct], *, max_run: int = 3) -> list[ScoredProduct]:
+  """Diversity Layer (гл. 33.32): не более max_run подряд одной категории
+  и одного бренда. Жадная перестановка без выбрасывания товаров."""
+  if len(scored) <= max_run:
+    return scored
+  remaining = list(scored)
+  out: list[ScoredProduct] = []
+
+  def key_cat(s: ScoredProduct) -> str:
+    return normalize_category(str(s.product.category or "")) or "?"
+
+  def key_brand(s: ScoredProduct) -> str:
+    return (s.product.brand or "").strip().lower() or "?"
+
+  def violates(cand: ScoredProduct, *, check_brand: bool = True) -> bool:
+    if len(out) < max_run:
+      return False
+    tail = out[-max_run:]
+    if all(key_cat(t) == key_cat(cand) for t in tail):
+      return True
+    if check_brand and all(key_brand(t) == key_brand(cand) for t in tail):
+      return True
+    return False
+
+  while remaining:
+    placed = False
+    # 1) идеальный кандидат: не нарушает ни категорию, ни бренд
+    for i, cand in enumerate(remaining):
+      if not violates(cand):
+        out.append(remaining.pop(i))
+        placed = True
+        break
+    if placed:
+      continue
+    # 2) каталог одного бренда: ослабляем правило бренда, категорию держим
+    for i, cand in enumerate(remaining):
+      if not violates(cand, check_brand=False):
+        out.append(remaining.pop(i))
+        placed = True
+        break
+    if placed:
+      continue
+    # 3) остались только товары одной категории — берём лучший по скору
+    out.append(remaining.pop(0))
+  return out
+
+
 def generate_feed(
   db: Session,
   user: User,
@@ -363,9 +555,9 @@ def generate_feed(
   limit: int = 30,
   exclude_product_ids: set[str] | None = None,
   source: str | None = None,
-  max_to_score: int = 200,
+  max_to_score: int = 400,
 ) -> list[ScoredProduct]:
-  exclude_product_ids = exclude_product_ids or set()
+  exclude_product_ids = expand_product_exclusions(db, exclude_product_ids)
   min_price = 500
   conds = [
     Product.is_active == 1,
@@ -382,15 +574,36 @@ def generate_feed(
   ]
   if source and source.strip():
     conds.append(Product.source == source.strip())
-  q = select(Product).where(and_(*conds)).limit(1000)
+  if exclude_product_ids:
+    conds.append(Product.id.notin_(list(exclude_product_ids)))
+  q = (
+    select(Product)
+    .where(and_(*conds))
+    .order_by(Product.updated_at.desc(), Product.created_at.desc(), Product.id.asc())
+    .limit(1000)
+  )
   products = db.execute(q).scalars().all()
   if exclude_product_ids:
     products = [p for p in products if p.id not in exclude_product_ids]
   rules_by_source = load_rules_by_source_id(db)
   fit = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
+  # Бельё не попадает в общую ленту стилиста (если явно не выбрано в интересах)
+  interest_norm = {
+    normalize_category(str(x).strip())
+    for x in ((fit.interest_categories or []) if fit else [])
+    if str(x).strip()
+  }
+
+  def _is_hidden_category(p: Product) -> bool:
+    cats = _product_category_norms(p)
+    hidden = {"бельё"} - interest_norm
+    return bool(cats and cats <= hidden)
+
   filtered: list[Product] = []
   for p in products:
     if not product_is_feed_eligible(p):
+      continue
+    if _is_hidden_category(p):
       continue
     if not product_passes_source_rules(p, rules_by_source):
       continue
@@ -400,14 +613,13 @@ def generate_feed(
 
   # Если выбраны категории в профиле и лента пустая — ослабляем только фильтр категорий.
   if not filtered and fit and fit.interest_categories:
+    from .feed_filters import product_passes_budget, product_passes_size
+
     for p in products:
       if not product_is_feed_eligible(p):
         continue
       if not product_passes_source_rules(p, rules_by_source):
         continue
-      from .catalog.rule_filters import product_gender_compatible
-      from .feed_filters import product_passes_budget, product_passes_size
-
       if not product_gender_compatible(p, fit.gender_target if fit else None):
         continue
       if not product_passes_budget(p, fit):
@@ -418,7 +630,7 @@ def generate_feed(
 
   # Всё ещё пусто — ослабляем бюджет/размер, пол и категории не трогаем.
   if not filtered and products and fit:
-    from .feed_filters import product_passes_budget, product_passes_size
+    from .feed_filters import product_passes_size
 
     for p in products:
       if not product_is_feed_eligible(p):
@@ -433,12 +645,14 @@ def generate_feed(
       if len(filtered) >= 500:
         break
 
-  score_cap = max(30, min(400, int(max_to_score)))
+  score_cap = max(30, min(1000, int(max_to_score)))
   score_pool = filtered[:score_cap]
-  scored = [score_product(db, user, p) for p in score_pool]
+  ctx = build_feed_context(db, user, product_ids=[p.id for p in score_pool])
+  scored = [score_product(db, user, p, ctx) for p in score_pool]
   scored.sort(key=lambda x: x.final_score, reverse=True)
   lim = max(1, min(100, int(limit)))
-  top = scored[:lim]
+  # Diversity Layer поверх отсортированного списка, затем срез
+  top = _apply_diversity(scored[: lim * 3])[:lim]
   from .recommendation_cache_service import persist_recommendation_caches  # noqa: PLC0415
 
   persist_recommendation_caches(

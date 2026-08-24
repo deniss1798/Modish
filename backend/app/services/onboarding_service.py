@@ -224,6 +224,21 @@ def apply_step3(
   fp.budget_min = bmin
   fp.budget_max = bmax
   fp.updated_at = datetime.now(timezone.utc)
+
+  # Выбранные стили сразу попадают в профиль вкуса (User Twin),
+  # чтобы Style Match работал с первой ленты, ещё до лайков.
+  if prefs:
+    from .recommendation_engine import ensure_taste_profile
+
+    tp = ensure_taste_profile(db, user.id)
+    style_syn = {"sport": "sporty", "minimal": "minimalism", "street": "streetwear"}
+    merged = list(tp.liked_styles or [])
+    for p in prefs:
+      p = style_syn.get(p, p)
+      if p and p not in merged:
+        merged.append(p)
+    tp.liked_styles = merged
+    tp.updated_at = datetime.now(timezone.utc)
   db.flush()
   return {
     "onboarding_step": profile.onboarding_step,
