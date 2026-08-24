@@ -6,7 +6,7 @@ by personal relevance, item compatibility, budget, and diversity.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from itertools import product as cartesian_product
 from typing import Iterable
 from uuid import uuid4
@@ -60,6 +60,8 @@ SCENARIO_LABELS = {
 NEUTRAL_COLORS = {"black", "white", "gray", "grey", "beige", "navy", "коричневый", "черный", "белый", "серый"}
 KIDS_TITLE_MARKERS = ("детск", "для детей", "kids", "kid ", "junior", "малыш", "мальчик", "девочк")
 OFFICE_AVOID_IN_TITLE = ("бокс", "boxing", "everlast", "борц", "штанга", "фитнес-перчат")
+SKIP_PENALTY = 0.08
+SKIP_PENALTY_COOLDOWN_HOURS = 24
 
 
 @dataclass(frozen=True)
@@ -70,6 +72,7 @@ class SlotCandidate:
   fit_score: float
   taste_score: float
   context_score: float
+  skip_penalty: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -144,7 +147,7 @@ def _excluded_product_ids(db: Session, user: User, *, scenario: str) -> set[str]
       select(RecommendationEventV2.product_id).where(
         RecommendationEventV2.user_id == user.id,
         RecommendationEventV2.product_id.is_not(None),
-        RecommendationEventV2.event_type.in_(["skip", "dislike", "post_purchase_negative"]),
+        RecommendationEventV2.event_type.in_(["dislike", "post_purchase_negative"]),
       )
     ).scalars()
   )
@@ -156,6 +159,23 @@ def _excluded_product_ids(db: Session, user: User, *, scenario: str) -> set[str]
       if pid:
         ids.add(str(pid))
   return {str(pid) for pid in ids if str(pid).strip()}
+
+
+def _recent_skip_product_ids(db: Session, user: User) -> set[str]:
+  cutoff = datetime.now(timezone.utc) - timedelta(hours=SKIP_PENALTY_COOLDOWN_HOURS)
+  ids = db.execute(
+    select(RecommendationEventV2.product_id).where(
+      RecommendationEventV2.user_id == user.id,
+      RecommendationEventV2.product_id.is_not(None),
+      RecommendationEventV2.event_type == "skip",
+      RecommendationEventV2.created_at >= cutoff,
+    )
+  ).scalars()
+  return {str(pid) for pid in ids if str(pid).strip()}
+
+
+def _skip_penalty(product_id: str, skipped_ids: set[str]) -> float:
+  return SKIP_PENALTY if product_id in skipped_ids else 0.0
 
 
 def _slot_category_conditions(slots: Iterable[str]):
@@ -209,6 +229,7 @@ def _build_slot_candidates(
   scenario: str,
   fit: FitProfile | None,
   excluded: set[str],
+  skipped_ids: set[str],
   per_slot: int,
 ) -> dict[str, list[SlotCandidate]]:
   slots = set().union(*[set(option) for option in SCENARIO_SLOT_OPTIONS[scenario]]) | {"accessory"}
@@ -230,14 +251,16 @@ def _build_slot_candidates(
       continue
     if not _scenario_product_ok(scored.product, scenario):
       continue
+    penalty = _skip_penalty(scored.product.id, skipped_ids)
     buckets[slot].append(
       SlotCandidate(
         slot=slot,
         product=scored.product,
-        personal_score=float(scored.final_score),
+        personal_score=_clamp01(float(scored.final_score) - penalty),
         fit_score=float(scored.breakdown.get("fit_score", 0.0)),
         taste_score=float(scored.breakdown.get("taste_score", 0.0)),
         context_score=float(scored.breakdown.get("context_score", 0.0)),
+        skip_penalty=penalty,
       )
     )
     seen.add(scored.product.id)
@@ -262,14 +285,16 @@ def _build_slot_candidates(
       scored = score_product(db, user, product, ctx)
       if scored.final_score <= 0:
         continue
+      penalty = _skip_penalty(product.id, skipped_ids)
       buckets[slot].append(
         SlotCandidate(
           slot=slot,
           product=product,
-          personal_score=float(scored.final_score),
+          personal_score=_clamp01(float(scored.final_score) - penalty),
           fit_score=float(scored.breakdown.get("fit_score", 0.0)),
           taste_score=float(scored.breakdown.get("taste_score", 0.0)),
           context_score=float(scored.breakdown.get("context_score", 0.0)),
+          skip_penalty=penalty,
         )
       )
       seen.add(product.id)
@@ -310,6 +335,7 @@ def _formality(product: Product) -> int:
 
 
 def compatibility_score(items: list[SlotCandidate], *, scenario: str) -> tuple[float, dict[str, float]]:
+  # TODO: Replace these heuristics with a learned outfit-compatibility model once outfit feedback is dense enough.
   products = [item.product for item in items]
   color_sets = [_colors(product) for product in products if _colors(product)]
   all_colors = set().union(*color_sets) if color_sets else set()
@@ -368,7 +394,7 @@ def _personal_score(items: list[SlotCandidate]) -> float:
     return 0.0
   values = []
   for item in items:
-    values.append((item.fit_score + item.taste_score + item.context_score) / 3.0)
+    values.append(_clamp01(((item.fit_score + item.taste_score + item.context_score) / 3.0) - item.skip_penalty))
   return _clamp01(sum(values) / len(values))
 
 
@@ -500,6 +526,7 @@ def generate_outfits_v2(
   need = max(1, min(10, int(count)))
   fit = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
   excluded = _excluded_product_ids(db, user, scenario=scenario_key)
+  skipped_ids = _recent_skip_product_ids(db, user)
 
   buckets = _build_slot_candidates(
     db,
@@ -507,6 +534,7 @@ def generate_outfits_v2(
     scenario=scenario_key,
     fit=fit,
     excluded=excluded,
+    skipped_ids=skipped_ids,
     per_slot=10,
   )
   combinations = _build_combinations(buckets, scenario=scenario_key, fit=fit, limit=need)

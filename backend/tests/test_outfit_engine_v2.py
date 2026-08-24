@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import unittest
 from datetime import datetime, timezone
+from unittest.mock import patch
 from uuid import uuid4
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 from app.db import Base
-from app.models import FitProfile, Product, TasteProfile, User
+from app.models import FitProfile, MetricEvent, Product, RecommendationEventV2, TasteProfile, User
 from app.services.outfit_engine_v2 import (
   SlotCandidate,
   compatibility_score,
@@ -133,6 +134,43 @@ class OutfitEngineV2Tests(unittest.TestCase):
 
     self.assertEqual(len(outfits), 1)
     self.assertIn(OUTFIT_ENGINE_VERSION, outfits[0].reason)
+
+  def test_skip_is_not_hard_excluded_from_outfit_candidates(self) -> None:
+    skipped_shoe = next(product for product in self.products if product.category == "обувь")
+    for product in self.products:
+      if product.category == "обувь" and product.id != skipped_shoe.id:
+        product.is_active = 0
+    self.db.add(
+      RecommendationEventV2(
+        id=str(uuid4()),
+        user_id=self.user.id,
+        product_id=skipped_shoe.id,
+        event_type="skip",
+        event_weight=-0.5,
+        meta_json={},
+        created_at=datetime.now(timezone.utc),
+      )
+    )
+    self.db.flush()
+
+    outfits = generate_outfits_v2(self.db, self.user, count=1, scenario="daily")
+
+    self.assertEqual(len(outfits), 1)
+    self.assertIn(skipped_shoe.id, set(outfits[0].items_json.values()))
+
+  def test_wrapper_records_metric_when_v2_falls_back(self) -> None:
+    with patch("app.services.outfit_engine_v2.generate_outfits_v2", side_effect=RuntimeError("boom")):
+      outfits = generate_outfits(self.db, self.user, count=1, scenario="daily")
+
+    self.assertEqual(len(outfits), 1)
+    self.assertIn("legacy_outfit_service", outfits[0].reason)
+    metric = self.db.execute(
+      select(MetricEvent).where(MetricEvent.name == "outfit_engine_v2_failure")
+    ).scalar_one()
+    self.assertEqual(metric.user_id, self.user.id)
+    self.assertEqual(metric.meta_json["engine"], OUTFIT_ENGINE_VERSION)
+    self.assertEqual(metric.meta_json["fallback_engine"], "legacy_outfit_service")
+    self.assertEqual(metric.meta_json["error_type"], "RuntimeError")
 
   def test_compatibility_rewards_consistent_items(self) -> None:
     shirt = _product(title="Black minimal shirt", category="рубашки")

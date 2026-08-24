@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import logging
 import random
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -9,11 +10,14 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from ..catalog_normalize import normalize_category
-from ..models import FitProfile, Outfit, Product, RecommendationEventV2, StyleProfile, User
+from ..models import FitProfile, MetricEvent, Outfit, Product, RecommendationEventV2, StyleProfile, User
 from ..schemas.photo_analysis import extract_analysis_section
 from .catalog.catalog_quality import product_is_feed_eligible
 from .catalog.rule_filters import load_rules_by_source_id, product_gender_compatible, product_passes_source_rules
+from .recommendation_config import OUTFIT_ENGINE_VERSION
 from .recommendation_engine import ensure_style_profile
+
+logger = logging.getLogger(__name__)
 
 _TOP_CATS = frozenset({"футболки", "рубашки", "верхний_слой"})
 _BOTTOM_CATS = frozenset({"джинсы", "брюки"})
@@ -61,6 +65,8 @@ _SCENARIO_SHOES_PREF: dict[str, list[str]] = {
 
 _KIDS_TITLE_MARKERS = ("детск", "для детей", "kids", "kid ", "junior", "малыш", "мальчик", "девочк")
 _OFFICE_AVOID_IN_TITLE = ("бокс", "boxing", "everlast", "борц", "штанга", "фитнес-перчат")
+_LEGACY_OUTFIT_ENGINE_VERSION = "legacy_outfit_service"
+_SKIP_PENALTY_COOLDOWN_HOURS = 24
 
 
 def _norm_list(values: Any) -> list[str]:
@@ -136,11 +142,25 @@ def _sort_bucket(pool: list[Product], pref: list[str]) -> list[Product]:
   )
 
 
+def _recent_skip_product_ids(db: Session, user: User) -> set[str]:
+  cutoff = datetime.now(timezone.utc) - timedelta(hours=_SKIP_PENALTY_COOLDOWN_HOURS)
+  ids = db.execute(
+    select(RecommendationEventV2.product_id).where(
+      RecommendationEventV2.user_id == user.id,
+      RecommendationEventV2.product_id.is_not(None),
+      RecommendationEventV2.event_type == "skip",
+      RecommendationEventV2.created_at >= cutoff,
+    )
+  ).scalars()
+  return {str(pid) for pid in ids if str(pid).strip()}
+
+
 def _bucket_products(
   products: list[Product],
   scenario: str,
   *,
   budget_max: int | None = None,
+  skipped_ids: set[str] | None = None,
 ) -> dict[str, list[Product]]:
   buckets: dict[str, list[Product]] = {
     "top": [],
@@ -163,8 +183,11 @@ def _bucket_products(
   buckets["top"] = _sort_bucket(buckets["top"], top_pref)
   buckets["bottom"] = _sort_bucket(buckets["bottom"], bottom_pref)
   rng = _scenario_rng(scenario)
+  skipped_ids = skipped_ids or set()
   for slot in buckets:
     rng.shuffle(buckets[slot])
+    if skipped_ids:
+      buckets[slot].sort(key=lambda p: p.id in skipped_ids)
   return buckets
 
 
@@ -315,12 +338,13 @@ def _generate_outfits_fallback(
       select(RecommendationEventV2.product_id).where(
         RecommendationEventV2.user_id == user.id,
         RecommendationEventV2.product_id.is_not(None),
-        RecommendationEventV2.event_type.in_(["skip", "dislike"]),
+        RecommendationEventV2.event_type.in_(["dislike", "post_purchase_negative"]),
       )
     ).scalars()
   )
   excluded = {str(x) for x in excluded if x}
   excluded |= _product_ids_in_other_outfits(db, user.id, scenario=scenario_key)
+  skipped_ids = _recent_skip_product_ids(db, user)
 
   budget_max = int(fit.budget_max) if fit and fit.budget_max else None
 
@@ -340,7 +364,7 @@ def _generate_outfits_fallback(
   if len(products) > 40:
     pivot = rng.randint(0, len(products) - 1)
     products = products[pivot:] + products[:pivot]
-  buckets = _bucket_products(products, scenario_key, budget_max=budget_max)
+  buckets = _bucket_products(products, scenario_key, budget_max=budget_max, skipped_ids=skipped_ids)
   _extend_buckets(
     db,
     buckets,
@@ -360,7 +384,7 @@ def _generate_outfits_fallback(
       ).limit(300)
     ).scalars().all()
     fallback = [p for p in fallback if p.id not in excluded]
-    buckets = _bucket_products(fallback, scenario_key, budget_max=budget_max)
+    buckets = _bucket_products(fallback, scenario_key, budget_max=budget_max, skipped_ids=skipped_ids)
     _extend_buckets(
       db,
       buckets,
@@ -418,6 +442,7 @@ def _generate_outfits_fallback(
     reason_bits = [f"Сценарий: {label}"]
     if palette:
       reason_bits.append(f"Палитра: {', '.join(palette[:3])}")
+    reason_bits.append(f"engine: {_LEGACY_OUTFIT_ENGINE_VERSION}")
 
     out = Outfit(
       id=str(uuid4()),
@@ -436,6 +461,29 @@ def _generate_outfits_fallback(
 
   db.flush()
   return created
+
+
+def _record_outfit_engine_v2_failure(db: Session, user: User, *, scenario: str, exc: Exception) -> None:
+  logger.exception("Outfit Engine v2 failed; falling back to legacy outfit service")
+  try:
+    db.add(
+      MetricEvent(
+        id=str(uuid4()),
+        user_id=user.id,
+        name="outfit_engine_v2_failure",
+        meta_json={
+          "engine": OUTFIT_ENGINE_VERSION,
+          "fallback_engine": _LEGACY_OUTFIT_ENGINE_VERSION,
+          "scenario": (scenario or "daily").strip().lower() or "daily",
+          "error_type": exc.__class__.__name__,
+          "error": str(exc)[:500],
+        },
+        created_at=datetime.now(timezone.utc),
+      )
+    )
+    db.flush()
+  except Exception:
+    logger.exception("Failed to record outfit_engine_v2_failure metric")
 
 
 def generate_outfits(
@@ -460,8 +508,8 @@ def generate_outfits(
       )
       if created:
         return created
-    except Exception:
-      pass
+    except Exception as exc:
+      _record_outfit_engine_v2_failure(db, user, scenario=scenario, exc=exc)
 
   return _generate_outfits_fallback(
     db,
