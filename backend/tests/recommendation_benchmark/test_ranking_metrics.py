@@ -5,9 +5,11 @@ import unittest
 
 from app.evaluation.ranking_metrics import (
   both_at_k,
+  dislike_leakage_at_k,
   fit_pass_rate_at_k,
   hit_rate_at_k,
   mrr,
+  negative_rate_at_k,
   ndcg_at_k,
   precision_at_k,
   recall_at_k,
@@ -53,6 +55,13 @@ class RankingMetricsTests(unittest.TestCase):
       both_at_k(ranked, taste_positive_ids={"p1", "p2"}, fit_positive_ids={"p1", "p3"}, k=3),
       1 / 3,
     )
+
+  def test_negative_metrics(self) -> None:
+    ranked = ["p1", "bad", "p3"]
+
+    self.assertAlmostEqual(negative_rate_at_k(ranked, {"bad"}, 3), 1 / 3)
+    self.assertEqual(dislike_leakage_at_k(ranked, {"bad"}, 3), 1.0)
+    self.assertEqual(dislike_leakage_at_k(ranked, {"bad"}, 1), 0.0)
 
 
 if __name__ == "__main__":

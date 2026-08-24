@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from ..catalog_normalize import letter_size_index, normalize_category, normalize_size_token
 from ..models import FitProfile, Product, RecommendationEventV2, TasteProfile, User
+from .embedding_service import retrieve_embedding_candidates
 from .mie_scoring import TasteFeatureMap
 
 
@@ -220,7 +221,6 @@ def retrieve_candidates(
   max_candidates: int = 700,
   min_price: int = 500,
 ) -> CandidateRetrievalResult:
-  del user  # reserved for future per-user source policies
   exclude = {str(pid) for pid in (exclude_product_ids or set()) if str(pid).strip()}
   base = _base_conditions(source=source, exclude_product_ids=exclude, min_price=min_price)
   max_candidates = max(50, min(1500, int(max_candidates)))
@@ -304,6 +304,16 @@ def retrieve_candidates(
     _ordered_recent(select(Product).where(and_(*base), or_(*scenario_conds))).limit(200)
   ).scalars().all()
   _add_rows(result, rows, source_name="scenario", max_candidates=max_candidates)
+
+  rows = retrieve_embedding_candidates(
+    db,
+    user=user,
+    limit=180,
+    exclude_product_ids=exclude,
+    source=source,
+    min_price=min_price,
+  )
+  _add_rows(result, rows, source_name="embedding", max_candidates=max_candidates)
 
   since = datetime.now(timezone.utc) - timedelta(days=60)
   popular_ids = [

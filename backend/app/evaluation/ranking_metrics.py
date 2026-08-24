@@ -82,6 +82,14 @@ def share_at_k(ranked_ids: Iterable[object], target_ids: Iterable[object], k: in
   return sum(1 for product_id in top if product_id in targets) / float(len(top))
 
 
+def negative_rate_at_k(ranked_ids: Iterable[object], negative_ids: Iterable[object], k: int) -> float:
+  return share_at_k(ranked_ids, negative_ids, k)
+
+
+def dislike_leakage_at_k(ranked_ids: Iterable[object], negative_ids: Iterable[object], k: int) -> float:
+  return hit_rate_at_k(ranked_ids, negative_ids, k)
+
+
 def fit_pass_rate_at_k(
   ranked_ids: Iterable[object],
   *,

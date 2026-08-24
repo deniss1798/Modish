@@ -230,6 +230,19 @@ class Product(Base):
   __table_args__ = (UniqueConstraint("external_id", "source", name="uq_product_external_source"),)
 
 
+class ProductEmbedding(Base):
+  __tablename__ = "product_embeddings"
+  id: Mapped[str] = mapped_column(String(36), primary_key=True)
+  product_id: Mapped[str] = mapped_column(ForeignKey("products.id"), unique=True, index=True)
+  embedding_model: Mapped[str] = mapped_column(String(64), index=True)
+  embedding_dim: Mapped[int] = mapped_column(Integer)
+  embedding_json: Mapped[list[float]] = mapped_column(JSON, default=list)
+  text_hash: Mapped[str] = mapped_column(String(64), index=True)
+  text_snapshot: Mapped[str] = mapped_column(Text)
+  created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+  updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+
 class TasteProfile(Base):
   __tablename__ = "taste_profiles"
   id: Mapped[str] = mapped_column(String(36), primary_key=True)

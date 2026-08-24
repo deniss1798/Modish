@@ -9,9 +9,10 @@ from datetime import timedelta
 from typing import Any
 
 
-ALGORITHM_VERSION = "mie_phase5_ranking_v4"
+ALGORITHM_VERSION = "mie_phase6_embeddings"
 DEFAULT_RANKING_ALGORITHM = "ranking_v4"
 SUPPORTED_RANKING_ALGORITHMS = ("ranking_v3", "ranking_v4")
+EMBEDDING_MODEL_VERSION = "modish_local_hash_embedding_v1"
 
 EVENT_ALIASES = {
   "buy_click": "affiliate_click",
@@ -218,6 +219,7 @@ def recommendation_algorithm_metadata(
     "algorithm_version": ALGORITHM_VERSION,
     "ranking_algorithm": ranking_algorithm,
     "supported_ranking_algorithms": list(SUPPORTED_RANKING_ALGORITHMS),
+    "embedding_model": EMBEDDING_MODEL_VERSION,
     "final_score_weights": dict(FINAL_SCORE_WEIGHTS),
     "fit_min_threshold": FIT_MIN_THRESHOLD,
   }

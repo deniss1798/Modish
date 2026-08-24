@@ -6,6 +6,10 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from sqlalchemy import and_, or_, select
+from sqlalchemy.orm import Session
+
+from ..models import FitProfile, Product, TasteProfile, User
 from ..services.recommendation_config import (
   ALGORITHM_VERSION,
   DEFAULT_RANKING_ALGORITHM,
@@ -13,9 +17,11 @@ from ..services.recommendation_config import (
 )
 from .ranking_metrics import (
   both_at_k,
+  dislike_leakage_at_k,
   fit_pass_rate_at_k,
   hit_rate_at_k,
   mrr,
+  negative_rate_at_k,
   ndcg_at_k,
   precision_at_k,
   recall_at_k,
@@ -120,6 +126,8 @@ def evaluate_rankings(
   fit_pass_values: list[float | None] = []
   both_rate_values: list[float] = []
   both_share_values: list[float] = []
+  negative_rate_values: list[float] = []
+  dislike_leakage_values: list[float] = []
 
   for case in benchmark_cases:
     ranked = list(rankings_by_user_id.get(case.user_id, []))
@@ -142,6 +150,8 @@ def evaluate_rankings(
     )
     both_rate_values.append(hit_rate_at_k(ranked, both_positive, k))
     both_share_values.append(both_at_k(ranked, taste_positive_ids=positives, fit_positive_ids=case.fit_positive_product_ids, k=k))
+    negative_rate_values.append(negative_rate_at_k(ranked, case.negative_product_ids, k))
+    dislike_leakage_values.append(dislike_leakage_at_k(ranked, case.negative_product_ids, k))
 
   config = dict(algorithm_config or recommendation_algorithm_metadata())
   metrics = {
@@ -154,6 +164,8 @@ def evaluate_rankings(
     f"FitPassRate@{k}": _mean(fit_pass_values),
     f"BothRate@{k}": _mean(both_rate_values),
     f"Both@{k}": _mean(both_share_values),
+    f"NegativeRate@{k}": _mean(negative_rate_values),
+    f"DislikeLeakage@{k}": _mean(dislike_leakage_values),
   }
   return BenchmarkResult(
     algorithm_version=algorithm_version,
@@ -183,3 +195,167 @@ def compare_rankings(
     )
     for ranking_algorithm, rankings in rankings_by_algorithm.items()
   }
+
+
+def _ranking_v3_baseline(
+  db: Session,
+  user: User,
+  *,
+  limit: int,
+  source: str | None = None,
+  max_to_score: int = 700,
+) -> list[str]:
+  from ..services.catalog.catalog_quality import product_is_feed_eligible
+  from ..services.catalog.rule_filters import load_rules_by_source_id, product_passes_source_rules
+  from ..services.feed_filters import product_passes_hard_filters
+
+  fit = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
+  taste = db.execute(select(TasteProfile).where(TasteProfile.user_id == user.id)).scalar_one_or_none()
+  liked_categories = {
+    str(x).strip().lower()
+    for x in ((taste.liked_categories or []) if taste else [])
+    if str(x).strip()
+  }
+  liked_brands = {
+    str(x).strip().lower()
+    for x in ((taste.liked_brands or []) if taste else [])
+    if str(x).strip()
+  }
+
+  conds = [
+    Product.is_active == 1,
+    Product.is_available == 1,
+    Product.is_deleted_from_feed == 0,
+    Product.source != "demo",
+    Product.price > 500,
+    Product.image_url.isnot(None),
+    Product.image_url != "",
+    or_(
+      and_(Product.affiliate_url.isnot(None), Product.affiliate_url != ""),
+      Product.product_url != "",
+    ),
+  ]
+  if source and source.strip():
+    conds.append(Product.source == source.strip())
+  rows = db.execute(
+    select(Product)
+    .where(and_(*conds))
+    .order_by(
+      Product.external_updated_at.desc(),
+      Product.last_seen_in_feed_at.desc(),
+      Product.updated_at.desc(),
+      Product.created_at.desc(),
+      Product.id.asc(),
+    )
+    .limit(max(50, min(1500, int(max_to_score))))
+  ).scalars().all()
+
+  rules_by_source = load_rules_by_source_id(db)
+  scored: list[tuple[float, str]] = []
+  for idx, product in enumerate(rows):
+    if not product_is_feed_eligible(product):
+      continue
+    if not product_passes_source_rules(product, rules_by_source):
+      continue
+    if not product_passes_hard_filters(product, fit):
+      continue
+    score = 1.0 - (idx / max(1.0, len(rows)))
+    if (product.category or "").strip().lower() in liked_categories:
+      score += 0.15
+    if (product.brand or "").strip().lower() in liked_brands:
+      score += 0.10
+    scored.append((score, product.id))
+    if len(scored) >= max(limit * 5, limit):
+      break
+  scored.sort(key=lambda x: x[0], reverse=True)
+  return [product_id for _, product_id in scored[:limit]]
+
+
+def _ranking_v4_pipeline(
+  db: Session,
+  user: User,
+  *,
+  limit: int,
+  source: str | None = None,
+  scenario: str = "daily",
+  max_to_score: int = 700,
+) -> list[str]:
+  from ..services.recommendation_engine import generate_feed
+
+  items = generate_feed(
+    db,
+    user,
+    limit=limit,
+    source=source,
+    scenario=scenario,
+    max_to_score=max_to_score,
+  )
+  return [item.product.id for item in items]
+
+
+def collect_rankings_from_pipeline(
+  db: Session,
+  cases: Iterable[BenchmarkCase],
+  *,
+  algorithm: str = DEFAULT_RANKING_ALGORITHM,
+  k: int = 10,
+  source: str | None = None,
+  scenario: str = "daily",
+  max_to_score: int = 700,
+) -> dict[str, list[str]]:
+  rankings: dict[str, list[str]] = {}
+  for case in cases:
+    user = db.execute(select(User).where(User.id == case.user_id)).scalar_one_or_none()
+    if user is None:
+      rankings[case.user_id] = []
+      continue
+    if algorithm == "ranking_v4":
+      rankings[case.user_id] = _ranking_v4_pipeline(
+        db,
+        user,
+        limit=k,
+        source=source,
+        scenario=scenario,
+        max_to_score=max_to_score,
+      )
+    elif algorithm == "ranking_v3":
+      rankings[case.user_id] = _ranking_v3_baseline(
+        db,
+        user,
+        limit=k,
+        source=source,
+        max_to_score=max_to_score,
+      )
+    else:
+      raise ValueError(f"Unsupported benchmark algorithm: {algorithm!r}")
+  return rankings
+
+
+def run_benchmark(
+  db: Session,
+  cases: Iterable[BenchmarkCase],
+  *,
+  algorithm: str = DEFAULT_RANKING_ALGORITHM,
+  k: int = 10,
+  source: str | None = None,
+  scenario: str = "daily",
+  max_to_score: int = 700,
+) -> BenchmarkResult:
+  benchmark_cases = list(cases)
+  rankings = collect_rankings_from_pipeline(
+    db,
+    benchmark_cases,
+    algorithm=algorithm,
+    k=k,
+    source=source,
+    scenario=scenario,
+    max_to_score=max_to_score,
+  )
+  return evaluate_rankings(
+    benchmark_cases,
+    rankings,
+    k=k,
+    algorithm_version=ALGORITHM_VERSION,
+    ranking_algorithm=algorithm,
+    algorithm_config=recommendation_algorithm_metadata(ranking_algorithm=algorithm, scenario=scenario),
+  )
