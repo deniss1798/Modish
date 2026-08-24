@@ -10,7 +10,15 @@ from sqlalchemy.orm import sessionmaker
 from app.api.deps import create_access_token
 from app.api.recommendations import EventRequest, recommendations_events
 from app.db import Base
-from app.models import FitProfile, Product, RecommendationEventV2, TasteProfile, User, UserProductState
+from app.models import (
+  FitProfile,
+  Product,
+  RecommendationEventV2,
+  TasteProfile,
+  User,
+  UserProductState,
+  UserTasteFeature,
+)
 from app.services.recommendation_config import event_weight, normalize_event_type
 from app.services.recommendation_engine import ensure_taste_profile, score_product
 
@@ -86,6 +94,7 @@ class FeedbackSemanticsTests(unittest.TestCase):
   def test_event_config_weights_and_aliases(self) -> None:
     self.assertEqual(normalize_event_type("buy_click"), "affiliate_click")
     self.assertGreater(event_weight("skip"), event_weight("dislike"))
+    self.assertLess(event_weight("view"), 0.25)
     self.assertLess(event_weight("open_product"), event_weight("save"))
     self.assertLess(event_weight("like"), event_weight("save"))
     self.assertGreater(event_weight("purchase"), event_weight("like"))
@@ -136,6 +145,63 @@ class FeedbackSemanticsTests(unittest.TestCase):
     self.assertEqual(ev.event_type, "affiliate_click")
     self.assertEqual(ev.meta_json["legacy_event_type"], "buy_click")
     self.assertAlmostEqual(float(ev.event_weight), 5.0)
+
+  def test_positive_event_does_not_write_legacy_liked_lists(self) -> None:
+    self._send("like")
+
+    tp = self._taste()
+    self.assertEqual(tp.liked_categories, [])
+    self.assertEqual(tp.liked_brands, [])
+    self.assertEqual(tp.liked_colors, [])
+    self.assertEqual(tp.liked_styles, [])
+    self.assertGreater(float(tp.category_weights["рубашки"]), 0.0)
+
+    category_feature = self.db.execute(
+      select(UserTasteFeature).where(
+        UserTasteFeature.user_id == self.user.id,
+        UserTasteFeature.feature_type == "category",
+        UserTasteFeature.feature_value == "рубашки",
+      )
+    ).scalar_one()
+    self.assertGreater(category_feature.preference_score, 0.0)
+    self.assertLess(category_feature.confidence, 0.3)
+
+  def test_view_is_weak_and_does_not_touch_brand_or_color(self) -> None:
+    res = self._send("view")
+
+    self.assertEqual(res["event_type"], "view")
+    self.assertAlmostEqual(float(res["weight"]), 0.1)
+
+    tp = self._taste()
+    self.assertIn("рубашки", tp.category_weights)
+    self.assertIn("minimalism", tp.style_weights)
+    self.assertEqual(tp.brand_weights, {})
+    self.assertEqual(tp.color_weights, {})
+
+  def test_reasonless_dislike_is_item_level_and_soft_legacy_signal(self) -> None:
+    self._send("dislike")
+
+    tp = self._taste()
+    self.assertAlmostEqual(float(tp.category_weights["рубашки"]), -0.75)
+    self.assertEqual(tp.brand_weights, {})
+    self.assertEqual(tp.color_weights, {})
+
+    item_feature = self.db.execute(
+      select(UserTasteFeature).where(
+        UserTasteFeature.user_id == self.user.id,
+        UserTasteFeature.feature_type == "item",
+        UserTasteFeature.feature_value == self.product.id,
+      )
+    ).scalar_one()
+    category_feature = self.db.execute(
+      select(UserTasteFeature).where(
+        UserTasteFeature.user_id == self.user.id,
+        UserTasteFeature.feature_type == "category",
+        UserTasteFeature.feature_value == "рубашки",
+      )
+    ).scalar_one()
+    self.assertLess(item_feature.preference_score, category_feature.preference_score)
+    self.assertAlmostEqual(float(item_feature.preference_score), -0.28)
 
 
 if __name__ == "__main__":

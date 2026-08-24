@@ -64,10 +64,10 @@ def fit_to_api(fp: FitProfile) -> dict[str, Any]:
 
 def taste_to_api(tp: TasteProfile) -> dict[str, Any]:
   def top_keys(d: dict[str, Any], *, sign: int, limit: int = 12) -> list[str]:
-    items: list[tuple[str, int]] = []
+    items: list[tuple[str, float]] = []
     for k, v in (d or {}).items():
       try:
-        iv = int(v)
+        iv = float(v)
       except Exception:
         continue
       if sign > 0 and iv > 0:
@@ -94,6 +94,7 @@ def taste_to_api(tp: TasteProfile) -> dict[str, Any]:
     },
     "price_range": {"min": tp.price_min, "max": tp.price_max},
     "preferred_fit": tp.preferred_fit,
+    "profile_version": int(tp.profile_version or 1),
     "updated_at": tp.updated_at.isoformat(),
   }
 

@@ -114,6 +114,7 @@ def ensure_taste_profile(db: Session, user_id: str) -> TasteProfile:
     price_min=0,
     price_max=10_000,
     preferred_fit="regular",
+    profile_version=1,
     created_at=now,
     updated_at=now,
   )

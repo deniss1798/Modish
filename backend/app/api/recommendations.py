@@ -29,10 +29,12 @@ from ..services.recommendation_config import (
   TASTE_UPDATE_EVENTS,
   event_weight,
   feature_targets_for_event,
+  legacy_feature_signal_multiplier,
   normalize_event_type,
   normalized_event_meta,
 )
 from ..services.recommendation_engine import _product_category_norms, ensure_taste_profile
+from ..services.user_twin_service import apply_event_to_user_twin
 from .deps import auth_scheme, get_db, user_from_token
 from .serializers import rec_to_dict
 
@@ -221,7 +223,7 @@ def recommendations_events(
           add_unique(disliked_styles, t)
 
       if canonical_event_type in TASTE_UPDATE_EVENTS:
-        delta = weight
+        delta = weight * legacy_feature_signal_multiplier(canonical_event_type, meta)
         targets = feature_targets_for_event(canonical_event_type, meta)
         if "category" in targets:
           for ck in (cat_keys or {cat}):
@@ -252,6 +254,14 @@ def recommendations_events(
       tp.color_weights = color_weights
       tp.style_weights = style_weights
       tp.updated_at = datetime.now(timezone.utc)
+      apply_event_to_user_twin(
+        db,
+        user_id=user.id,
+        product=p,
+        event_type=canonical_event_type,
+        meta=meta,
+        occurred_at=now,
+      )
 
   db.commit()
   total = db.execute(

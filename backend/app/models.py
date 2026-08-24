@@ -251,8 +251,28 @@ class TasteProfile(Base):
   price_min: Mapped[int] = mapped_column(Integer, default=0)
   price_max: Mapped[int] = mapped_column(Integer, default=10_000)
   preferred_fit: Mapped[str] = mapped_column(String(32), default="regular")
+  profile_version: Mapped[int] = mapped_column(Integer, default=1)
   created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
   updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+
+class UserTasteFeature(Base):
+  __tablename__ = "user_taste_features"
+  id: Mapped[str] = mapped_column(String(36), primary_key=True)
+  user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+  feature_type: Mapped[str] = mapped_column(String(32), index=True)
+  feature_value: Mapped[str] = mapped_column(String(128), index=True)
+  preference_score: Mapped[float] = mapped_column(Float, default=0.0)
+  confidence: Mapped[float] = mapped_column(Float, default=0.0)
+  positive_count: Mapped[int] = mapped_column(Integer, default=0)
+  negative_count: Mapped[int] = mapped_column(Integer, default=0)
+  last_positive_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+  last_negative_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+  created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+  updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+  __table_args__ = (
+    UniqueConstraint("user_id", "feature_type", "feature_value", name="uq_user_taste_feature"),
+  )
 
 
 class RecommendationEventV2(Base):

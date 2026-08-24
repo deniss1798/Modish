@@ -9,7 +9,7 @@ from datetime import timedelta
 from typing import Any
 
 
-ALGORITHM_VERSION = "mie_phase1_feedback"
+ALGORITHM_VERSION = "mie_phase2_user_twin"
 
 EVENT_ALIASES = {
   "buy_click": "affiliate_click",
@@ -17,7 +17,7 @@ EVENT_ALIASES = {
 
 EVENT_WEIGHTS: dict[str, float] = {
   "impression": 0.0,
-  "view": 0.25,
+  "view": 0.1,
   "skip": -0.5,
   "dislike": -3.0,
   "like": 2.0,
@@ -55,7 +55,9 @@ LAST_SEEN_EVENTS = frozenset(
   }
 )
 
-POSITIVE_LIST_EVENTS = frozenset(
+POSITIVE_LIST_EVENTS = frozenset()
+
+LEGACY_FULL_FEATURE_POSITIVE_EVENTS = frozenset(
   {
     "like",
     "save",
@@ -66,6 +68,26 @@ POSITIVE_LIST_EVENTS = frozenset(
 )
 
 NEGATIVE_LIST_EVENTS = frozenset()
+
+USER_TWIN_EVENT_SIGNALS: dict[str, float] = {
+  "impression": 0.0,
+  "view": 0.02,
+  "skip": -0.04,
+  "dislike": -0.28,
+  "like": 0.08,
+  "save": 0.16,
+  "unsave": -0.10,
+  "open_product": 0.04,
+  "affiliate_click": 0.22,
+  "purchase": 0.42,
+  "post_purchase_positive": 0.65,
+  "post_purchase_negative": -0.55,
+}
+
+USER_TWIN_CONFIDENCE_EVIDENCE_SCALE = 5.0
+USER_TWIN_WEAK_HALF_LIFE_DAYS = 75.0
+USER_TWIN_STRONG_HALF_LIFE_DAYS = 365.0
+GENERIC_DISLIKE_FEATURE_MULTIPLIER = 0.25
 
 TASTE_UPDATE_EVENTS = frozenset(
   {
@@ -109,6 +131,10 @@ def event_weight(event_type: str) -> float:
   return float(EVENT_WEIGHTS[normalize_event_type(event_type)])
 
 
+def user_twin_event_signal(event_type: str) -> float:
+  return float(USER_TWIN_EVENT_SIGNALS[normalize_event_type(event_type)])
+
+
 def dislike_reason_from_meta(meta: dict[str, Any] | None) -> str | None:
   if not isinstance(meta, dict):
     return None
@@ -140,12 +166,13 @@ def feature_targets_for_event(event_type: str, meta: dict[str, Any]) -> set[str]
   """Which product features should this feedback update in legacy taste weights."""
   if event_type == "impression":
     return set()
-  if event_type in POSITIVE_LIST_EVENTS or event_type in {
-    "view",
+  if event_type in LEGACY_FULL_FEATURE_POSITIVE_EVENTS or event_type in {
     "open_product",
     "unsave",
   }:
     return {"category", "brand", "color", "style"}
+  if event_type == "view":
+    return {"category", "style"}
   if event_type == "skip":
     return {"category", "style"}
   if event_type in ("dislike", "post_purchase_negative"):
@@ -160,5 +187,11 @@ def feature_targets_for_event(event_type: str, meta: dict[str, Any]) -> set[str]
       return {"style", "category"}
     if reason in ("dont_like_fit", "too_expensive", "already_have_similar"):
       return set()
-    return {"category", "brand", "color", "style"}
+    return {"category", "style"}
   return set()
+
+
+def legacy_feature_signal_multiplier(event_type: str, meta: dict[str, Any]) -> float:
+  if event_type in ("dislike", "post_purchase_negative") and dislike_reason_from_meta(meta) is None:
+    return GENERIC_DISLIKE_FEATURE_MULTIPLIER
+  return 1.0
