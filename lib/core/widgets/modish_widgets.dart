@@ -34,7 +34,12 @@ class MobileViewport extends StatelessWidget {
 }
 
 class Brand extends StatelessWidget {
-  const Brand({super.key, this.width = 168, this.light = false, this.gold = true});
+  const Brand({
+    super.key,
+    this.width = 168,
+    this.light = false,
+    this.gold = true,
+  });
   final double width;
   final bool light;
   final bool gold;
@@ -51,7 +56,8 @@ class Brand extends StatelessWidget {
       width: width,
       fit: BoxFit.contain,
       alignment: Alignment.centerLeft,
-      errorBuilder: (context, error, stackTrace) => GoldWordmark(fontSize: width * 0.19),
+      errorBuilder: (context, error, stackTrace) =>
+          GoldWordmark(fontSize: width * 0.19),
     );
   }
 }
@@ -87,7 +93,11 @@ class GoldWordmark extends StatelessWidget {
             children: [
               Text(
                 '✦',
-                style: base.copyWith(fontSize: fontSize * 0.28, height: 0.85, fontFamily: null),
+                style: base.copyWith(
+                  fontSize: fontSize * 0.28,
+                  height: 0.85,
+                  fontFamily: null,
+                ),
               ),
               Text('i', style: base),
             ],
@@ -194,8 +204,10 @@ class SecondaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = foregroundColor ?? (onDark ? AppColors.accentSoft : AppColors.accent);
-    final border = borderColor ?? (onDark ? AppColors.accent : AppColors.accentDark);
+    final fg =
+        foregroundColor ?? (onDark ? AppColors.accentSoft : AppColors.accent);
+    final border =
+        borderColor ?? (onDark ? AppColors.accent : AppColors.accentDark);
     final btn = OutlinedButton(
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
@@ -299,7 +311,10 @@ class ScreenHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (showBrand) ...[const Brand(width: 120), const SizedBox(height: 12)],
+          if (showBrand) ...[
+            const Brand(width: 120),
+            const SizedBox(height: 12),
+          ],
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -407,7 +422,9 @@ class ModishBottomNav extends StatelessWidget {
                             item.$3,
                             style: TextStyle(
                               fontSize: 10,
-                              fontWeight: on ? FontWeight.w700 : FontWeight.w500,
+                              fontWeight: on
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
                               color: on ? AppColors.accent : AppColors.muted,
                             ),
                           ),
@@ -452,7 +469,11 @@ class EmptyState extends StatelessWidget {
         children: [
           Icon(icon, size: 40, color: AppColors.accent.withValues(alpha: 0.85)),
           const SizedBox(height: 14),
-          Text(title, style: AppTextStyles.sectionTitle, textAlign: TextAlign.center),
+          Text(
+            title,
+            style: AppTextStyles.sectionTitle,
+            textAlign: TextAlign.center,
+          ),
           if (message != null && message!.trim().isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
@@ -474,7 +495,10 @@ class EmptyState extends StatelessWidget {
             const SizedBox(
               width: 26,
               height: 26,
-              child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.accent),
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: AppColors.accent,
+              ),
             ),
           ],
         ],
@@ -488,12 +512,14 @@ class FeedActionBar extends StatelessWidget {
   const FeedActionBar({
     super.key,
     required this.onSkip,
+    required this.onDislike,
     required this.onSave,
     required this.onOpen,
     required this.onLike,
   });
 
   final VoidCallback onSkip;
+  final VoidCallback onDislike;
   final VoidCallback onSave;
   final VoidCallback onOpen;
   final VoidCallback onLike;
@@ -510,6 +536,12 @@ class FeedActionBar extends StatelessWidget {
             label: 'Пропуск',
             color: AppColors.muted,
             onTap: onSkip,
+          ),
+          _FeedAction(
+            icon: Icons.thumb_down_alt_outlined,
+            label: 'Не моё',
+            color: AppColors.muted,
+            onTap: onDislike,
           ),
           _FeedAction(
             icon: Icons.bookmark_border_rounded,
@@ -714,7 +746,13 @@ class MenuTile extends StatelessWidget {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(icon, color: AppColors.accent),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500, color: AppColors.ink)),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontWeight: FontWeight.w500,
+          color: AppColors.ink,
+        ),
+      ),
       subtitle: subtitle != null
           ? Text(subtitle!, style: AppTextStyles.caption)
           : null,

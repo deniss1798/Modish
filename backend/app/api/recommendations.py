@@ -1,7 +1,7 @@
 """События по товарам и legacy-рекомендации (карточки образов)."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -21,6 +21,17 @@ from ..models import (
   UserProductState,
 )
 from ..services.outfit_service import generate_outfits
+from ..services.recommendation_config import (
+  HIDE_FOR,
+  LAST_SEEN_EVENTS,
+  NEGATIVE_LIST_EVENTS,
+  POSITIVE_LIST_EVENTS,
+  TASTE_UPDATE_EVENTS,
+  event_weight,
+  feature_targets_for_event,
+  normalize_event_type,
+  normalized_event_meta,
+)
 from ..services.recommendation_engine import _product_category_norms, ensure_taste_profile
 from .deps import auth_scheme, get_db, user_from_token
 from .serializers import rec_to_dict
@@ -29,9 +40,7 @@ router = APIRouter(tags=["recommendations"])
 
 
 class EventRequest(BaseModel):
-  event_type: str = Field(
-    pattern="^(view|skip|dislike|like|save|unsave|open_product|buy_click)$"
-  )
+  event_type: str
   product_id: str | None = None
   outfit_id: str | None = None
   meta: dict[str, Any] | None = None
@@ -56,18 +65,17 @@ def recommendations_events(
   from ..models import Outfit, Product
 
   user = user_from_token(credentials, db)
-  # click/open/buy сильнее save/like (P6)
-  weights = {
-    "view": 0,
-    "skip": -1,
-    "dislike": -4,
-    "like": 3,
-    "save": 5,
-    "unsave": -5,
-    "open_product": 10,
-    "buy_click": 15,
-  }
-  weight = weights[payload.event_type]
+  try:
+    original_event_type = (payload.event_type or "").strip().lower()
+    canonical_event_type = normalize_event_type(original_event_type)
+    meta = normalized_event_meta(
+      event_type=canonical_event_type,
+      meta=payload.meta,
+      original_event_type=original_event_type,
+    )
+  except ValueError as exc:
+    raise HTTPException(status_code=400, detail=str(exc)) from exc
+  weight = event_weight(canonical_event_type)
   if payload.product_id is None and payload.outfit_id is None:
     raise HTTPException(status_code=400, detail="product_id or outfit_id required")
 
@@ -86,30 +94,21 @@ def recommendations_events(
         product_id=payload.product_id,
         hidden_until=None,
         last_seen_at=None,
-        event_strength=0,
+        event_strength=0.0,
         created_at=now,
         updated_at=now,
       )
       db.add(st)
       db.flush()
-    st.last_seen_at = now if payload.event_type in ("view", "open_product") else st.last_seen_at
-    st.event_strength = int(st.event_strength or 0) + int(weight or 0)
+    st.last_seen_at = now if canonical_event_type in LAST_SEEN_EVENTS else st.last_seen_at
+    st.event_strength = float(st.event_strength or 0.0) + float(weight or 0.0)
 
-    if payload.event_type == "skip":
-      st.hidden_until = now + timedelta(days=7)
-    elif payload.event_type == "dislike":
-      st.hidden_until = now + timedelta(days=3650)
-    elif payload.event_type == "like":
-      st.hidden_until = now + timedelta(hours=6)
-    elif payload.event_type == "save":
-      st.hidden_until = now + timedelta(days=3650)
-    elif payload.event_type == "buy_click":
-      st.hidden_until = now + timedelta(days=3650)
-    elif payload.event_type == "unsave":
-      st.hidden_until = now + timedelta(hours=6)
+    hide_for = HIDE_FOR.get(canonical_event_type)
+    if hide_for is not None:
+      st.hidden_until = now + hide_for
     st.updated_at = now
 
-  if payload.product_id and payload.event_type in ("save", "unsave"):
+  if payload.product_id and canonical_event_type in ("save", "unsave"):
     last = db.execute(
       select(RecommendationEventV2.event_type)
       .where(
@@ -120,11 +119,11 @@ def recommendations_events(
       .order_by(RecommendationEventV2.created_at.desc())
       .limit(1)
     ).scalar_one_or_none()
-    if last == payload.event_type:
+    if last == canonical_event_type:
       return {
         "status": "ok",
-        "event_type": payload.event_type,
-        "weight": 0,
+        "event_type": canonical_event_type,
+        "weight": 0.0,
         "total_events": int(
           db.execute(
             select(func.count())
@@ -143,9 +142,9 @@ def recommendations_events(
     user_id=user.id,
     product_id=payload.product_id,
     outfit_id=payload.outfit_id,
-    event_type=payload.event_type,
+    event_type=canonical_event_type,
     event_weight=weight,
-    meta_json=payload.meta or {},
+    meta_json=meta,
     created_at=datetime.now(timezone.utc),
   )
   db.add(ev)
@@ -159,33 +158,45 @@ def recommendations_events(
       brand = (p.brand or "").strip().lower()
       cols = [str(c).strip().lower() for c in (p.colors or []) if str(c).strip()]
       styles = [str(t).strip().lower() for t in (p.style_tags or []) if str(t).strip()]
+      liked_categories = list(tp.liked_categories or [])
+      liked_brands = list(tp.liked_brands or [])
+      liked_colors = list(tp.liked_colors or [])
+      liked_styles = list(tp.liked_styles or [])
+      disliked_categories = list(tp.disliked_categories or [])
+      disliked_brands = list(tp.disliked_brands or [])
+      disliked_colors = list(tp.disliked_colors or [])
+      disliked_styles = list(tp.disliked_styles or [])
+      category_weights = dict(tp.category_weights or {})
+      brand_weights = dict(tp.brand_weights or {})
+      color_weights = dict(tp.color_weights or {})
+      style_weights = dict(tp.style_weights or {})
 
       def add_unique(lst: list[str], v: str) -> None:
         if v and v not in lst:
           lst.append(v)
 
-      def bump(d: dict, key: str, delta: int) -> None:
+      def bump(d: dict, key: str, delta: float) -> None:
         if not key:
           return
         cur = d.get(key, 0)
         try:
-          cur = int(cur)
+          cur = float(cur)
         except Exception:
-          cur = 0
-        nxt = cur + int(delta)
+          cur = 0.0
+        nxt = cur + float(delta)
         if nxt > 50:
-          nxt = 50
+          nxt = 50.0
         if nxt < -50:
-          nxt = -50
+          nxt = -50.0
         d[key] = nxt
 
       def prune(d: dict, limit: int = 200) -> None:
         if not isinstance(d, dict) or len(d) <= limit:
           return
-        items: list[tuple[str, int]] = []
+        items: list[tuple[str, float]] = []
         for k, v in d.items():
           try:
-            items.append((str(k), int(v)))
+            items.append((str(k), float(v)))
           except Exception:
             continue
         items.sort(key=lambda x: abs(x[1]), reverse=True)
@@ -194,40 +205,52 @@ def recommendations_events(
         for k in drop:
           d.pop(k, None)
 
-      if payload.event_type in ("like", "save", "open_product", "buy_click"):
-        add_unique(tp.liked_categories, cat)
-        add_unique(tp.liked_brands, brand)
+      if canonical_event_type in POSITIVE_LIST_EVENTS:
+        add_unique(liked_categories, cat)
+        add_unique(liked_brands, brand)
         for c in cols[:3]:
-          add_unique(tp.liked_colors, c)
+          add_unique(liked_colors, c)
         for t in styles[:3]:
-          add_unique(tp.liked_styles, t)
-      elif payload.event_type in ("dislike", "skip"):
-        add_unique(tp.disliked_categories, cat)
-        add_unique(tp.disliked_brands, brand)
+          add_unique(liked_styles, t)
+      elif canonical_event_type in NEGATIVE_LIST_EVENTS:
+        add_unique(disliked_categories, cat)
+        add_unique(disliked_brands, brand)
         for c in cols[:3]:
-          add_unique(tp.disliked_colors, c)
+          add_unique(disliked_colors, c)
         for t in styles[:3]:
-          add_unique(tp.disliked_styles, t)
+          add_unique(disliked_styles, t)
 
-      if payload.event_type == "view":
-        for ck in cat_keys:
-          bump(tp.category_weights, ck, +1)
-        if brand:
-          bump(tp.brand_weights, brand, +1)
-        for c in cols[:2]:
-          bump(tp.color_weights, c, +1)
+      if canonical_event_type in TASTE_UPDATE_EVENTS:
+        delta = weight
+        targets = feature_targets_for_event(canonical_event_type, meta)
+        if "category" in targets:
+          for ck in (cat_keys or {cat}):
+            bump(category_weights, ck, delta)
+        if "brand" in targets:
+          bump(brand_weights, brand, delta)
+        if "color" in targets:
+          for c in cols[:3]:
+            bump(color_weights, c, delta)
+        if "style" in targets:
+          for t in styles[:3]:
+            bump(style_weights, t, delta)
+        prune(category_weights)
+        prune(brand_weights)
+        prune(color_weights)
+        prune(style_weights)
 
-      delta = weight
-      bump(tp.category_weights, cat, delta)
-      bump(tp.brand_weights, brand, delta)
-      for c in cols[:3]:
-        bump(tp.color_weights, c, delta)
-      for t in styles[:3]:
-        bump(tp.style_weights, t, delta)
-      prune(tp.category_weights)
-      prune(tp.brand_weights)
-      prune(tp.color_weights)
-      prune(tp.style_weights)
+      tp.liked_categories = liked_categories
+      tp.liked_brands = liked_brands
+      tp.liked_colors = liked_colors
+      tp.liked_styles = liked_styles
+      tp.disliked_categories = disliked_categories
+      tp.disliked_brands = disliked_brands
+      tp.disliked_colors = disliked_colors
+      tp.disliked_styles = disliked_styles
+      tp.category_weights = category_weights
+      tp.brand_weights = brand_weights
+      tp.color_weights = color_weights
+      tp.style_weights = style_weights
       tp.updated_at = datetime.now(timezone.utc)
 
   db.commit()
@@ -245,7 +268,7 @@ def recommendations_events(
       generated = len(items)
   return {
     "status": "ok",
-    "event_type": payload.event_type,
+    "event_type": canonical_event_type,
     "weight": weight,
     "total_events": total,
     "milestone_reached": milestone,

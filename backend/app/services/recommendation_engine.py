@@ -167,13 +167,13 @@ def expand_product_exclusions(db: Session, product_ids: set[str] | list[str] | N
   return ids | {str(pid).strip() for pid in sibling_ids if str(pid).strip()}
 
 
-def _weight(d: Any, key: str) -> int:
+def _weight(d: Any, key: str) -> float:
   if not isinstance(d, dict):
-    return 0
+    return 0.0
   try:
-    return int(d.get(key, 0))
+    return float(d.get(key, 0.0))
   except Exception:
-    return 0
+    return 0.0
 
 
 def _product_canon_colors(product: Product) -> set[str]:
@@ -227,7 +227,14 @@ def _batch_saved_categories(db: Session, *, user_id: str) -> set[str]:
 
 
 # Позитивные события для Popularity (гл. 33.31)
-_POPULARITY_EVENTS = ("like", "save", "open_product", "buy_click")
+_POPULARITY_EVENTS = (
+  "like",
+  "save",
+  "affiliate_click",
+  "purchase",
+  "post_purchase_positive",
+  "buy_click",  # legacy events created before Phase 1
+)
 
 
 def _batch_popularity(db: Session, *, product_ids: list[str]) -> dict[str, float]:

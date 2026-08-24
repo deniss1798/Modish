@@ -9,6 +9,7 @@ import '../../app.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/modish_widgets.dart';
+
 /// Онбординг v2: 3 шага + Wow (60–90 сек).
 class OnboardingV2Screen extends StatefulWidget {
   const OnboardingV2Screen({super.key, required this.controller});
@@ -20,7 +21,8 @@ class OnboardingV2Screen extends StatefulWidget {
 }
 
 class _OnboardingV2ScreenState extends State<OnboardingV2Screen> {
-  int _sub = 0; // 0 step1, 1 photo, 2 confirm, 3 step3, 4 wow progress, 5 wow result
+  int _sub =
+      0; // 0 step1, 1 photo, 2 confirm, 3 step3, 4 wow progress, 5 wow result
 
   String _gender = 'female';
   String? _ageGroup;
@@ -108,7 +110,10 @@ class _OnboardingV2ScreenState extends State<OnboardingV2Screen> {
   }
 
   Future<void> _pickPhoto() async {
-    final x = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 88);
+    final x = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 88,
+    );
     if (x == null) return;
     setState(() => _photoPath = x.path);
     await widget.controller.onboardingV2AnalyzePhoto(x.path);
@@ -134,7 +139,7 @@ class _OnboardingV2ScreenState extends State<OnboardingV2Screen> {
   @override
   Widget build(BuildContext context) {
     final c = widget.controller;
-  return MobileViewport(
+    return MobileViewport(
       child: SafeArea(
         child: switch (_sub) {
           0 => _buildStep1(c),
@@ -164,13 +169,18 @@ class _OnboardingV2ScreenState extends State<OnboardingV2Screen> {
           ],
         ),
         const SizedBox(height: 8),
-        Text('Расскажи о себе', style: AppTextStyles.display.copyWith(fontSize: 28)),
+        Text(
+          'Расскажи о себе',
+          style: AppTextStyles.display.copyWith(fontSize: 28),
+        ),
         const SizedBox(height: 20),
         const Text('Пол', style: AppTextStyles.sectionTitle),
         const SizedBox(height: 10),
         Row(
           children: [
-            Expanded(child: _genderCard('female', 'Женщина', Icons.woman_outlined)),
+            Expanded(
+              child: _genderCard('female', 'Женщина', Icons.woman_outlined),
+            ),
             const SizedBox(width: 12),
             Expanded(child: _genderCard('male', 'Мужчина', Icons.man_outlined)),
           ],
@@ -216,7 +226,9 @@ class _OnboardingV2ScreenState extends State<OnboardingV2Screen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 28),
         decoration: BoxDecoration(
-          color: sel ? AppColors.accent.withValues(alpha: 0.15) : AppColors.card,
+          color: sel
+              ? AppColors.accent.withValues(alpha: 0.15)
+              : AppColors.card,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: sel ? AppColors.accent : AppColors.line,
@@ -225,7 +237,11 @@ class _OnboardingV2ScreenState extends State<OnboardingV2Screen> {
         ),
         child: Column(
           children: [
-            Icon(icon, size: 40, color: sel ? AppColors.accent : AppColors.muted),
+            Icon(
+              icon,
+              size: 40,
+              color: sel ? AppColors.accent : AppColors.muted,
+            ),
             const SizedBox(height: 8),
             Text(label, style: AppTextStyles.sectionTitle),
           ],
@@ -240,7 +256,10 @@ class _OnboardingV2ScreenState extends State<OnboardingV2Screen> {
       children: [
         const Text('Шаг 2 из 3', style: AppTextStyles.caption),
         const SizedBox(height: 8),
-        Text('Фото в полный рост', style: AppTextStyles.display.copyWith(fontSize: 28)),
+        Text(
+          'Фото в полный рост',
+          style: AppTextStyles.display.copyWith(fontSize: 28),
+        ),
         const SizedBox(height: 8),
         Text(
           'Нужно для типа фигуры и цветотипа. Можно пропустить — подбор будет менее точным.',
@@ -256,7 +275,11 @@ class _OnboardingV2ScreenState extends State<OnboardingV2Screen> {
                     child: Image.file(File(_photoPath!), fit: BoxFit.cover),
                   )
                 : Center(
-                    child: Icon(Icons.add_a_photo_outlined, size: 48, color: AppColors.muted),
+                    child: Icon(
+                      Icons.add_a_photo_outlined,
+                      size: 48,
+                      color: AppColors.muted,
+                    ),
                   ),
           ),
         ),
@@ -291,11 +314,14 @@ class _OnboardingV2ScreenState extends State<OnboardingV2Screen> {
     _heightCategory ??= pending['height_category'] as String?;
 
     final opts = pending['options'] as Map? ?? {};
-    final bodyOpts = (opts['body_shapes'] as List?)?.cast<String>() ??
+    final bodyOpts =
+        (opts['body_shapes'] as List?)?.cast<String>() ??
         ['Прямоугольник', 'Груша', 'Песочные часы'];
-    final colorOpts = (opts['color_types'] as List?)?.cast<String>() ??
+    final colorOpts =
+        (opts['color_types'] as List?)?.cast<String>() ??
         ['Холодная зима', 'Тёплая весна', 'Нейтральный'];
-    final heightOpts = (opts['height_categories'] as List?)?.cast<String>() ??
+    final heightOpts =
+        (opts['height_categories'] as List?)?.cast<String>() ??
         ['Низкий', 'Средний', 'Высокий'];
 
     return ListView(
@@ -306,14 +332,29 @@ class _OnboardingV2ScreenState extends State<OnboardingV2Screen> {
           style: AppTextStyles.display.copyWith(fontSize: 26),
         ),
         const SizedBox(height: 20),
-        _confirmTile(Icons.accessibility_new_outlined, 'Тип фигуры', _bodyShape, bodyOpts,
-            (v) => setState(() => _bodyShape = v)),
+        _confirmTile(
+          Icons.accessibility_new_outlined,
+          'Тип фигуры',
+          _bodyShape,
+          bodyOpts,
+          (v) => setState(() => _bodyShape = v),
+        ),
         const SizedBox(height: 12),
-        _confirmTile(Icons.palette_outlined, 'Цветотип', _colorType, colorOpts,
-            (v) => setState(() => _colorType = v)),
+        _confirmTile(
+          Icons.palette_outlined,
+          'Цветотип',
+          _colorType,
+          colorOpts,
+          (v) => setState(() => _colorType = v),
+        ),
         const SizedBox(height: 12),
-        _confirmTile(Icons.height_outlined, 'Рост (примерно)', _heightCategory, heightOpts,
-            (v) => setState(() => _heightCategory = v)),
+        _confirmTile(
+          Icons.height_outlined,
+          'Рост (примерно)',
+          _heightCategory,
+          heightOpts,
+          (v) => setState(() => _heightCategory = v),
+        ),
         const SizedBox(height: 24),
         PrimaryButton(
           label: c.isLoading ? 'Сохраняем...' : 'Да, всё верно',
@@ -349,9 +390,14 @@ class _OnboardingV2ScreenState extends State<OnboardingV2Screen> {
           Text(value ?? '—', style: AppTextStyles.body),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
-            value: options.contains(value) ? value : options.first,
+            initialValue: options.contains(value) ? value : options.first,
             items: options
-                .map((o) => DropdownMenuItem(value: o, child: Text(o, overflow: TextOverflow.ellipsis)))
+                .map(
+                  (o) => DropdownMenuItem(
+                    value: o,
+                    child: Text(o, overflow: TextOverflow.ellipsis),
+                  ),
+                )
                 .toList(),
             onChanged: (v) {
               if (v != null) onPick(v);
@@ -369,7 +415,10 @@ class _OnboardingV2ScreenState extends State<OnboardingV2Screen> {
       children: [
         const Text('Шаг 3 из 3', style: AppTextStyles.caption),
         const SizedBox(height: 8),
-        Text('Стиль и бюджет', style: AppTextStyles.display.copyWith(fontSize: 28)),
+        Text(
+          'Стиль и бюджет',
+          style: AppTextStyles.display.copyWith(fontSize: 28),
+        ),
         const SizedBox(height: 16),
         const Text('Какие стили ближе?', style: AppTextStyles.sectionTitle),
         const SizedBox(height: 10),
@@ -401,13 +450,19 @@ class _OnboardingV2ScreenState extends State<OnboardingV2Screen> {
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: ListTile(
-              tileColor: sel ? AppColors.accent.withValues(alpha: 0.12) : AppColors.card,
+              tileColor: sel
+                  ? AppColors.accent.withValues(alpha: 0.12)
+                  : AppColors.card,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: sel ? AppColors.accent : AppColors.line),
+                side: BorderSide(
+                  color: sel ? AppColors.accent : AppColors.line,
+                ),
               ),
               title: Text(e.value),
-              trailing: sel ? const Icon(Icons.check_circle, color: AppColors.accent) : null,
+              trailing: sel
+                  ? const Icon(Icons.check_circle, color: AppColors.accent)
+                  : null,
               onTap: () => setState(() => _priceSegment = e.key),
             ),
           );
@@ -464,23 +519,28 @@ class _OnboardingV2ScreenState extends State<OnboardingV2Screen> {
           style: AppTextStyles.bodyMuted,
         ),
         const SizedBox(height: 20),
-        ...outfits.map((o) => Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: SoftCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(o.title, style: AppTextStyles.sectionTitle),
-                    if (o.explanation != null && o.explanation!.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(o.explanation!, style: AppTextStyles.bodyMuted),
-                    ],
-                    const SizedBox(height: 12),
-                    Text('${o.itemCount} вещей в образе', style: AppTextStyles.caption),
+        ...outfits.map(
+          (o) => Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: SoftCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(o.title, style: AppTextStyles.sectionTitle),
+                  if (o.explanation != null && o.explanation!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(o.explanation!, style: AppTextStyles.bodyMuted),
                   ],
-                ),
+                  const SizedBox(height: 12),
+                  Text(
+                    '${o.itemCount} вещей в образе',
+                    style: AppTextStyles.caption,
+                  ),
+                ],
               ),
-            )),
+            ),
+          ),
+        ),
         const SizedBox(height: 16),
         PrimaryButton(
           label: 'В приложение',

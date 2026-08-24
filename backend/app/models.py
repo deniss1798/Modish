@@ -262,7 +262,7 @@ class RecommendationEventV2(Base):
   product_id: Mapped[str | None] = mapped_column(ForeignKey("products.id"), index=True, nullable=True)
   outfit_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
   event_type: Mapped[str] = mapped_column(String(32))
-  event_weight: Mapped[int] = mapped_column(Integer, default=0)
+  event_weight: Mapped[float] = mapped_column(Float, default=0.0)
   meta_json: Mapped[dict] = mapped_column(JSON, default=dict)
   created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
@@ -352,7 +352,7 @@ class UserProductState(Base):
   product_id: Mapped[str] = mapped_column(ForeignKey("products.id"), index=True)
   hidden_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
   last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-  event_strength: Mapped[int] = mapped_column(Integer, default=0)
+  event_strength: Mapped[float] = mapped_column(Float, default=0.0)
   created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
   updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
   __table_args__ = (UniqueConstraint("user_id", "product_id", name="uq_user_product_state"),)

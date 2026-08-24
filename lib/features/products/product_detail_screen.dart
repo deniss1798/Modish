@@ -243,28 +243,51 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             );
                           }).toList(),
                         ),
-                      if (_card.reasons.isNotEmpty || _card.reason.trim().isNotEmpty) ...[
+                      if (_card.reasons.isNotEmpty ||
+                          _card.reason.trim().isNotEmpty) ...[
                         const SizedBox(height: 20),
-                        Text('Почему рекомендовано', style: AppTextStyles.sectionTitle.copyWith(fontSize: 14)),
+                        Text(
+                          'Почему рекомендовано',
+                          style: AppTextStyles.sectionTitle.copyWith(
+                            fontSize: 14,
+                          ),
+                        ),
                         const SizedBox(height: 8),
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
-                          children: (_card.reasons.isNotEmpty ? _card.reasons : [_card.reason])
-                              .take(4)
-                              .map((r) => Chip(label: Text(r), backgroundColor: AppColors.chipBg, side: BorderSide.none))
-                              .toList(),
+                          children:
+                              (_card.reasons.isNotEmpty
+                                      ? _card.reasons
+                                      : [_card.reason])
+                                  .take(4)
+                                  .map(
+                                    (r) => Chip(
+                                      label: Text(r),
+                                      backgroundColor: AppColors.chipBg,
+                                      side: BorderSide.none,
+                                    ),
+                                  )
+                                  .toList(),
                         ),
                       ],
                       Builder(
                         builder: (context) {
-                          final related = widget.controller.relatedProducts(p.id, limit: 4);
+                          final related = widget.controller.relatedProducts(
+                            p.id,
+                            limit: 4,
+                          );
                           if (related.isEmpty) return const SizedBox.shrink();
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const SizedBox(height: 20),
-                              Text('С чем носить', style: AppTextStyles.sectionTitle.copyWith(fontSize: 14)),
+                              Text(
+                                'С чем носить',
+                                style: AppTextStyles.sectionTitle.copyWith(
+                                  fontSize: 14,
+                                ),
+                              ),
                               const SizedBox(height: 10),
                               SizedBox(
                                 height: 110,
@@ -278,15 +301,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                     return SizedBox(
                                       width: 80,
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Expanded(
                                             child: ProductFillImage(
                                               imageUrl: rp.imageUrl,
-                                              borderRadius: BorderRadius.circular(10),
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
                                             ),
                                           ),
-                                          Text(rp.brand, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTextStyles.caption),
+                                          Text(
+                                            rp.brand,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: AppTextStyles.caption,
+                                          ),
                                         ],
                                       ),
                                     );
@@ -436,7 +466,7 @@ Future<void> _openAffiliateShop(
     if (context.mounted) {
       try {
         await controller.api.recordRecommendationEvent(
-          eventType: 'buy_click',
+          eventType: 'affiliate_click',
           productId: productId,
         );
       } catch (_) {}

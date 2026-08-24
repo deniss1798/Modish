@@ -13,18 +13,18 @@ import '../../features/recommendations/models.dart';
 /// Локально / эмулятор: по умолчанию `10.0.2.2:8000` (Android) или `127.0.0.1:8000`.
 class ApiClient {
   ApiClient({this.onUnauthorized})
-      : _dio = Dio(
-          BaseOptions(
-            baseUrl: resolvedBaseUrl(),
-            connectTimeout: const Duration(seconds: 45),
-            sendTimeout: const Duration(seconds: 45),
-            receiveTimeout: const Duration(seconds: 45),
-            headers: const {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-            },
-          ),
-        ) {
+    : _dio = Dio(
+        BaseOptions(
+          baseUrl: resolvedBaseUrl(),
+          connectTimeout: const Duration(seconds: 45),
+          sendTimeout: const Duration(seconds: 45),
+          receiveTimeout: const Duration(seconds: 45),
+          headers: const {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+        ),
+      ) {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onError: (error, handler) async {
@@ -34,7 +34,8 @@ class ApiClient {
               error.requestOptions.path != '/auth/register') {
             onUnauthorized!();
           }
-          if (_shouldRetry(error) && error.requestOptions.extra['retried'] != true) {
+          if (_shouldRetry(error) &&
+              error.requestOptions.extra['retried'] != true) {
             error.requestOptions.extra['retried'] = true;
             await Future<void>.delayed(const Duration(milliseconds: 800));
             try {
@@ -151,10 +152,7 @@ class ApiClient {
   Future<String> register(String email, String password) async {
     final response = await _dio.post(
       '/auth/register',
-      data: {
-        'email': email.trim(),
-        'password': password,
-      },
+      data: {'email': email.trim(), 'password': password},
       options: Options(
         sendTimeout: const Duration(seconds: 60),
         receiveTimeout: const Duration(seconds: 60),
@@ -169,10 +167,7 @@ class ApiClient {
   Future<String> login(String email, String password) async {
     final response = await _dio.post(
       '/auth/login',
-      data: {
-        'email': email.trim(),
-        'password': password,
-      },
+      data: {'email': email.trim(), 'password': password},
       options: Options(
         sendTimeout: const Duration(seconds: 60),
         receiveTimeout: const Duration(seconds: 60),
@@ -218,10 +213,7 @@ class ApiClient {
   }
 
   Future<void> setStyleTarget(String target) async {
-    await _dio.patch(
-      '/style-profile/target',
-      data: {'style_target': target},
-    );
+    await _dio.patch('/style-profile/target', data: {'style_target': target});
   }
 
   Future<void> analyzeStyleProfile(String photoPath) async {
@@ -230,8 +222,8 @@ class ApiClient {
     final subtype = lower.endsWith('.png')
         ? 'png'
         : lower.endsWith('.webp')
-            ? 'webp'
-            : 'jpeg';
+        ? 'webp'
+        : 'jpeg';
 
     final form = FormData.fromMap({
       'photo': await MultipartFile.fromFile(
@@ -257,11 +249,7 @@ class ApiClient {
   }) async {
     final response = await _dio.post(
       '/recommendations/generate',
-      data: {
-        'type': type,
-        'count': count,
-        'scenario': scenario,
-      },
+      data: {'type': type, 'count': count, 'scenario': scenario},
     );
 
     final list = (response.data as List).cast<Map<String, dynamic>>();
@@ -305,10 +293,7 @@ class ApiClient {
       queryParameters['source'] = source.trim();
     }
 
-    final response = await _dio.get(
-      '/feed',
-      queryParameters: queryParameters,
-    );
+    final response = await _dio.get('/feed', queryParameters: queryParameters);
 
     final list = (response.data as List).cast<Map<String, dynamic>>();
     return list;
@@ -354,10 +339,7 @@ class ApiClient {
     String? source,
     String? brand,
   }) async {
-    final queryParameters = <String, dynamic>{
-      'limit': limit,
-      'offset': offset,
-    };
+    final queryParameters = <String, dynamic>{'limit': limit, 'offset': offset};
 
     if (category != null && category.trim().isNotEmpty) {
       queryParameters['category'] = category.trim();
@@ -383,10 +365,7 @@ class ApiClient {
   Future<void> metricsEvent(String name, {Map<String, dynamic>? meta}) async {
     await _dio.post(
       '/metrics/events',
-      data: {
-        'name': name,
-        'meta': meta ?? {},
-      },
+      data: {'name': name, 'meta': meta ?? {}},
     );
   }
 
@@ -430,8 +409,8 @@ class ApiClient {
     final subtype = lower.endsWith('.png')
         ? 'png'
         : lower.endsWith('.webp')
-            ? 'webp'
-            : 'jpeg';
+        ? 'webp'
+        : 'jpeg';
     final form = FormData.fromMap({
       'photo': await MultipartFile.fromFile(
         photoPath,
@@ -449,15 +428,12 @@ class ApiClient {
     String? heightCategory,
     bool confirmed = true,
   }) async {
-    final response = await _dio.patch(
-      '/onboarding/photo/confirm',
-      data: {
-        if (bodyShape != null) 'body_shape': bodyShape,
-        if (colorType != null) 'color_type': colorType,
-        if (heightCategory != null) 'height_category': heightCategory,
-        'confirmed': confirmed,
-      },
-    );
+    final data = <String, dynamic>{'confirmed': confirmed};
+    if (bodyShape != null) data['body_shape'] = bodyShape;
+    if (colorType != null) data['color_type'] = colorType;
+    if (heightCategory != null) data['height_category'] = heightCategory;
+
+    final response = await _dio.patch('/onboarding/photo/confirm', data: data);
     return Map<String, dynamic>.from(response.data as Map);
   }
 
@@ -465,13 +441,11 @@ class ApiClient {
     List<String>? stylePreferences,
     String? priceSegment,
   }) async {
-    final response = await _dio.patch(
-      '/onboarding/step3',
-      data: {
-        if (stylePreferences != null) 'style_preferences': stylePreferences,
-        if (priceSegment != null) 'price_segment': priceSegment,
-      },
-    );
+    final data = <String, dynamic>{};
+    if (stylePreferences != null) data['style_preferences'] = stylePreferences;
+    if (priceSegment != null) data['price_segment'] = priceSegment;
+
+    final response = await _dio.patch('/onboarding/step3', data: data);
     return Map<String, dynamic>.from(response.data as Map);
   }
 
@@ -561,10 +535,7 @@ class ApiClient {
   }) async {
     final response = await _dio.post(
       '/outfits/generate',
-      queryParameters: {
-        'count': count,
-        'scenario': scenario,
-      },
+      queryParameters: {'count': count, 'scenario': scenario},
       options: Options(
         sendTimeout: const Duration(seconds: 60),
         receiveTimeout: const Duration(seconds: 90),
@@ -576,10 +547,7 @@ class ApiClient {
   }
 
   Future<void> outfitsSave(String outfitId) async {
-    await _dio.post(
-      '/outfits/save',
-      queryParameters: {'outfit_id': outfitId},
-    );
+    await _dio.post('/outfits/save', queryParameters: {'outfit_id': outfitId});
   }
 
   Future<void> outfitsUnsave(String outfitId) async {
@@ -651,8 +619,8 @@ class ApiClient {
         final host = resolvedBaseUrl();
         final emulatorHint = isLikelyEmulatorOnlyUrl
             ? '\n\nСейчас указан адрес для эмулятора ($host). '
-                'На телефоне нужен IP компьютера в Wi‑Fi или https://api.ваш-домен.ru '
-                '(см. README, MODISH_API_BASE_URL).'
+                  'На телефоне нужен IP компьютера в Wi‑Fi или https://api.ваш-домен.ru '
+                  '(см. README, MODISH_API_BASE_URL).'
             : '\n\nСервер: $host';
         return 'Нет связи с сервером. Проверьте интернет и что backend запущен.$emulatorHint';
       }

@@ -42,14 +42,12 @@ class _FeedScreenState extends State<FeedScreen> {
     final msg = await widget.controller.refreshFeedFromUser();
     if (!mounted) return;
     if (msg != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg)),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } else {
       final n = widget.controller.filteredProductFeed.length;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Обновлено: $n вещей')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Обновлено: $n вещей')));
     }
   }
 
@@ -79,7 +77,10 @@ class _FeedScreenState extends State<FeedScreen> {
               const Spacer(),
               if (controller.filteredProductFeed.isNotEmpty)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.card,
                     borderRadius: BorderRadius.circular(20),
@@ -219,10 +220,15 @@ class _FeedScreenState extends State<FeedScreen> {
         ],
         if (card != null)
           FeedActionBar(
-            onSkip: () => controller.sendProductEvent(context, card.product.id, 'skip'),
-            onSave: () => controller.sendProductEvent(context, card.product.id, 'save'),
+            onSkip: () =>
+                controller.sendProductEvent(context, card.product.id, 'skip'),
+            onDislike: () =>
+                _showDislikeReasonSheet(context, controller, card.product.id),
+            onSave: () =>
+                controller.sendProductEvent(context, card.product.id, 'save'),
             onOpen: () => _openProduct(context, card, controller),
-            onLike: () => controller.sendProductEvent(context, card.product.id, 'like'),
+            onLike: () =>
+                controller.sendProductEvent(context, card.product.id, 'like'),
           ),
       ],
     );
@@ -237,10 +243,7 @@ bool _hasActiveFilters(AppController c) {
 }
 
 class _EmptyFeed extends StatelessWidget {
-  const _EmptyFeed({
-    required this.controller,
-    required this.onRefresh,
-  });
+  const _EmptyFeed({required this.controller, required this.onRefresh});
   final AppController controller;
   final Future<void> Function() onRefresh;
 
@@ -250,8 +253,12 @@ class _EmptyFeed extends StatelessWidget {
     final busy = controller.feedRefreshing || controller.isLoading;
     return Center(
       child: EmptyState(
-        icon: err != null && err.isNotEmpty ? Icons.cloud_off_outlined : Icons.style_outlined,
-        title: err != null && err.isNotEmpty ? 'Не удалось загрузить' : 'Пока пусто',
+        icon: err != null && err.isNotEmpty
+            ? Icons.cloud_off_outlined
+            : Icons.style_outlined,
+        title: err != null && err.isNotEmpty
+            ? 'Не удалось загрузить'
+            : 'Пока пусто',
         message: err != null && err.isNotEmpty
             ? err
             : 'Подтянем вещи с сервера или подберём после импорта каталога.',
@@ -317,12 +324,17 @@ class _SwipeProductCardState extends State<_SwipeProductCard>
               if (_dx > 90 || (d.primaryVelocity ?? 0) > 500) {
                 _flyOut('like');
               } else if (_dx < -90 || (d.primaryVelocity ?? 0) < -500) {
-                _flyOut('dislike');
+                _flyOut('skip');
               } else {
                 setState(() => _dx = 0);
               }
             },
       onTap: () => _openProduct(context, widget.card, widget.controller),
+      onLongPress: () => _showDislikeReasonSheet(
+        context,
+        widget.controller,
+        widget.card.product.id,
+      ),
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -330,7 +342,10 @@ class _SwipeProductCardState extends State<_SwipeProductCard>
             offset: Offset(_dx, 0),
             child: Transform.rotate(
               angle: angle,
-              child: _ProductCardView(controller: widget.controller, card: widget.card),
+              child: _ProductCardView(
+                controller: widget.controller,
+                card: widget.card,
+              ),
             ),
           ),
           if (likeOpacity > 0.05)
@@ -339,7 +354,10 @@ class _SwipeProductCardState extends State<_SwipeProductCard>
               top: 40,
               child: Opacity(
                 opacity: likeOpacity,
-                child: const _SwipeStamp(label: 'НРАВИТСЯ', color: AppColors.success),
+                child: const _SwipeStamp(
+                  label: 'НРАВИТСЯ',
+                  color: AppColors.success,
+                ),
               ),
             ),
           if (skipOpacity > 0.05)
@@ -348,7 +366,10 @@ class _SwipeProductCardState extends State<_SwipeProductCard>
               top: 40,
               child: Opacity(
                 opacity: skipOpacity,
-                child: const _SwipeStamp(label: 'НЕ НРАВИТСЯ', color: AppColors.muted),
+                child: const _SwipeStamp(
+                  label: 'ПРОПУСК',
+                  color: AppColors.muted,
+                ),
               ),
             ),
         ],
@@ -370,7 +391,14 @@ class _SwipeStamp extends StatelessWidget {
         border: Border.all(color: color, width: 2),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 13)),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w800,
+          fontSize: 13,
+        ),
+      ),
     );
   }
 }
@@ -553,27 +581,34 @@ class _ProductCardView extends StatelessWidget {
                     ],
                   ],
                 ),
-                if (card.reasons.isNotEmpty || card.reason.trim().isNotEmpty) ...[
+                if (card.reasons.isNotEmpty ||
+                    card.reason.trim().isNotEmpty) ...[
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
-                    children: (card.reasons.isNotEmpty ? card.reasons : [card.reason])
-                        .take(3)
-                        .map(
-                          (r) => Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: AppColors.chipBg,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              r.trim(),
-                              style: AppTextStyles.caption.copyWith(color: AppColors.ink),
-                            ),
-                          ),
-                        )
-                        .toList(),
+                    children:
+                        (card.reasons.isNotEmpty ? card.reasons : [card.reason])
+                            .take(3)
+                            .map(
+                              (r) => Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 9,
+                                  vertical: 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.chipBg,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  r.trim(),
+                                  style: AppTextStyles.caption.copyWith(
+                                    color: AppColors.ink,
+                                  ),
+                                ),
+                              ),
+                            )
+                            .toList(),
                   ),
                 ],
               ],
@@ -595,5 +630,63 @@ void _openProduct(
     MaterialPageRoute(
       builder: (_) => ProductDetailScreen(controller: controller, card: card),
     ),
+  );
+}
+
+Future<void> _showDislikeReasonSheet(
+  BuildContext context,
+  AppController controller,
+  String productId,
+) async {
+  const reasons = [
+    ('not_my_style', 'Не мой стиль'),
+    ('dont_like_color', 'Не нравится цвет'),
+    ('dont_like_fit', 'Не нравится посадка'),
+    ('dont_like_category', 'Не нужна категория'),
+    ('dont_like_brand', 'Не мой бренд'),
+    ('too_expensive', 'Слишком дорого'),
+    ('already_have_similar', 'Похожее уже есть'),
+    ('dont_like_design', 'Не нравится дизайн'),
+    ('other', 'Другая причина'),
+  ];
+  final reason = await showModalBottomSheet<String>(
+    context: context,
+    backgroundColor: AppColors.card,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
+    builder: (sheetContext) {
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Что не подошло?',
+                style: AppTextStyles.sectionTitle.copyWith(fontSize: 18),
+              ),
+              const SizedBox(height: 10),
+              ...reasons.map(
+                (r) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  title: Text(r.$2),
+                  onTap: () => Navigator.pop(sheetContext, r.$1),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+  if (reason == null || !context.mounted) return;
+  await controller.sendProductEvent(
+    context,
+    productId,
+    'dislike',
+    meta: {'reason': reason},
   );
 }

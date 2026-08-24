@@ -24,20 +24,6 @@ import 'features/products/outfit_slots.dart' as slots;
 import 'features/outfits/outfits_screen.dart';
 import 'features/onboarding/result_screen.dart';
 
-/// Учитывает новый формат profile_json с вложенным `analysis` и старый плоский.
-bool _profileHasAnalysis(Map<String, dynamic> pj) {
-  final nested = pj['analysis'];
-  if (nested is Map) {
-    final n = Map<String, dynamic>.from(nested);
-    return n.containsKey('color_palette') ||
-        n.containsKey('recommended_silhouettes') ||
-        n.containsKey('summary');
-  }
-  return pj.containsKey('color_palette') ||
-      pj.containsKey('recommended_silhouettes') ||
-      pj.containsKey('summary');
-}
-
 /// Базовый профиль для ленты: указан мужской или женский пол.
 bool _fitProfileReady(Map<String, dynamic> fit) {
   final g = '${fit['gender_target'] ?? ''}'.trim().toLowerCase();
@@ -150,7 +136,10 @@ class ModishApp extends StatelessWidget {
         textTheme: const TextTheme(
           bodyMedium: TextStyle(color: AppColors.ink),
           bodySmall: TextStyle(color: AppColors.muted),
-          titleMedium: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600),
+          titleMedium: TextStyle(
+            color: AppColors.ink,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         snackBarTheme: SnackBarThemeData(
           backgroundColor: AppColors.surface,
@@ -306,12 +295,13 @@ class AppController extends ChangeNotifier {
       return s;
     }
 
-    final ranked = filteredProductFeed
-        .where((c) => c.product.id != productId)
-        .map((c) => (card: c, s: score(c.product)))
-        .where((e) => e.s > 0)
-        .toList()
-      ..sort((a, b) => b.s.compareTo(a.s));
+    final ranked =
+        filteredProductFeed
+            .where((c) => c.product.id != productId)
+            .map((c) => (card: c, s: score(c.product)))
+            .where((e) => e.s > 0)
+            .toList()
+          ..sort((a, b) => b.s.compareTo(a.s));
 
     if (ranked.length >= limit) {
       return ranked.take(limit).map((e) => e.card).toList();
@@ -327,7 +317,9 @@ class AppController extends ChangeNotifier {
   String relatedProductsHint(String productId) {
     for (final c in filteredProductFeed) {
       if (c.product.id == productId) {
-        return slots.complementHintRu(slots.productSlotFromCategory(c.product.category));
+        return slots.complementHintRu(
+          slots.productSlotFromCategory(c.product.category),
+        );
       }
     }
     return 'Другие вещи из ленты';
@@ -382,7 +374,8 @@ class AppController extends ChangeNotifier {
         return;
       }
     } on TimeoutException catch (e) {
-      error = 'Медленное соединение (${e.message ?? 'timeout'}). '
+      error =
+          'Медленное соединение (${e.message ?? 'timeout'}). '
           'Проверьте интернет и войдите снова.';
     } catch (e) {
       error = ApiClient.formatError(e);
@@ -520,9 +513,9 @@ class AppController extends ChangeNotifier {
       final rows = res['outfits'];
       wowOutfits = rows is List
           ? rows
-              .whereType<Map>()
-              .map((e) => WowOutfit.fromApi(Map<String, dynamic>.from(e)))
-              .toList()
+                .whereType<Map>()
+                .map((e) => WowOutfit.fromApi(Map<String, dynamic>.from(e)))
+                .toList()
           : const [];
       try {
         fitProfile = await api.fitProfileMe();
@@ -610,7 +603,9 @@ class AppController extends ChangeNotifier {
         clothingSize: '${p['clothing_size'] ?? 'M'}',
         budgetMin: (p['budget_min'] as num?)?.toInt() ?? 0,
         budgetMax: (p['budget_max'] as num?)?.toInt() ?? 10000,
-        interestCategories: List<String>.from(p['interest_categories'] as List? ?? []),
+        interestCategories: List<String>.from(
+          p['interest_categories'] as List? ?? [],
+        ),
         styleScenarios: List<String>.from(p['style_scenarios'] as List? ?? []),
       );
       pendingFitPrefs = null;
@@ -915,19 +910,21 @@ class AppController extends ChangeNotifier {
   Future<void> sendProductEvent(
     BuildContext context,
     String productId,
-    String eventType,
-  ) async {
+    String eventType, {
+    Map<String, dynamic>? meta,
+  }) async {
     await _run(() async {
       final res = await api.recordRecommendationEvent(
         eventType: eventType,
         productId: productId,
+        meta: meta,
       );
       try {
         final name = switch (eventType) {
           'like' => 'product_liked',
           'save' => 'product_saved',
           'open_product' => 'product_opened',
-          'buy_click' => 'product_buy_click',
+          'affiliate_click' => 'product_affiliate_click',
           _ => null,
         };
         if (name != null) {
@@ -993,13 +990,19 @@ class AppController extends ChangeNotifier {
     });
   }
 
-  Future<void> generateOutfitsV2({int count = 3, String scenario = 'daily'}) async {
+  Future<void> generateOutfitsV2({
+    int count = 3,
+    String scenario = 'daily',
+  }) async {
     await _run(() async {
       await api.outfitsGenerate(count: count, scenario: scenario);
       outfits = await api.outfitsList();
       savedOutfits = await api.outfitsList(savedOnly: true);
       try {
-        await api.metricsEvent('outfit_generated', meta: {'count': count, 'scenario': scenario});
+        await api.metricsEvent(
+          'outfit_generated',
+          meta: {'count': count, 'scenario': scenario},
+        );
       } catch (_) {}
     });
   }
@@ -1165,10 +1168,7 @@ class HomeScreen extends StatelessWidget {
         return MobileViewport(
           child: Scaffold(
             backgroundColor: Colors.transparent,
-            body: IndexedStack(
-              index: controller.tab,
-              children: pages,
-            ),
+            body: IndexedStack(index: controller.tab, children: pages),
             bottomNavigationBar: ModishBottomNav(
               index: controller.tab,
               onChanged: controller.setTab,
