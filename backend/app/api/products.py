@@ -22,6 +22,7 @@ def _feed_scored_items(
   *,
   limit: int,
   source: str | None = None,
+  scenario: str = "daily",
 ) -> list[dict[str, Any]]:
   from datetime import datetime, timezone
 
@@ -44,6 +45,7 @@ def _feed_scored_items(
       limit=limit,
       exclude_product_ids=set(map(str, hidden_ids)),
       source=source,
+      scenario=scenario,
     )
   except Exception as exc:
     db.rollback()
@@ -67,6 +69,7 @@ def _feed_scored_items(
         "product": product_to_api(s.product),
         "final_score": s.final_score,
         "breakdown": s.breakdown,
+        "candidate_sources": s.candidate_sources,
         "reason": s.reason,
         "reasons": s.reasons,
       }
@@ -137,19 +140,21 @@ def products_get(product_id: str, db: Session = Depends(get_db)) -> dict[str, An
 def products_recommended(
   limit: int = 30,
   source: str | None = None,
+  scenario: str = "daily",
   db: Session = Depends(get_db),
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> list[dict[str, Any]]:
   u = user_from_token(credentials, db)
-  return _feed_scored_items(db, u, limit=limit, source=source)
+  return _feed_scored_items(db, u, limit=limit, source=source, scenario=scenario)
 
 
 @router.get("/feed")
 def feed(
   limit: int = 30,
   source: str | None = None,
+  scenario: str = "daily",
   db: Session = Depends(get_db),
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> list[dict[str, Any]]:
   u = user_from_token(credentials, db)
-  return _feed_scored_items(db, u, limit=limit, source=source)
+  return _feed_scored_items(db, u, limit=limit, source=source, scenario=scenario)

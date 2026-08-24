@@ -184,6 +184,48 @@ class MIEScoringTests(unittest.TestCase):
     self.assertGreater(preferred_after.breakdown["taste_score"], neutral_after.breakdown["taste_score"])
     self.assertGreater(preferred_after.final_score, preferred_before.final_score)
 
+  def test_context_score_uses_feed_scenario(self) -> None:
+    product = _product(category="рубашки", brand="office-brand", color="blue", style="formal")
+    product.occasion = "office"
+    self.db.add(product)
+    self.db.flush()
+
+    daily_ctx = build_feed_context(self.db, self.user, product_ids=[product.id], scenario="daily")
+    office_ctx = build_feed_context(self.db, self.user, product_ids=[product.id], scenario="office")
+
+    daily = score_product(self.db, self.user, product, daily_ctx)
+    office = score_product(self.db, self.user, product, office_ctx)
+
+    self.assertGreater(office.breakdown["context_score"], daily.breakdown["context_score"])
+
+  def test_taste_score_uses_known_evidence_denominator(self) -> None:
+    product = _product(category="рубашки", brand="unknown-brand", color="green", style="minimalism")
+    self.db.add(product)
+    now = datetime.now(timezone.utc)
+    self.db.add(
+      UserTasteFeature(
+        id=str(uuid4()),
+        user_id=self.user.id,
+        feature_type="style",
+        feature_value="minimalism",
+        preference_score=1.0,
+        confidence=0.9,
+        positive_count=10,
+        negative_count=0,
+        last_positive_at=now,
+        last_signal_at=now,
+        last_decay_at=now,
+        created_at=now,
+        updated_at=now,
+      )
+    )
+    self.db.flush()
+
+    scored = score_product(self.db, self.user, product)
+
+    self.assertGreater(scored.breakdown["taste_score"], 0.85)
+    self.assertGreater(scored.breakdown["taste_possible_weight"], scored.breakdown["taste_known_weight"])
+
 
 if __name__ == "__main__":
   unittest.main()

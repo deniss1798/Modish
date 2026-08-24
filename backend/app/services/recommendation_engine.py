@@ -1,41 +1,22 @@
-"""Rule-based product scoring for personalized feed (v3).
+"""MIE product recommendation orchestrator.
 
-Формула по спецификации MIE (гл. 31.14–31.15, 33.26):
-  Final Score = Style + Category + Color + Budget + Popularity
-  + жёсткие фильтры (пол/размер/бюджет) до скоринга
-  + Diversity Layer (гл. 33.32): не более 3 подряд одной категории/бренда
-  + Explainability (гл. 33.33): причины для каждого товара.
-
-Отличия v3 от v2:
-  * пул кандидатов выбирается стабильным пригодным срезом каталога,
-    а не случайной лотереей перед персональным скорингом;
-  * цвета товара и палитра пользователя приводятся к одному словарю
-    канонических цветов (русский/английский/свободный текст);
-  * добавлен компонент Popularity (лайки/сохранения/переходы всех
-    пользователей за 60 дней);
-  * убраны запросы к БД на каждый товар (batch-префетч) — лента
-    считается на порядок быстрее;
-  * добавлен Diversity Layer.
+Keeps the legacy public facade while delegating candidate retrieval and
+structured MIE scoring to dedicated services.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
-from ..catalog_normalize import (
-  canon_colors_from_text,
-  normalize_category,
-  normalize_product_colors,
-  product_gender_from_model,
-)
+from ..catalog_normalize import canon_colors_from_text, normalize_category
 from ..models import FitProfile, Product, RecommendationEventV2, StyleProfile, TasteProfile, User
 from .catalog.rule_filters import load_rules_by_source_id, product_gender_compatible, product_passes_source_rules
 from .catalog.catalog_quality import product_is_feed_eligible
+from .candidate_retrieval_service import retrieve_candidates
 from .feed_filters import product_passes_hard_filters
 from .mie_scoring import TasteFeatureMap, compute_mie_score, load_user_taste_feature_map
 from ..schemas.photo_analysis import extract_analysis_section
@@ -48,6 +29,7 @@ class ScoredProduct:
   breakdown: dict[str, float]
   reason: str
   reasons: list[str]
+  candidate_sources: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -61,17 +43,8 @@ class FeedContext:
   seen_counts: dict[str, int] = field(default_factory=dict)
   popularity: dict[str, float] = field(default_factory=dict)
   taste_features: TasteFeatureMap = field(default_factory=dict)
-
-
-def _norm_list(values: Any) -> list[str]:
-  if not isinstance(values, list):
-    return []
-  out: list[str] = []
-  for x in values:
-    s = str(x).strip().lower()
-    if s and s not in out:
-      out.append(s)
-  return out
+  candidate_sources: dict[str, set[str]] = field(default_factory=dict)
+  scenario: str = "daily"
 
 
 def ensure_style_profile(db: Session, user_id: str) -> StyleProfile:
@@ -170,24 +143,6 @@ def expand_product_exclusions(db: Session, product_ids: set[str] | list[str] | N
   return ids | {str(pid).strip() for pid in sibling_ids if str(pid).strip()}
 
 
-def _weight(d: Any, key: str) -> float:
-  if not isinstance(d, dict):
-    return 0.0
-  try:
-    return float(d.get(key, 0.0))
-  except Exception:
-    return 0.0
-
-
-def _product_canon_colors(product: Product) -> set[str]:
-  """Цвета товара: канонические + исходные строки (для старых весов вкуса)."""
-  raw = _norm_list(product.colors)
-  canon = normalize_product_colors(list(product.colors or []))
-  if not canon and getattr(product, "color_original", None):
-    canon = normalize_product_colors([product.color_original])
-  return set(raw) | set(canon)
-
-
 def _batch_seen_counts(db: Session, *, user_id: str, product_ids: list[str]) -> dict[str, int]:
   """view/open_product за 30 дней по всем кандидатам одним запросом."""
   if not product_ids:
@@ -263,7 +218,13 @@ def _batch_popularity(db: Session, *, product_ids: list[str]) -> dict[str, float
   return {pid: 10.0 * n / top for pid, n in counts.items()}
 
 
-def build_feed_context(db: Session, user: User, *, product_ids: list[str] | None = None) -> FeedContext:
+def build_feed_context(
+  db: Session,
+  user: User,
+  *,
+  product_ids: list[str] | None = None,
+  scenario: str = "daily",
+) -> FeedContext:
   profile = ensure_style_profile(db, user.id)
   analysis = extract_analysis_section(profile.profile_json or {})
   taste = ensure_taste_profile(db, user.id)
@@ -286,6 +247,7 @@ def build_feed_context(db: Session, user: User, *, product_ids: list[str] | None
     seen_counts=_batch_seen_counts(db, user_id=user.id, product_ids=pids),
     popularity=_batch_popularity(db, product_ids=pids),
     taste_features=load_user_taste_feature_map(db, user_id=user.id),
+    scenario=(scenario or "daily").strip().lower() or "daily",
   )
 
 
@@ -307,6 +269,7 @@ def score_product(db: Session, user: User, product: Product, ctx: FeedContext | 
     taste_features=ctx.taste_features,
     seen_count=int(ctx.seen_counts.get(product.id, 0)),
     popularity=float(ctx.popularity.get(product.id, 0.0)),
+    scenario=ctx.scenario,
   )
   bd: dict[str, float] = {
     "fit_score": mie.fit_score,
@@ -316,6 +279,7 @@ def score_product(db: Session, user: User, product: Product, ctx: FeedContext | 
     "exploration_score": mie.exploration_score,
     "final_score": mie.final_score,
     "hard_reject": 1.0 if mie.hard_reject else 0.0,
+    "candidate_source_count": float(len(ctx.candidate_sources.get(product.id, set()))),
     **mie.debug,
   }
   reason = mie.reasons[0] if mie.reasons else "Подобрано под ваш профиль"
@@ -325,6 +289,7 @@ def score_product(db: Session, user: User, product: Product, ctx: FeedContext | 
     breakdown=bd,
     reason=reason,
     reasons=mie.reasons[:8],
+    candidate_sources=sorted(ctx.candidate_sources.get(product.id, set())),
   )
 
 
@@ -382,38 +347,25 @@ def generate_feed(
   limit: int = 30,
   exclude_product_ids: set[str] | None = None,
   source: str | None = None,
-  max_to_score: int = 400,
+  scenario: str = "daily",
+  max_to_score: int = 700,
 ) -> list[ScoredProduct]:
   exclude_product_ids = expand_product_exclusions(db, exclude_product_ids)
-  min_price = 500
-  conds = [
-    Product.is_active == 1,
-    Product.is_available == 1,
-    Product.is_deleted_from_feed == 0,
-    Product.source != "demo",
-    Product.price > min_price,
-    Product.image_url.isnot(None),
-    Product.image_url != "",
-    or_(
-      and_(Product.affiliate_url.isnot(None), Product.affiliate_url != ""),
-      Product.product_url != "",
-    ),
-  ]
-  if source and source.strip():
-    conds.append(Product.source == source.strip())
-  if exclude_product_ids:
-    conds.append(Product.id.notin_(list(exclude_product_ids)))
-  q = (
-    select(Product)
-    .where(and_(*conds))
-    .order_by(Product.updated_at.desc(), Product.created_at.desc(), Product.id.asc())
-    .limit(1000)
+  base_ctx = build_feed_context(db, user, scenario=scenario)
+  retrieval = retrieve_candidates(
+    db,
+    user=user,
+    fit=base_ctx.fit,
+    taste=base_ctx.taste,
+    taste_features=base_ctx.taste_features,
+    exclude_product_ids=exclude_product_ids,
+    source=source,
+    scenario=scenario,
+    max_candidates=max_to_score,
   )
-  products = db.execute(q).scalars().all()
-  if exclude_product_ids:
-    products = [p for p in products if p.id not in exclude_product_ids]
+  products = retrieval.products
   rules_by_source = load_rules_by_source_id(db)
-  fit = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
+  fit = base_ctx.fit
   # Бельё не попадает в общую ленту стилиста (если явно не выбрано в интересах)
   interest_norm = {
     normalize_category(str(x).strip())
@@ -472,9 +424,10 @@ def generate_feed(
       if len(filtered) >= 500:
         break
 
-  score_cap = max(30, min(1000, int(max_to_score)))
+  score_cap = max(30, min(1500, int(max_to_score)))
   score_pool = filtered[:score_cap]
-  ctx = build_feed_context(db, user, product_ids=[p.id for p in score_pool])
+  ctx = build_feed_context(db, user, product_ids=[p.id for p in score_pool], scenario=scenario)
+  ctx.candidate_sources = retrieval.sources_by_product_id
   scored = [score_product(db, user, p, ctx) for p in score_pool]
   scored.sort(key=lambda x: x.final_score, reverse=True)
   lim = max(1, min(100, int(limit)))

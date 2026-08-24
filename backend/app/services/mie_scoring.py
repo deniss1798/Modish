@@ -171,17 +171,24 @@ def compute_taste_score(
     "occasion": 0.35,
     "price_band": 0.25,
   }
-  weighted = 0.0
-  total = 0.0
+  known_weighted = 0.0
+  known_weight = 0.0
+  possible_weight = 0.0
   strongest_positive = 0.0
   strongest_negative = 0.0
   for feature_type, values in features.items():
     tw = type_weights.get(feature_type, 0.2)
     for value in values:
-      pref, conf = taste_features.get((feature_type, str(value).lower()), (0.0, 0.0))
+      possible_weight += tw
+      key = (feature_type, str(value).lower())
+      if key not in taste_features:
+        continue
+      pref, conf = taste_features[key]
+      if abs(float(pref or 0.0)) <= 0 and float(conf or 0.0) <= 0:
+        continue
       contribution = _clamp01(conf) * _clamp01(abs(pref)) * (1 if pref >= 0 else -1)
-      weighted += tw * contribution
-      total += tw
+      known_weighted += tw * contribution
+      known_weight += tw
       strongest_positive = max(strongest_positive, contribution)
       strongest_negative = min(strongest_negative, contribution)
 
@@ -189,30 +196,38 @@ def compute_taste_score(
   legacy_weighted = 0.0
   legacy_total = 0.0
   for category in features.get("category", set()):
-    legacy_weighted += _clamp01(abs(_legacy_weight(taste.category_weights, category)) / 12.0) * (
-      1 if _legacy_weight(taste.category_weights, category) >= 0 else -1
-    )
+    weight = _legacy_weight(taste.category_weights, category)
+    if weight == 0:
+      continue
+    legacy_weighted += _clamp01(abs(weight) / 12.0) * (1 if weight >= 0 else -1)
     legacy_total += 1.0
   for style in features.get("style", set()):
-    legacy_weighted += _clamp01(abs(_legacy_weight(taste.style_weights, style)) / 12.0) * (
-      1 if _legacy_weight(taste.style_weights, style) >= 0 else -1
-    )
+    weight = _legacy_weight(taste.style_weights, style)
+    if weight == 0:
+      continue
+    legacy_weighted += _clamp01(abs(weight) / 12.0) * (1 if weight >= 0 else -1)
     legacy_total += 1.0
   for color in features.get("color", set()):
-    legacy_weighted += 0.8 * _clamp01(abs(_legacy_weight(taste.color_weights, color)) / 12.0) * (
-      1 if _legacy_weight(taste.color_weights, color) >= 0 else -1
-    )
+    weight = _legacy_weight(taste.color_weights, color)
+    if weight == 0:
+      continue
+    legacy_weighted += 0.8 * _clamp01(abs(weight) / 12.0) * (1 if weight >= 0 else -1)
     legacy_total += 0.8
   for brand in features.get("brand", set()):
-    legacy_weighted += 0.7 * _clamp01(abs(_legacy_weight(taste.brand_weights, brand)) / 12.0) * (
-      1 if _legacy_weight(taste.brand_weights, brand) >= 0 else -1
-    )
+    weight = _legacy_weight(taste.brand_weights, brand)
+    if weight == 0:
+      continue
+    legacy_weighted += 0.7 * _clamp01(abs(weight) / 12.0) * (1 if weight >= 0 else -1)
     legacy_total += 0.7
 
-  normalized = (weighted / total) if total > 0 else 0.0
+  normalized = (known_weighted / max(known_weight, 1.0)) if known_weight > 0 else 0.0
   legacy_normalized = (legacy_weighted / legacy_total) if legacy_total > 0 else 0.0
-  combined = normalized * 0.75 + legacy_normalized * 0.25
-  score = _clamp01(0.5 + combined * 0.5)
+  confidence = profile_confidence(taste_features)
+  user_twin_share = 1.0 if known_weight > 0 and legacy_total <= 0 else 0.75 if known_weight > 0 else 0.0
+  legacy_share = 1.0 - user_twin_share if legacy_total > 0 else 0.0
+  combined = normalized * user_twin_share + legacy_normalized * legacy_share
+  trust = 0.35 + 0.65 * confidence if known_weight > 0 else 0.35
+  score = _clamp01(0.5 + combined * 0.5 * trust)
 
   reasons: list[str] = []
   if strongest_positive > 0.2 or legacy_normalized > 0.2:
@@ -222,6 +237,9 @@ def compute_taste_score(
   return score, reasons, {
     "taste_user_twin_signal": float(normalized),
     "taste_legacy_signal": float(legacy_normalized),
+    "taste_known_weight": float(known_weight),
+    "taste_possible_weight": float(possible_weight),
+    "taste_profile_confidence": confidence,
   }
 
 

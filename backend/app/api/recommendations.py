@@ -308,6 +308,7 @@ def recommendations_generate(
 def recommendations_feed(
   limit: int = 30,
   source: str | None = None,
+  scenario: str = "daily",
   db: Session = Depends(get_db),
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> list[dict[str, Any]]:
@@ -315,7 +316,7 @@ def recommendations_feed(
   from .products import _feed_scored_items
 
   user = user_from_token(credentials, db)
-  return _feed_scored_items(db, user, limit=limit, source=source)
+  return _feed_scored_items(db, user, limit=limit, source=source, scenario=scenario)
 
 
 @router.get("/recommendations/outfits-legacy")
