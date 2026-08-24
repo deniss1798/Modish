@@ -89,6 +89,16 @@ USER_TWIN_WEAK_HALF_LIFE_DAYS = 75.0
 USER_TWIN_STRONG_HALF_LIFE_DAYS = 365.0
 GENERIC_DISLIKE_FEATURE_MULTIPLIER = 0.25
 
+FIT_MIN_THRESHOLD = 0.45
+
+FINAL_SCORE_WEIGHTS: dict[str, float] = {
+  "taste_score": 0.40,
+  "fit_score": 0.30,
+  "context_score": 0.15,
+  "quality_score": 0.10,
+  "exploration_score": 0.05,
+}
+
 TASTE_UPDATE_EVENTS = frozenset(
   {
     "view",

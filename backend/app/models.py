@@ -268,6 +268,8 @@ class UserTasteFeature(Base):
   negative_count: Mapped[int] = mapped_column(Integer, default=0)
   last_positive_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
   last_negative_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+  last_signal_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+  last_decay_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
   created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
   updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
   __table_args__ = (

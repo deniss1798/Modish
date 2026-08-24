@@ -209,6 +209,8 @@ def _get_or_create_feature(
     confidence=0.0,
     positive_count=0,
     negative_count=0,
+    last_signal_at=None,
+    last_decay_at=None,
     created_at=as_of,
     updated_at=as_of,
   )
@@ -244,7 +246,7 @@ def apply_decay(
   half_life_days: float | None = None,
 ) -> UserTasteFeature:
   as_of = as_of or _now()
-  last = feature.updated_at or feature.created_at
+  last = feature.last_decay_at or feature.last_signal_at or feature.updated_at or feature.created_at
   if last is None:
     return feature
   if last.tzinfo is None:
@@ -261,7 +263,7 @@ def apply_decay(
   confidence_decay = _decay_multiplier(days=days, half_life_days=half_life * 2)
   feature.preference_score = _clamp(float(feature.preference_score or 0.0) * score_decay, -1.0, 1.0)
   feature.confidence = _clamp(float(feature.confidence or 0.0) * confidence_decay, 0.0, 1.0)
-  feature.updated_at = as_of
+  feature.last_decay_at = as_of
   return feature
 
 
@@ -277,6 +279,8 @@ def _apply_signal(feature: UserTasteFeature, *, signal: float, as_of: datetime) 
     feature.negative_count = int(feature.negative_count or 0) + 1
     feature.last_negative_at = as_of
   update_confidence(feature)
+  feature.last_signal_at = as_of
+  feature.last_decay_at = as_of
   feature.updated_at = as_of
 
 

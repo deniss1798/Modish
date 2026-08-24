@@ -37,6 +37,7 @@ from ..models import FitProfile, Product, RecommendationEventV2, StyleProfile, T
 from .catalog.rule_filters import load_rules_by_source_id, product_gender_compatible, product_passes_source_rules
 from .catalog.catalog_quality import product_is_feed_eligible
 from .feed_filters import product_passes_hard_filters
+from .mie_scoring import TasteFeatureMap, compute_mie_score, load_user_taste_feature_map
 from ..schemas.photo_analysis import extract_analysis_section
 
 
@@ -59,6 +60,7 @@ class FeedContext:
   saved_categories: set[str] = field(default_factory=set)
   seen_counts: dict[str, int] = field(default_factory=dict)
   popularity: dict[str, float] = field(default_factory=dict)
+  taste_features: TasteFeatureMap = field(default_factory=dict)
 
 
 def _norm_list(values: Any) -> list[str]:
@@ -283,229 +285,46 @@ def build_feed_context(db: Session, user: User, *, product_ids: list[str] | None
     saved_categories=_batch_saved_categories(db, user_id=user.id),
     seen_counts=_batch_seen_counts(db, user_id=user.id, product_ids=pids),
     popularity=_batch_popularity(db, product_ids=pids),
+    taste_features=load_user_taste_feature_map(db, user_id=user.id),
   )
 
 
 def score_product(db: Session, user: User, product: Product, ctx: FeedContext | None = None) -> ScoredProduct:
   """
-  Rule-based score (v3):
-  gender + category + size + color + budget + style + brand
-  + saved_category_boost + popularity
-  - disliked_* penalties - already_seen_penalty
+  MIE v4 score facade:
+  FitScore, TasteScore, ContextScore, QualityScore, ExplorationScore
+  with legacy TasteProfile weights as a compatibility fallback.
   """
   if ctx is None:
     ctx = build_feed_context(db, user, product_ids=[product.id])
 
-  taste = ctx.taste
-  fit = ctx.fit
-  palette = ctx.palette
-  avoid_colors = ctx.avoid_colors
-
-  cat_keys = _product_category_norms(product)
-  p_colors = _product_canon_colors(product)
-  brand = (product.brand or "").strip().lower()
-  style_tags = set(_norm_list(product.style_tags))
-  reasons: list[str] = []
-  bd: dict[str, float] = {}
-
-  score = 0.0
-
-  # gender_match — приоритет для персонализации
-  gender_match = 0.0
-  if fit and (fit.gender_target or "").strip().lower() in ("menswear", "womenswear"):
-    ug = fit.gender_target.strip().lower()
-    pg = product_gender_from_model(product)
-    if pg == ug:
-      gender_match = 18.0
-      reasons.append("Под ваш профиль")
-    elif pg == "unisex":
-      gender_match = 6.0
-    elif pg and pg != ug:
-      gender_match = -80.0
-  score += gender_match
-  bd["gender_match"] = gender_match
-
-  # category_match
-  cat_match = 0.0
-  liked_norm = {normalize_category(str(x).strip()) for x in (taste.liked_categories or []) if str(x).strip()}
-  disliked_norm = {normalize_category(str(x).strip()) for x in (taste.disliked_categories or []) if str(x).strip()}
-  if taste.category_weights and cat_keys:
-    cat_match = float(max((_weight(taste.category_weights, ck) for ck in cat_keys), default=0))
-    if cat_match >= 6:
-      reasons.append("Категория вам подходит")
-  elif cat_keys & liked_norm:
-    cat_match = 15.0
-    reasons.append("Вы часто выбираете эту категорию")
-  if fit and fit.interest_categories and cat_keys:
-    interest = {normalize_category(str(x).strip()) for x in fit.interest_categories if str(x).strip()}
-    if cat_keys & interest:
-      cat_match = max(cat_match, 12.0)
-      reasons.append("Совпадает с вашими интересами")
-  score += cat_match
-  bd["category_match"] = cat_match
-
-  # disliked_category_penalty
-  disliked_cat_pen = 0.0
-  if cat_keys & disliked_norm:
-    disliked_cat_pen = 20.0
-    reasons.append("Категория вам не нравится")
-  elif taste.category_weights and cat_keys:
-    neg = min((_weight(taste.category_weights, ck) for ck in cat_keys), default=0)
-    if neg < -2:
-      disliked_cat_pen = min(20.0, float(-neg))
-  score -= disliked_cat_pen
-  bd["disliked_category_penalty"] = disliked_cat_pen
-
-  # size_match
-  size_match = 0.0
-  if product.available_sizes:
-    if fit and (fit.clothing_size or "").strip():
-      size = fit.clothing_size.strip().upper()
-      sizes = {str(x).strip().upper() for x in product.available_sizes if str(x).strip()}
-      if size in sizes:
-        size_match = 12.0
-        reasons.append("Есть ваш размер")
-    else:
-      size_match = 6.0
-  score += size_match
-  bd["size_match"] = size_match
-
-  # color_match
-  color_match = 0.0
-  if palette and (palette & p_colors):
-    color_match += 12.0
-    reasons.append("Цвет из вашей палитры")
-  if taste.color_weights:
-    for c in p_colors:
-      w = _weight(taste.color_weights, c)
-      if w > 0:
-        color_match += min(8.0, float(w))
-      if w >= 6:
-        reasons.append("Похожий цвет вам нравится")
-  if p_colors and (set(_norm_list(taste.liked_colors)) & p_colors):
-    color_match = max(color_match, 10.0)
-  score += color_match
-  bd["color_match"] = color_match
-
-  # disliked_color_penalty
-  disliked_color_pen = 0.0
-  if avoid_colors and (avoid_colors & p_colors):
-    disliked_color_pen += 12.0
-    reasons.append("Цвет лучше избегать")
-  if p_colors and (set(_norm_list(taste.disliked_colors)) & p_colors):
-    disliked_color_pen = max(disliked_color_pen, 15.0)
-  elif taste.color_weights:
-    for c in p_colors:
-      w = _weight(taste.color_weights, c)
-      if w < -2:
-        disliked_color_pen = max(disliked_color_pen, min(15.0, float(-w)))
-  score -= disliked_color_pen
-  bd["disliked_color_penalty"] = disliked_color_pen
-
-  # budget_match
-  lo = int(taste.price_min or 0)
-  hi = int(taste.price_max or 200_000)
-  if fit is not None:
-    bmin = int(fit.budget_min or 0)
-    bmax = int(fit.budget_max or 0)
-    if bmin > 0:
-      lo = max(lo, bmin)
-    if bmax > 0:
-      hi = min(hi, bmax)
-  if hi < lo:
-    lo, hi = hi, lo
-  if hi == lo:
-    hi = lo + 1
-  pr = int(product.price or 0)
-  budget_match = 0.0
-  if lo <= pr <= hi:
-    budget_match = 10.0
-    reasons.append("Цена в рамках бюджета")
-  elif pr <= hi * 1.15:
-    budget_match = 4.0
-  else:
-    budget_match = -6.0
-    reasons.append("Выше бюджета")
-  score += budget_match
-  bd["budget_match"] = budget_match
-  bd["budget_lo"] = float(lo)
-  bd["budget_hi"] = float(hi)
-
-  # style_match — главный компонент персонализации (гл. 31.15: 40%)
-  style_match = 0.0
-  fit_styles = set(_norm_list(fit.style_scenarios if fit else []))
-  if fit_styles and style_tags and (fit_styles & style_tags):
-    style_match += 10.0
-    reasons.append("Подходит под ваш сценарий")
-  if taste.style_weights and style_tags:
-    w_sum = 0.0
-    for t in style_tags:
-      w = _weight(taste.style_weights, t)
-      if w > 0:
-        w_sum += min(6.0, float(w))
-    if w_sum > 0:
-      style_match += min(12.0, w_sum)
-      if w_sum >= 6:
-        reasons.append("Похоже на то, что вам нравится")
-  if style_tags and (set(_norm_list(taste.liked_styles)) & style_tags):
-    style_match = max(style_match, 10.0)
-    reasons.append("Подходит вашему стилю")
-  score += style_match
-  bd["style_match"] = style_match
-
-  # liked_brand_boost
-  brand_boost = 0.0
-  if taste.brand_weights and brand:
-    brand_boost = float(_weight(taste.brand_weights, brand))
-    if brand_boost >= 6:
-      reasons.append("Бренд вам нравится")
-  elif brand and brand in set(_norm_list(taste.liked_brands)):
-    brand_boost = 10.0
-    reasons.append("Любимый бренд")
-  if brand and brand in set(_norm_list(taste.disliked_brands)):
-    brand_boost -= 12.0
-  score += brand_boost
-  bd["liked_brand_boost"] = brand_boost
-
-  # saved_category_boost
-  saved_boost = 8.0 if (ctx.saved_categories and (ctx.saved_categories & cat_keys)) else 0.0
-  if saved_boost > 0:
-    reasons.append("Похоже на сохранённые вещи")
-  score += saved_boost
-  bd["saved_category_boost"] = saved_boost
-
-  # popularity (гл. 33.31)
-  pop = float(ctx.popularity.get(product.id, 0.0))
-  if pop >= 6.0:
-    reasons.append("Популярно у пользователей")
-  score += pop
-  bd["popularity"] = pop
-
-  # already_seen_penalty
-  eng_n = int(ctx.seen_counts.get(product.id, 0))
-  seen_pen = min(15.0, float(eng_n) * 5.0)
-  if seen_pen > 0:
-    reasons.append("Вы уже смотрели этот товар")
-  score -= seen_pen
-  bd["already_seen_penalty"] = seen_pen
-  bd["engagement_recent_views"] = float(eng_n)
-
-  final = max(0.0, score)
-  bd["raw_score"] = final
-
-  uniq: list[str] = []
-  seen: set[str] = set()
-  for r in reasons:
-    if r not in seen:
-      seen.add(r)
-      uniq.append(r)
-  reason = uniq[0] if uniq else "Подобрано под ваш профиль"
+  mie = compute_mie_score(
+    product,
+    taste=ctx.taste,
+    fit=ctx.fit,
+    palette=ctx.palette,
+    avoid_colors=ctx.avoid_colors,
+    taste_features=ctx.taste_features,
+    seen_count=int(ctx.seen_counts.get(product.id, 0)),
+    popularity=float(ctx.popularity.get(product.id, 0.0)),
+  )
+  bd: dict[str, float] = {
+    "fit_score": mie.fit_score,
+    "taste_score": mie.taste_score,
+    "context_score": mie.context_score,
+    "quality_score": mie.quality_score,
+    "exploration_score": mie.exploration_score,
+    "final_score": mie.final_score,
+    "hard_reject": 1.0 if mie.hard_reject else 0.0,
+    **mie.debug,
+  }
+  reason = mie.reasons[0] if mie.reasons else "Подобрано под ваш профиль"
   return ScoredProduct(
     product=product,
-    final_score=final,
+    final_score=mie.final_score,
     breakdown=bd,
     reason=reason,
-    reasons=uniq[:8],
+    reasons=mie.reasons[:8],
   )
 
 

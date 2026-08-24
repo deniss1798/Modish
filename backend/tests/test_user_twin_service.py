@@ -200,9 +200,35 @@ class UserTwinServiceTests(unittest.TestCase):
       feature_type="style",
       feature_value="minimalism",
       preference_score=0.6,
-      confidence=0.5,
+        confidence=0.5,
+        positive_count=1,
+        negative_count=0,
+        last_signal_at=old,
+        last_decay_at=old,
+        created_at=old,
+        updated_at=old,
+      )
+    self.db.add(feature)
+    self.db.flush()
+
+    apply_decay(feature, as_of=datetime.now(timezone.utc))
+
+    self.assertLess(feature.preference_score, 0.3)
+    self.assertLess(feature.confidence, 0.5)
+
+  def test_apply_decay_keeps_updated_at_as_signal_clock(self) -> None:
+    old = datetime.now(timezone.utc) - timedelta(days=30)
+    feature = UserTasteFeature(
+      id=str(uuid4()),
+      user_id=self.user.id,
+      feature_type="style",
+      feature_value="classic",
+      preference_score=0.4,
+      confidence=0.3,
       positive_count=1,
       negative_count=0,
+      last_signal_at=old,
+      last_decay_at=old,
       created_at=old,
       updated_at=old,
     )
@@ -211,8 +237,9 @@ class UserTwinServiceTests(unittest.TestCase):
 
     apply_decay(feature, as_of=datetime.now(timezone.utc))
 
-    self.assertLess(feature.preference_score, 0.3)
-    self.assertLess(feature.confidence, 0.5)
+    self.assertEqual(feature.updated_at, old)
+    self.assertGreater(feature.last_decay_at, old)
+    self.assertEqual(feature.last_signal_at, old)
 
   def test_get_user_taste_features_orders_by_confidence(self) -> None:
     for _ in range(4):
