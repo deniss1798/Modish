@@ -34,7 +34,6 @@ POSITIVE_EMBEDDING_EVENT_WEIGHTS: dict[str, float] = {
 }
 
 NEGATIVE_EMBEDDING_EVENT_WEIGHTS: dict[str, float] = {
-  "skip": 0.10,
   "dislike": 2.0,
   "post_purchase_negative": 4.0,
 }
@@ -46,6 +45,22 @@ _TOKEN_RE = re.compile(r"[\wа-яА-ЯёЁ]+", re.UNICODE)
 class VectorSearchResult:
   product_id: str
   score: float
+
+
+@dataclass(frozen=True)
+class EmbeddingIndexSummary:
+  scanned: int
+  indexed: int
+  skipped: int
+  errors: int
+
+  def to_dict(self) -> dict[str, int]:
+    return {
+      "scanned": self.scanned,
+      "indexed": self.indexed,
+      "skipped": self.skipped,
+      "errors": self.errors,
+    }
 
 
 @dataclass(frozen=True)
@@ -79,6 +94,32 @@ class VectorStore(Protocol):
 
   def delete_product_embedding(self, db: Session, *, product_id: str) -> None:
     ...
+
+
+class SemanticVectorStoreAdapter:
+  """Future adapter for pgvector/Qdrant and a real semantic embedding model."""
+
+  def upsert_product_embedding(self, db: Session, *, product: Product, embedding: list[float], text: str) -> ProductEmbedding:
+    del db, product, embedding, text
+    raise NotImplementedError("TODO(MIE): connect pgvector/Qdrant semantic vector storage")
+
+  def search_similar_products(
+    self,
+    db: Session,
+    *,
+    query_embedding: list[float],
+    limit: int,
+    exclude_product_ids: set[str] | None = None,
+    source: str | None = None,
+    min_price: int = 500,
+    min_score: float = 0.05,
+  ) -> list[VectorSearchResult]:
+    del db, query_embedding, limit, exclude_product_ids, source, min_price, min_score
+    raise NotImplementedError("TODO(MIE): use ANN search in pgvector/Qdrant")
+
+  def delete_product_embedding(self, db: Session, *, product_id: str) -> None:
+    del db, product_id
+    raise NotImplementedError("TODO(MIE): delete vector from pgvector/Qdrant")
 
 
 def _now() -> datetime:
@@ -379,3 +420,38 @@ def retrieve_embedding_candidates(
     for product in db.execute(select(Product).where(Product.id.in_(ids))).scalars().all()
   }
   return [by_id[product_id] for product_id in ids if product_id in by_id]
+
+
+def index_active_product_embeddings(
+  db: Session,
+  *,
+  source: str | None = None,
+  limit: int | None = None,
+  vector_store: VectorStore = DEFAULT_VECTOR_STORE,
+) -> EmbeddingIndexSummary:
+  conds = [
+    Product.is_active == 1,
+    Product.is_available == 1,
+    Product.is_deleted_from_feed == 0,
+    Product.source != "demo",
+  ]
+  if source and source.strip():
+    conds.append(Product.source == source.strip())
+  query = select(Product).where(and_(*conds)).order_by(Product.updated_at.desc(), Product.id.asc())
+  if limit is not None:
+    query = query.limit(max(1, int(limit)))
+  products = db.execute(query).scalars().all()
+
+  scanned = indexed = skipped = errors = 0
+  for product in products:
+    scanned += 1
+    if not product_embedding_text(product):
+      skipped += 1
+      continue
+    try:
+      ensure_product_embedding(db, product, vector_store=vector_store)
+      indexed += 1
+    except Exception:
+      errors += 1
+  db.flush()
+  return EmbeddingIndexSummary(scanned=scanned, indexed=indexed, skipped=skipped, errors=errors)

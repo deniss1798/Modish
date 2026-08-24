@@ -9,10 +9,11 @@ from datetime import timedelta
 from typing import Any
 
 
-ALGORITHM_VERSION = "mie_phase6_embeddings"
+ALGORITHM_VERSION = "mie_phase7_outfit_engine_v2"
 DEFAULT_RANKING_ALGORITHM = "ranking_v4"
 SUPPORTED_RANKING_ALGORITHMS = ("ranking_v3", "ranking_v4")
 EMBEDDING_MODEL_VERSION = "modish_local_hash_embedding_v1"
+OUTFIT_ENGINE_VERSION = "outfit_engine_v2"
 
 EVENT_ALIASES = {
   "buy_click": "affiliate_click",
@@ -100,6 +101,12 @@ FINAL_SCORE_WEIGHTS: dict[str, float] = {
   "context_score": 0.15,
   "quality_score": 0.10,
   "exploration_score": 0.05,
+}
+
+OUTFIT_SCORE_WEIGHTS: dict[str, float] = {
+  "personal_score": 0.55,
+  "compatibility_score": 0.35,
+  "novelty_score": 0.10,
 }
 
 TASTE_UPDATE_EVENTS = frozenset(
@@ -220,7 +227,9 @@ def recommendation_algorithm_metadata(
     "ranking_algorithm": ranking_algorithm,
     "supported_ranking_algorithms": list(SUPPORTED_RANKING_ALGORITHMS),
     "embedding_model": EMBEDDING_MODEL_VERSION,
+    "outfit_engine": OUTFIT_ENGINE_VERSION,
     "final_score_weights": dict(FINAL_SCORE_WEIGHTS),
+    "outfit_score_weights": dict(OUTFIT_SCORE_WEIGHTS),
     "fit_min_threshold": FIT_MIN_THRESHOLD,
   }
   if scenario:

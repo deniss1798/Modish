@@ -21,6 +21,7 @@ from app.services.embedding_service import (
   DEFAULT_VECTOR_STORE,
   build_query_embedding,
   build_user_taste_embedding,
+  index_active_product_embeddings,
   product_embedding_text,
   retrieve_embedding_candidates,
   upsert_product_embedding,
@@ -176,6 +177,50 @@ class EmbeddingServiceTests(unittest.TestCase):
     self.assertEqual(user_embedding.positive_events, 1)
     self.assertEqual(user_embedding.negative_events, 1)
     self.assertIsNotNone(query)
+
+  def test_skip_is_not_used_in_negative_centroid(self) -> None:
+    skipped = _product(title="Maybe later cotton sweatshirt")
+    self.db.add(skipped)
+    self.db.flush()
+    upsert_product_embedding(self.db, skipped)
+    self.db.add(
+      RecommendationEventV2(
+        id=str(uuid4()),
+        user_id=self.user.id,
+        product_id=skipped.id,
+        event_type="skip",
+        event_weight=-0.5,
+        meta_json={},
+        created_at=datetime.now(timezone.utc),
+      )
+    )
+    self.db.flush()
+
+    user_embedding = build_user_taste_embedding(self.db, user_id=self.user.id)
+
+    self.assertEqual(user_embedding.negative_events, 0)
+    self.assertIsNone(user_embedding.negative_centroid)
+
+  def test_batch_indexes_active_catalog_embeddings(self) -> None:
+    active = _product(title="Active black oversized hoodie")
+    demo = _product(title="Demo black oversized hoodie")
+    demo.source = "demo"
+    inactive = _product(title="Inactive black oversized hoodie")
+    inactive.is_active = 0
+    self.db.add_all([active, demo, inactive])
+    self.db.flush()
+
+    summary = index_active_product_embeddings(self.db)
+
+    indexed_ids = {
+      row.product_id
+      for row in self.db.execute(select(ProductEmbedding)).scalars().all()
+    }
+    self.assertEqual(summary.scanned, 1)
+    self.assertEqual(summary.indexed, 1)
+    self.assertIn(active.id, indexed_ids)
+    self.assertNotIn(demo.id, indexed_ids)
+    self.assertNotIn(inactive.id, indexed_ids)
 
   def test_embedding_retrieval_adds_candidate_source(self) -> None:
     liked = _product(title="Black oversized cotton sweatshirt")

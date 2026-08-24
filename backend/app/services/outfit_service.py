@@ -287,7 +287,7 @@ def _catalog_products_for_outfits(
   return out
 
 
-def generate_outfits(
+def _generate_outfits_fallback(
   db: Session,
   user: User,
   *,
@@ -436,3 +436,37 @@ def generate_outfits(
 
   db.flush()
   return created
+
+
+def generate_outfits(
+  db: Session,
+  user: User,
+  *,
+  count: int = 3,
+  scenario: str = "daily",
+  replace_existing: bool = True,
+  use_v2: bool = True,
+) -> list[Outfit]:
+  if use_v2:
+    try:
+      from .outfit_engine_v2 import generate_outfits_v2
+
+      created = generate_outfits_v2(
+        db,
+        user,
+        count=count,
+        scenario=scenario,
+        replace_existing=replace_existing,
+      )
+      if created:
+        return created
+    except Exception:
+      pass
+
+  return _generate_outfits_fallback(
+    db,
+    user,
+    count=count,
+    scenario=scenario,
+    replace_existing=replace_existing,
+  )
