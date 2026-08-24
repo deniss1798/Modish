@@ -19,7 +19,7 @@ from app.models import (
   UserProductState,
   UserTasteFeature,
 )
-from app.services.recommendation_config import event_weight, normalize_event_type
+from app.services.recommendation_config import ALGORITHM_VERSION, event_weight, normalize_event_type
 from app.services.recommendation_engine import ensure_taste_profile, score_product
 
 
@@ -108,6 +108,8 @@ class FeedbackSemanticsTests(unittest.TestCase):
     ev = self.db.execute(select(RecommendationEventV2)).scalar_one()
     self.assertEqual(ev.event_type, "skip")
     self.assertAlmostEqual(float(ev.event_weight), -0.5)
+    self.assertEqual(ev.meta_json["algorithm_version"], ALGORITHM_VERSION)
+    self.assertEqual(ev.meta_json["ranking_algorithm"], "ranking_v4")
 
     tp = self._taste()
     self.assertEqual(tp.disliked_categories, [])

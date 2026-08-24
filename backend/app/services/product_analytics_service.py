@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..models import AffiliateClick, Product, ProductImpression, RecommendationEventV2
+from .recommendation_config import ALGORITHM_VERSION
 
 
 def log_feed_impressions(
@@ -16,6 +17,7 @@ def log_feed_impressions(
   user_id: str,
   product_ids: list[str],
   source: str | None = None,
+  ranking_metadata: dict[str, dict[str, Any]] | None = None,
 ) -> None:
   """Не ломает выдачу ленты, если миграция impressions ещё не применена."""
   if not product_ids:
@@ -23,15 +25,26 @@ def log_feed_impressions(
   try:
     now = datetime.now(timezone.utc)
     src = (source or "").strip()[:64] or None
+    ranking_metadata = ranking_metadata or {}
     for pid in product_ids[:100]:
       if not pid:
         continue
+      meta = dict(ranking_metadata.get(str(pid), {}))
+      algorithm_version = str(meta.get("algorithm_version") or ALGORITHM_VERSION).strip()[:64] or None
+      candidate_source = meta.get("candidate_source")
+      if candidate_source is None and isinstance(meta.get("candidate_sources"), list):
+        candidate_source = ",".join(str(x) for x in meta["candidate_sources"] if str(x).strip())
       db.add(
         ProductImpression(
           id=str(uuid4()),
           user_id=user_id,
           product_id=str(pid),
           source=src,
+          algorithm_version=algorithm_version,
+          candidate_source=str(candidate_source or "").strip() or None,
+          final_score=float(meta["final_score"]) if meta.get("final_score") is not None else None,
+          rank_position=int(meta["rank"]) if meta.get("rank") is not None else None,
+          ranking_meta_json=meta,
           created_at=now,
         )
       )

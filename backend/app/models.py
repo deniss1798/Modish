@@ -364,6 +364,11 @@ class ProductImpression(Base):
   user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
   product_id: Mapped[str] = mapped_column(ForeignKey("products.id"), index=True)
   source: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+  algorithm_version: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+  candidate_source: Mapped[str | None] = mapped_column(Text, nullable=True)
+  final_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+  rank_position: Mapped[int | None] = mapped_column(Integer, nullable=True)
+  ranking_meta_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
   created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 

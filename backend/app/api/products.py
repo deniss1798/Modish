@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from ..models import Product, User, UserProductState
 from ..schemas.api_product import product_to_api
+from ..services.recommendation_config import recommendation_algorithm_metadata
 from ..services.recommendation_engine import generate_feed
 from .deps import auth_scheme, get_db, user_from_token
 
@@ -56,11 +57,26 @@ def _feed_scored_items(
 
   from ..services.product_analytics_service import log_feed_impressions
 
+  ranking_metadata: dict[str, dict[str, Any]] = {}
+  for rank, s in enumerate(scored, start=1):
+    ranking_metadata[s.product.id] = {
+      **recommendation_algorithm_metadata(ranking_algorithm=s.ranking_algorithm, scenario=scenario),
+      "rank": rank,
+      "candidate_source": ",".join(s.candidate_sources),
+      "candidate_sources": list(s.candidate_sources),
+      "fit_score": s.breakdown.get("fit_score"),
+      "taste_score": s.breakdown.get("taste_score"),
+      "context_score": s.breakdown.get("context_score"),
+      "quality_score": s.breakdown.get("quality_score"),
+      "exploration_score": s.breakdown.get("exploration_score"),
+      "final_score": s.final_score,
+    }
   log_feed_impressions(
     db,
     user_id=user.id,
     product_ids=[s.product.id for s in scored],
     source=source,
+    ranking_metadata=ranking_metadata,
   )
   out: list[dict[str, Any]] = []
   for s in scored:
@@ -70,6 +86,8 @@ def _feed_scored_items(
         "final_score": s.final_score,
         "breakdown": s.breakdown,
         "candidate_sources": s.candidate_sources,
+        "algorithm_version": s.algorithm_version,
+        "ranking_algorithm": s.ranking_algorithm,
         "reason": s.reason,
         "reasons": s.reasons,
       }

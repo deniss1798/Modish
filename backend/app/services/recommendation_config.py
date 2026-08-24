@@ -9,7 +9,9 @@ from datetime import timedelta
 from typing import Any
 
 
-ALGORITHM_VERSION = "mie_phase2_user_twin"
+ALGORITHM_VERSION = "mie_phase5_ranking_v4"
+DEFAULT_RANKING_ALGORITHM = "ranking_v4"
+SUPPORTED_RANKING_ALGORITHMS = ("ranking_v3", "ranking_v4")
 
 EVENT_ALIASES = {
   "buy_click": "affiliate_click",
@@ -205,3 +207,20 @@ def legacy_feature_signal_multiplier(event_type: str, meta: dict[str, Any]) -> f
   if event_type in ("dislike", "post_purchase_negative") and dislike_reason_from_meta(meta) is None:
     return GENERIC_DISLIKE_FEATURE_MULTIPLIER
   return 1.0
+
+
+def recommendation_algorithm_metadata(
+  *,
+  ranking_algorithm: str = DEFAULT_RANKING_ALGORITHM,
+  scenario: str | None = None,
+) -> dict[str, Any]:
+  meta: dict[str, Any] = {
+    "algorithm_version": ALGORITHM_VERSION,
+    "ranking_algorithm": ranking_algorithm,
+    "supported_ranking_algorithms": list(SUPPORTED_RANKING_ALGORITHMS),
+    "final_score_weights": dict(FINAL_SCORE_WEIGHTS),
+    "fit_min_threshold": FIT_MIN_THRESHOLD,
+  }
+  if scenario:
+    meta["scenario"] = (scenario or "daily").strip().lower() or "daily"
+  return meta

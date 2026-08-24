@@ -19,6 +19,7 @@ from .catalog.catalog_quality import product_is_feed_eligible
 from .candidate_retrieval_service import retrieve_candidates
 from .feed_filters import product_passes_hard_filters
 from .mie_scoring import TasteFeatureMap, compute_mie_score, load_user_taste_feature_map
+from .recommendation_config import ALGORITHM_VERSION, DEFAULT_RANKING_ALGORITHM
 from ..schemas.photo_analysis import extract_analysis_section
 
 
@@ -30,6 +31,8 @@ class ScoredProduct:
   reason: str
   reasons: list[str]
   candidate_sources: list[str] = field(default_factory=list)
+  algorithm_version: str = ALGORITHM_VERSION
+  ranking_algorithm: str = DEFAULT_RANKING_ALGORITHM
 
 
 @dataclass
@@ -290,6 +293,8 @@ def score_product(db: Session, user: User, product: Product, ctx: FeedContext | 
     reason=reason,
     reasons=mie.reasons[:8],
     candidate_sources=sorted(ctx.candidate_sources.get(product.id, set())),
+    algorithm_version=ALGORITHM_VERSION,
+    ranking_algorithm=DEFAULT_RANKING_ALGORITHM,
   )
 
 

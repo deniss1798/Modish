@@ -32,6 +32,7 @@ from ..services.recommendation_config import (
   legacy_feature_signal_multiplier,
   normalize_event_type,
   normalized_event_meta,
+  recommendation_algorithm_metadata,
 )
 from ..services.recommendation_engine import _product_category_norms, ensure_taste_profile
 from ..services.user_twin_service import apply_event_to_user_twin
@@ -75,6 +76,10 @@ def recommendations_events(
       meta=payload.meta,
       original_event_type=original_event_type,
     )
+    for key, value in recommendation_algorithm_metadata(
+      scenario=str(meta.get("scenario") or "") or None
+    ).items():
+      meta.setdefault(key, value)
   except ValueError as exc:
     raise HTTPException(status_code=400, detail=str(exc)) from exc
   weight = event_weight(canonical_event_type)
