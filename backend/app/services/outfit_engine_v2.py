@@ -14,21 +14,24 @@ from uuid import uuid4
 from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import Session
 
-from ..catalog_normalize import normalize_category
-from ..models import FitProfile, Outfit, Product, RecommendationEventV2, User
+from ..catalog_normalize import normalize_category, normalize_colors_value
+from ..models import FitProfile, MetricEvent, Outfit, Product, RecommendationEventV2, User
 from .catalog.catalog_quality import product_is_feed_eligible
 from .catalog.rule_filters import load_rules_by_source_id, product_gender_compatible, product_passes_source_rules
 from .feed_filters import product_passes_budget, product_passes_size
 from .recommendation_config import OUTFIT_ENGINE_VERSION, OUTFIT_SCORE_WEIGHTS
 from .recommendation_engine import build_feed_context, generate_feed, score_product
+from .product_identity import product_identity_keys
+from .outfit_quality import FORMAL_SCENARIOS, FORMAL_SHOE_TERMS, garment_text, scenario_product_ok, pair_compatible, outfit_compatible
+from .garment_roles import product_role
+from .catalog_audience import adult_catalog_conditions
 
 
 SLOT_CATEGORIES: dict[str, set[str]] = {
-  "one_piece": {"платья", "костюмы", "комбинезоны"},
+  "one_piece": {"платья"},
   "top": {"футболки", "рубашки", "верхний_слой", "джемперы", "худи"},
   "bottom": {"джинсы", "брюки", "юбки", "шорты"},
   "shoes": {"обувь"},
-  "accessory": {"аксессуары", "сумки"},
 }
 
 SCENARIO_SLOT_OPTIONS: dict[str, list[tuple[str, ...]]] = {
@@ -106,25 +109,11 @@ def _product_categories(product: Product) -> set[str]:
 
 
 def product_slot(product: Product) -> str | None:
-  cats = _product_categories(product)
-  title = (product.title or "").lower()
-  if cats & SLOT_CATEGORIES["one_piece"] or any(word in title for word in ("плать", "комбинезон", "suit")):
-    return "one_piece"
-  for slot in ("top", "bottom", "shoes", "accessory"):
-    if cats & SLOT_CATEGORIES[slot]:
-      return slot
-  if any(k in title for k in ("сумк", "bag", "аксессуар", "accessory")):
-    return "accessory"
-  return None
+  return product_role(product)
 
 
 def _scenario_product_ok(product: Product, scenario: str) -> bool:
-  title = (product.title or "").lower()
-  if any(marker in title for marker in KIDS_TITLE_MARKERS):
-    return False
-  if scenario in {"office", "restaurant", "wedding"} and any(marker in title for marker in OFFICE_AVOID_IN_TITLE):
-    return False
-  return int(product.price or 0) <= 500_000
+  return scenario_product_ok(product, scenario)
 
 
 def _hard_ok(product: Product, *, fit: FitProfile | None, rules_by_source: dict) -> bool:
@@ -151,13 +140,6 @@ def _excluded_product_ids(db: Session, user: User, *, scenario: str) -> set[str]
       )
     ).scalars()
   )
-  rows = db.execute(select(Outfit).where(Outfit.user_id == user.id, Outfit.is_saved == 0)).scalars().all()
-  for outfit in rows:
-    if (outfit.style_direction or "").strip().lower() == scenario:
-      continue
-    for pid in (outfit.items_json or {}).values():
-      if pid:
-        ids.add(str(pid))
   return {str(pid) for pid in ids if str(pid).strip()}
 
 
@@ -182,7 +164,16 @@ def _slot_category_conditions(slots: Iterable[str]):
   cats: set[str] = set()
   for slot in slots:
     cats |= SLOT_CATEGORIES.get(slot, set())
-  return or_(Product.category.in_(list(cats)), Product.category_name.in_(list(cats)))
+  title_terms = {
+    "top": ["рубаш", "блуз", "джемпер", "свитер", "лонгслив", "футболк", "топ ", "пуловер", "водолаз"],
+    "bottom": ["брюк", "джинс", "юбк", "шорт"],
+    "one_piece": ["плать", "сарафан"],
+    "shoes": ["туфл", "лофер", "мокасин", "ботин", "ботильон", "балетк", "сапог", "кед", "кроссов"],
+  }
+  conditions = [Product.category.in_(list(cats)), Product.category_name.in_(list(cats))]
+  for slot in slots:
+    conditions.extend(Product.title.ilike(f"%{term}%") for term in title_terms.get(slot, []))
+  return or_(*conditions)
 
 
 def _catalog_slot_candidates(
@@ -194,31 +185,47 @@ def _catalog_slot_candidates(
   excluded: set[str],
   existing_ids: set[str],
   limit: int,
+  anchor: Product | None = None,
+  excluded_keys: set[str] | None = None,
 ) -> list[Product]:
-  del user
-  rows = db.execute(
-    select(Product)
-    .where(
-      Product.is_active == 1,
-      Product.is_available == 1,
-      Product.is_deleted_from_feed == 0,
-      Product.source != "demo",
-      _slot_category_conditions(slots),
-    )
-    .order_by(Product.updated_at.desc(), Product.created_at.desc(), Product.id.asc())
-    .limit(max(60, limit * 8))
-  ).scalars().all()
+  fit = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
+  rules = load_rules_by_source_id(db)
   out: list[Product] = []
-  for product in rows:
-    if product.id in excluded or product.id in existing_ids:
-      continue
-    if product_slot(product) not in slots:
-      continue
-    if not _scenario_product_ok(product, scenario):
-      continue
-    out.append(product)
-    if len(out) >= limit:
-      break
+  seen_keys: set[str] = set(excluded_keys or ())
+  hidden = excluded | existing_ids
+  if hidden:
+    for p in db.execute(select(Product).where(Product.id.in_(hidden))).scalars():
+      seen_keys.update(product_identity_keys(p))
+  # Retrieve each role independently: a recent run of tops or size variants
+  # must not crowd all shoes/bottoms out of the bounded candidate pool.
+  per_role = 10
+  for slot in sorted(slots):
+    found = 0
+    query = select(Product).where(
+      Product.is_active == 1, Product.is_available == 1,
+      Product.is_deleted_from_feed == 0, Product.source != "demo",
+      Product.price > 0, _slot_category_conditions({slot}), *adult_catalog_conditions(),
+    ).order_by(Product.updated_at.desc(), Product.created_at.desc(), Product.id.asc())
+    if fit and fit.gender_target in {"menswear", "womenswear"}:
+      opposite = "menswear" if fit.gender_target == "womenswear" else "womenswear"
+      query = query.where(or_(Product.gender_target.is_(None), Product.gender_target != opposite))
+    if scenario in FORMAL_SCENARIOS:
+      query = query.where(Product.source.notin_(["sportmaster", "demix"]))
+    if slot == "shoes" and scenario in FORMAL_SCENARIOS:
+      query = query.where(or_(*(Product.title.ilike(f"%{term}%") for term in FORMAL_SHOE_TERMS)))
+    for product in db.execute(query.limit(6000).execution_options(yield_per=300)).scalars():
+      keys = product_identity_keys(product)
+      if keys & seen_keys or product_slot(product) != slot:
+        continue
+      if anchor is not None and not pair_compatible(anchor, product):
+        continue
+      if not _scenario_product_ok(product, scenario) or not _hard_ok(product, fit=fit, rules_by_source=rules):
+        continue
+      out.append(product)
+      seen_keys.update(keys)
+      found += 1
+      if found >= per_role:
+        break
   return out
 
 
@@ -231,10 +238,12 @@ def _build_slot_candidates(
   excluded: set[str],
   skipped_ids: set[str],
   per_slot: int,
+  excluded_keys: set[str] | None = None,
 ) -> dict[str, list[SlotCandidate]]:
-  slots = set().union(*[set(option) for option in SCENARIO_SLOT_OPTIONS[scenario]]) | {"accessory"}
+  slots = set().union(*[set(option) for option in SCENARIO_SLOT_OPTIONS[scenario]])
   buckets: dict[str, list[SlotCandidate]] = {slot: [] for slot in slots}
   seen: set[str] = set()
+  seen_keys: set[str] = set(excluded_keys or ())
   rules_by_source = load_rules_by_source_id(db)
 
   scored_feed = generate_feed(
@@ -248,6 +257,9 @@ def _build_slot_candidates(
   for scored in scored_feed:
     slot = product_slot(scored.product)
     if slot not in buckets or scored.product.id in seen:
+      continue
+    keys = product_identity_keys(scored.product)
+    if keys & seen_keys or not _hard_ok(scored.product, fit=fit, rules_by_source=rules_by_source):
       continue
     if not _scenario_product_ok(scored.product, scenario):
       continue
@@ -264,6 +276,7 @@ def _build_slot_candidates(
       )
     )
     seen.add(scored.product.id)
+    seen_keys.update(keys)
 
   missing = {slot for slot, values in buckets.items() if len(values) < per_slot}
   if missing:
@@ -275,10 +288,14 @@ def _build_slot_candidates(
       excluded=excluded,
       existing_ids=seen,
       limit=per_slot * max(1, len(missing)) * 3,
+      excluded_keys=excluded_keys,
     )
     rows = [product for product in rows if _hard_ok(product, fit=fit, rules_by_source=rules_by_source)]
     ctx = build_feed_context(db, user, product_ids=[product.id for product in rows], scenario=scenario)
     for product in rows:
+      keys = product_identity_keys(product)
+      if keys & seen_keys:
+        continue
       slot = product_slot(product)
       if slot not in buckets or len(buckets[slot]) >= per_slot:
         continue
@@ -298,6 +315,7 @@ def _build_slot_candidates(
         )
       )
       seen.add(product.id)
+      seen_keys.update(keys)
 
   for slot in buckets:
     buckets[slot].sort(key=lambda item: item.personal_score, reverse=True)
@@ -306,9 +324,9 @@ def _build_slot_candidates(
 
 
 def _colors(product: Product) -> set[str]:
-  out = {str(c).strip().lower() for c in (product.colors or []) if str(c).strip()}
+  out = set(normalize_colors_value(product.colors or []))
   if product.color_family:
-    out.add(str(product.color_family).strip().lower())
+    out.update(normalize_colors_value(product.color_family))
   return out
 
 
@@ -415,11 +433,7 @@ def _outfit_budget_ok(total: int, item_count: int, fit: FitProfile | None) -> bo
 
 def _reason(candidate: OutfitCandidate, *, scenario: str, compatibility_parts: dict[str, float]) -> str:
   label = SCENARIO_LABELS.get(scenario, "Образ")
-  reasons = [
-    f"Сценарий: {label}",
-    f"PersonalScore {candidate.personal_score:.2f}",
-    f"CompatibilityScore {candidate.compatibility_score:.2f}",
-  ]
+  reasons = [f"{label}: одежда и обувь в одном образе"]
   if compatibility_parts.get("color_harmony", 0.0) >= 0.75:
     reasons.append("цвета сочетаются")
   if compatibility_parts.get("style_consistency", 0.0) >= 0.70:
@@ -441,10 +455,23 @@ def _build_combinations(
   for required_slots in SCENARIO_SLOT_OPTIONS[scenario]:
     if any(not buckets.get(slot) for slot in required_slots):
       continue
-    accessory_options: list[SlotCandidate | None] = [None] + buckets.get("accessory", [])[:3]
-    slot_options = [buckets[slot][:6] for slot in required_slots] + [accessory_options]
+    slot_options = [buckets[slot][:10] for slot in required_slots]
     for combo in cartesian_product(*slot_options):
       slot_items = [item for item in combo if item is not None]
+      if not outfit_compatible([item.product for item in slot_items]):
+        continue
+      colors = set().union(*(_colors(item.product) for item in slot_items))
+      # A restrained base plus one accent is predictable for a first outfit.
+      if len(colors - (NEUTRAL_COLORS | {"cream", "brown"})) > 1:
+        continue
+      seasons = {str(item.product.season or "").strip().lower() for item in slot_items}
+      if seasons & {"winter", "зима"} and seasons & {"summer", "лето"}:
+        continue
+      texts = [garment_text(item.product) for item in slot_items]
+      warm = any(any(word in text for word in ("утеплен", "мех", "теплоизоля", "шерстяной подклад")) for text in texts)
+      light = any(any(word in text for word in ("льнян", "шифон", "сандал", "босонож", "linen", "chiffon")) for text in texts)
+      if warm and light:
+        continue
       product_ids = [item.product.id for item in slot_items]
       if len(product_ids) != len(set(product_ids)):
         continue
@@ -480,37 +507,28 @@ def _build_combinations(
           reasons=[_reason(candidate, scenario=scenario, compatibility_parts=compat_parts)],
         )
       )
-    if candidates:
-      break
   candidates.sort(key=lambda item: item.final_score, reverse=True)
-  return candidates[: max(limit * 4, limit)]
+  return candidates
 
 
 def _diverse_top(candidates: list[OutfitCandidate], *, limit: int) -> list[OutfitCandidate]:
   out: list[OutfitCandidate] = []
-  seen_signatures: set[tuple[str, ...]] = set()
-  used_hero_ids: set[str] = set()
+  selected_keys: list[set[str]] = []
+  used_titles: set[tuple[str, str]] = set()
   for candidate in candidates:
-    signature = tuple(sorted(item.product.id for item in candidate.items.values()))
-    if signature in seen_signatures:
+    keys = set().union(*(product_identity_keys(item.product) for item in candidate.items.values()))
+    # Do not reuse garments across newly generated outfits. A short list is
+    # preferable to padding the requested count with near-identical looks.
+    if any(keys & previous for previous in selected_keys):
       continue
-    hero = candidate.items.get("one_piece") or candidate.items.get("top") or candidate.items.get("bottom")
-    if hero and hero.product.id in used_hero_ids and len(out) < limit:
+    titles = {(str(item.product.brand or "").lower(), str(item.product.title or "").strip().lower()) for item in candidate.items.values() if len((item.product.title or "").split()) >= 4}
+    if titles & used_titles:
       continue
-    seen_signatures.add(signature)
-    if hero:
-      used_hero_ids.add(hero.product.id)
+    selected_keys.append(keys)
+    used_titles.update(titles)
     out.append(candidate)
     if len(out) >= limit:
       break
-  if len(out) < limit:
-    for candidate in candidates:
-      signature = tuple(sorted(item.product.id for item in candidate.items.values()))
-      if signature in seen_signatures:
-        continue
-      out.append(candidate)
-      if len(out) >= limit:
-        break
   return out
 
 
@@ -524,24 +542,53 @@ def generate_outfits_v2(
 ) -> list[Outfit]:
   scenario_key = _scenario_key(scenario)
   need = max(1, min(10, int(count)))
+  # Serialize refreshes for this user; read history only after acquiring the lock.
+  db.execute(select(User.id).where(User.id == user.id).with_for_update()).scalar_one()
   fit = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
   excluded = _excluded_product_ids(db, user, scenario=scenario_key)
   skipped_ids = _recent_skip_product_ids(db, user)
+  existing = db.execute(select(Outfit).where(Outfit.user_id == user.id)).scalars().all()
+  prior_ids = {str(pid) for row in existing for pid in (row.items_json or {}).values() if pid}
+  prior_products = {p.id: p for p in db.execute(select(Product).where(Product.id.in_(prior_ids))).scalars()} if prior_ids else {}
+  recent_keys: list[set[str]] = []
+  other_keys: list[set[str]] = []
+  for row in existing:
+    keys = set().union(*(product_identity_keys(prior_products[str(pid)]) for pid in (row.items_json or {}).values() if str(pid) in prior_products))
+    (recent_keys if row.style_direction == scenario_key else other_keys).append(keys)
 
-  buckets = _build_slot_candidates(
-    db,
-    user,
-    scenario=scenario_key,
-    fit=fit,
-    excluded=excluded,
-    skipped_ids=skipped_ids,
-    per_slot=10,
-  )
-  combinations = _build_combinations(buckets, scenario=scenario_key, fit=fit, limit=need)
-  selected = _diverse_top(combinations, limit=need)
+  # Keep five batches, including identity snapshots so deleted/aliased offers
+  # cannot make the previous look appear new. No catalogue or schema mutation.
+  history_name = f"outfit_rotation:{scenario_key}"
+  history = db.execute(select(MetricEvent).where(
+    MetricEvent.user_id == user.id, MetricEvent.name == history_name,
+  ).order_by(MetricEvent.created_at.desc(), MetricEvent.id.desc()).limit(5)).scalars().all()
+  for event in history:
+    recent_keys.extend(set(keys) for keys in (event.meta_json or {}).get("outfits", []))
+  used_keys = set().union(*recent_keys)
+  used_ids = {key[3:] for key in used_keys if key.startswith("id:")}
+  selected: list[OutfitCandidate] = []
+  # Prefer unused garments. With scarce footwear, allow a shared item only
+  # when at least two parts differ from every recent look in this scenario.
+  for fresh_only in ([True, False] if recent_keys else [False]):
+    buckets = _build_slot_candidates(
+      db, user, scenario=scenario_key, fit=fit,
+      excluded=excluded | used_ids if fresh_only else excluded,
+      skipped_ids=skipped_ids, per_slot=10,
+      excluded_keys=used_keys if fresh_only else None,
+    )
+    combinations = _build_combinations(buckets, scenario=scenario_key, fit=fit, limit=need)
+    combinations = [candidate for candidate in combinations if all(
+      sum(not bool(product_identity_keys(item.product) & keys) for item in candidate.items.values()) >= 2
+      for keys in recent_keys
+    ) and all(
+      any(not (product_identity_keys(item.product) & keys) for item in candidate.items.values())
+      for keys in other_keys
+    )]
+    selected = _diverse_top(combinations, limit=need)
+    if selected:
+      break
   if not selected:
-    return []
-
+    return []  # Preserve the current outfits when alternatives are exhausted.
   if replace_existing:
     db.execute(
       delete(Outfit).where(
@@ -571,5 +618,13 @@ def generate_outfits_v2(
     db.add(outfit)
     created.append(outfit)
 
+  db.add(MetricEvent(
+    id=str(uuid4()), user_id=user.id, name=history_name, created_at=now,
+    meta_json={"outfits": [sorted(set().union(*(product_identity_keys(item.product) for item in candidate.items.values()))) for candidate in selected]},
+  ))
+  # The new batch plus the previous four are enough; bound storage per user.
+  stale = history[4:]
+  if stale:
+    db.execute(delete(MetricEvent).where(MetricEvent.id.in_([event.id for event in stale])))
   db.flush()
   return created

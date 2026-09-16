@@ -132,7 +132,7 @@ class CandidateRetrievalTests(unittest.TestCase):
   def test_taste_retrieval_uses_user_twin_style_signal(self) -> None:
     now = datetime.now(timezone.utc)
     style_product = _product(
-      category="аксессуары",
+      category="кардиганы",
       brand="style-only",
       updated_at=now - timedelta(days=800),
       style="avantgarde",

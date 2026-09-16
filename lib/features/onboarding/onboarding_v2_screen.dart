@@ -9,6 +9,7 @@ import '../../app.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/modish_widgets.dart';
+import '../outfits/outfits_screen.dart';
 
 /// Онбординг v2: 3 шага + Wow (60–90 сек).
 class OnboardingV2Screen extends StatefulWidget {
@@ -515,30 +516,17 @@ class _OnboardingV2ScreenState extends State<OnboardingV2Screen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Мы подобрали луки под твой профиль',
+          outfits.isEmpty
+              ? 'Пока не хватает подходящих вещей для полного образа. Можно перейти в ленту или уточнить профиль.'
+              : 'Мы подобрали вещи под твой профиль. Нажми на образ, чтобы рассмотреть их.',
           style: AppTextStyles.bodyMuted,
         ),
         const SizedBox(height: 20),
         ...outfits.map(
-          (o) => Padding(
+          (o) => OutfitCard(
+            outfit: o.apiData,
+            controller: c,
             padding: const EdgeInsets.only(bottom: 16),
-            child: SoftCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(o.title, style: AppTextStyles.sectionTitle),
-                  if (o.explanation != null && o.explanation!.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(o.explanation!, style: AppTextStyles.bodyMuted),
-                  ],
-                  const SizedBox(height: 12),
-                  Text(
-                    '${o.itemCount} вещей в образе',
-                    style: AppTextStyles.caption,
-                  ),
-                ],
-              ),
-            ),
           ),
         ),
         const SizedBox(height: 16),

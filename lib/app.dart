@@ -20,15 +20,8 @@ import 'features/recommendations/models.dart';
 import 'features/recommendations/saved_screen.dart';
 import 'features/visual/visual_analysis_screen.dart';
 import 'features/products/models.dart' as prod;
-import 'features/products/outfit_slots.dart' as slots;
 import 'features/outfits/outfits_screen.dart';
 import 'features/onboarding/result_screen.dart';
-
-/// Базовый профиль для ленты: указан мужской или женский пол.
-bool _fitProfileReady(Map<String, dynamic> fit) {
-  final g = '${fit['gender_target'] ?? ''}'.trim().toLowerCase();
-  return g == 'menswear' || g == 'womenswear';
-}
 
 class ModishBootstrap extends StatefulWidget {
   const ModishBootstrap({super.key});
@@ -121,15 +114,15 @@ class ModishApp extends StatelessWidget {
           hintStyle: const TextStyle(color: AppColors.muted),
           labelStyle: const TextStyle(color: AppColors.muted),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(16),
             borderSide: const BorderSide(color: AppColors.line),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(16),
             borderSide: const BorderSide(color: AppColors.line),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(16),
             borderSide: const BorderSide(color: AppColors.accent, width: 1.2),
           ),
         ),
@@ -144,7 +137,9 @@ class ModishApp extends StatelessWidget {
         snackBarTheme: SnackBarThemeData(
           backgroundColor: AppColors.surface,
           contentTextStyle: const TextStyle(color: AppColors.ink),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       ),
@@ -186,8 +181,13 @@ enum AppStage {
 }
 
 class AppController extends ChangeNotifier {
-  AppController() {
-    api = ApiClient(onUnauthorized: _handleUnauthorized);
+  AppController({ApiClient? apiClient}) {
+    api = apiClient ?? ApiClient();
+    api.onUnauthorized = _handleUnauthorized;
+    api.onSessionChanged = (access, refresh) async {
+      token = access;
+      await TokenStorage.write(access, refreshToken: refresh);
+    };
   }
 
   late final ApiClient api;
@@ -197,6 +197,7 @@ class AppController extends ChangeNotifier {
   /// 0 Подборка (товары), 1 Образы, 2 Сохранённое, 3 Профиль
   int tab = 0;
   bool authRegisterMode = true;
+  List<String> feedFilterCategories = [];
   int? feedMinPrice;
   int? feedMaxPrice;
   List<String> feedFilterSizes = const [];
@@ -214,6 +215,12 @@ class AppController extends ChangeNotifier {
   final savedIds = <String>{};
   final _detailViewSent = <String>{};
   final _productViewSent = <String>{};
+  final _dismissedProductKeys = <String>{};
+  final _pendingProductActions = <String>{};
+  int _feedRequestGeneration = 0;
+  Future<void>? _feedLoad;
+  int _feedLoadGeneration = -1;
+  final _dismissedProductIds = <String>{};
   List<Outfit> feed = [];
   List<Map<String, dynamic>> savedRows = [];
   List<prod.FeedCard> productFeed = [];
@@ -240,89 +247,55 @@ class AppController extends ChangeNotifier {
   prod.FeedCard? get currentProduct =>
       filteredProductFeed.isEmpty ? null : filteredProductFeed.first;
 
-  List<prod.FeedCard> get filteredProductFeed {
-    return productFeed.where((c) {
-      final p = c.product;
-      if (feedMinPrice != null && p.price < feedMinPrice!) return false;
-      if (feedMaxPrice != null && p.price > feedMaxPrice!) return false;
-      if (feedFilterSizes.isNotEmpty) {
-        final sizes = p.availableSizes.map((e) => e.toUpperCase()).toSet();
-        if (!feedFilterSizes.any((s) => sizes.contains(s.toUpperCase()))) {
-          return false;
-        }
+  List<prod.FeedCard> get filteredProductFeed => productFeed;
+
+  final _related = <String, List<prod.FeedCard>>{};
+  final _relatedLoading = <String>{};
+  int _relatedGeneration = 0;
+
+  List<prod.FeedCard> relatedProducts(String productId, {int limit = 6}) =>
+      (_related[productId] ?? const <prod.FeedCard>[]).take(limit).toList();
+
+  String relatedProductsHint(String productId) => 'Дополнения к этой вещи';
+
+  Future<void> loadRelatedProducts(String productId) async {
+    if (_related.containsKey(productId) || !_relatedLoading.add(productId)) {
+      return;
+    }
+    final generation = _relatedGeneration;
+    try {
+      final rows = await api.productComplements(productId);
+      if (generation != _relatedGeneration) return;
+      final seen = <String>{'id:$productId'};
+      _related[productId] = rows
+          .map(
+            (row) => prod.FeedCard(
+              product: prod.Product.fromApi(row),
+              reason: 'Дополняет образ',
+            ),
+          )
+          .where((card) {
+            final keys = card.product.identityKeys;
+            if (keys.any(seen.contains)) return false;
+            seen.addAll(keys);
+            return true;
+          })
+          .toList();
+      while (_related.length > 20) {
+        _related.remove(_related.keys.first);
       }
-      if (feedFilterColors.isNotEmpty) {
-        final cols = p.colors.map((e) => e.toLowerCase()).toList();
-        if (!feedFilterColors.any(
-          (col) => cols.any((pc) => pc.contains(col.toLowerCase())),
-        )) {
-          return false;
-        }
-      }
-      return true;
-    }).toList();
+      notifyListeners();
+    } catch (_) {
+      // A missing complement must never be replaced by an unrelated feed item.
+    } finally {
+      if (generation == _relatedGeneration) _relatedLoading.remove(productId);
+    }
   }
 
-  List<prod.FeedCard> relatedProducts(String productId, {int limit = 6}) {
-    prod.FeedCard? current;
-    for (final c in filteredProductFeed) {
-      if (c.product.id == productId) {
-        current = c;
-        break;
-      }
-    }
-    if (current == null) return const [];
-
-    final anchor = current.product;
-    final anchorSlot = slots.productSlotFromCategory(anchor.category);
-    final wantSlots = slots.complementSlotsFor(anchorSlot);
-    final anchorPrice = anchor.price;
-
-    int score(prod.Product p) {
-      if (p.id == productId) return -1;
-      if (slots.isKidsProductTitle(p.title)) return -1;
-      final slot = slots.productSlotFromCategory(p.category);
-      if (!wantSlots.contains(slot)) return 0;
-      var s = 10;
-      if (anchor.brand.isNotEmpty &&
-          p.brand.toLowerCase() == anchor.brand.toLowerCase()) {
-        s += 3;
-      }
-      if (anchorPrice > 0) {
-        final ratio = p.price / anchorPrice;
-        if (ratio >= 0.35 && ratio <= 2.8) s += 4;
-      }
-      return s;
-    }
-
-    final ranked =
-        filteredProductFeed
-            .where((c) => c.product.id != productId)
-            .map((c) => (card: c, s: score(c.product)))
-            .where((e) => e.s > 0)
-            .toList()
-          ..sort((a, b) => b.s.compareTo(a.s));
-
-    if (ranked.length >= limit) {
-      return ranked.take(limit).map((e) => e.card).toList();
-    }
-
-    final seen = ranked.map((e) => e.card.product.id).toSet();
-    final fallback = filteredProductFeed
-        .where((c) => c.product.id != productId && !seen.contains(c.product.id))
-        .take(limit - ranked.length);
-    return [...ranked.map((e) => e.card), ...fallback];
-  }
-
-  String relatedProductsHint(String productId) {
-    for (final c in filteredProductFeed) {
-      if (c.product.id == productId) {
-        return slots.complementHintRu(
-          slots.productSlotFromCategory(c.product.category),
-        );
-      }
-    }
-    return 'Другие вещи из ленты';
+  void _clearRelated() {
+    _relatedGeneration++;
+    _related.clear();
+    _relatedLoading.clear();
   }
 
   Future<void> boot() async {
@@ -334,12 +307,14 @@ class AppController extends ChangeNotifier {
       );
       if (stored != null && stored.isNotEmpty) {
         api.applyToken(stored);
+        api.refreshToken = await TokenStorage.readRefresh();
         token = stored;
         final me = await api.usersMe().timeout(
           const Duration(seconds: 10),
           onTimeout: () => throw TimeoutException('usersMe'),
         );
         email = '${me['email'] ?? email}';
+        await api.upgradeSession();
         try {
           fitProfile = await api.fitProfileMe().timeout(
             const Duration(seconds: 10),
@@ -378,8 +353,14 @@ class AppController extends ChangeNotifier {
           'Медленное соединение (${e.message ?? 'timeout'}). '
           'Проверьте интернет и войдите снова.';
     } catch (e) {
-      error = ApiClient.formatError(e);
-      await _clearSession();
+      if (token == null) {
+        error = 'Сессия истекла. Войдите снова, чтобы продолжить.';
+        authRegisterMode = false;
+        stage = AppStage.auth;
+        notifyListeners();
+        return;
+      }
+      error = 'Не удалось подключиться. Проверьте интернет и повторите вход.';
     }
     stage = AppStage.welcome;
     notifyListeners();
@@ -389,16 +370,13 @@ class AppController extends ChangeNotifier {
     token = null;
     api.clearToken();
     unawaited(TokenStorage.clear());
+    _feedRequestGeneration++;
+    productFeed = [];
+    _clearRelated();
     stage = AppStage.auth;
     authRegisterMode = false;
     error = 'Сессия истекла — войдите снова.';
     notifyListeners();
-  }
-
-  Future<void> _clearSession() async {
-    await TokenStorage.clear();
-    api.clearToken();
-    token = null;
   }
 
   Future<void> _routeAfterAuth() async {
@@ -541,18 +519,6 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Лента без фото-анализа (базовый онбординг).
-  Future<void> finishBasicOnboarding() async {
-    await _run(() async {
-      if (!_fitProfileReady(fitProfile)) {
-        throw Exception('Укажите пол и параметры в профиле');
-      }
-      await refreshRemoteData();
-      stage = AppStage.home;
-      tab = 0;
-    });
-  }
-
   void goToWelcome() {
     stage = AppStage.welcome;
     notifyListeners();
@@ -615,22 +581,27 @@ class AppController extends ChangeNotifier {
   }
 
   void goToAuth({required bool registerMode}) {
+    error = null;
     authRegisterMode = registerMode;
     stage = AppStage.auth;
     notifyListeners();
   }
 
-  void applyFeedFilters({
+  Future<void> applyFeedFilters({
     int? minPrice,
     int? maxPrice,
     List<String> sizes = const [],
     List<String> colors = const [],
-  }) {
+    List<String> categories = const [],
+  }) async {
     feedMinPrice = minPrice;
     feedMaxPrice = maxPrice;
     feedFilterSizes = sizes;
     feedFilterColors = colors;
-    notifyListeners();
+    feedFilterCategories = categories;
+    _feedRequestGeneration++;
+    productFeed = [];
+    await refreshFeedFromUser();
   }
 
   Future<void> register(String password) async {
@@ -643,7 +614,7 @@ class AppController extends ChangeNotifier {
       }
       final t = await api.register(email, password);
       token = t;
-      if (!await TokenStorage.write(t)) {
+      if (!await TokenStorage.write(t, refreshToken: api.refreshToken)) {
         throw Exception('Не удалось сохранить сессию на устройстве');
       }
       try {
@@ -663,45 +634,52 @@ class AppController extends ChangeNotifier {
       }
       final t = await api.login(email, password);
       token = t;
-      if (!await TokenStorage.write(t)) {
+      if (!await TokenStorage.write(t, refreshToken: api.refreshToken)) {
         throw Exception('Не удалось сохранить сессию на устройстве');
       }
       await _routeAfterAuth();
     });
   }
 
+  int _analysisRun = 0;
+
   Future<void> analyze() async {
+    if (isLoading) return;
+    final run = ++_analysisRun;
+    final photo = selectedPhotoPath;
     isLoading = true;
     error = null;
     notifyListeners();
     try {
-      if (selectedPhotoPath == null) {
+      if (photo == null) {
         throw Exception('Сначала выберите фото');
       }
       stage = AppStage.analysis;
-      analysisProgress = 0;
+      analysisProgress = 25;
       notifyListeners();
-      for (var i = 1; i <= 4; i++) {
-        await Future<void>.delayed(const Duration(milliseconds: 320));
-        analysisProgress = i * 25;
-        notifyListeners();
-      }
-      // 100% — фото загружено, дальше реальный анализ на сервере
       await api.setStyleTarget(styleTarget);
-      await api.analyzeStyleProfile(selectedPhotoPath!);
+      if (run != _analysisRun) return;
+      await api.analyzeStyleProfile(photo);
+      if (run != _analysisRun) return;
+      analysisProgress = 100;
       try {
         await api.metricsEvent('photo_uploaded');
       } catch (_) {}
+      if (run != _analysisRun) return;
       await refreshRemoteData();
+      if (run != _analysisRun) return;
       stage = AppStage.home;
       tab = 0;
     } catch (e) {
+      if (run != _analysisRun) return;
       error = ApiClient.formatError(e);
       stage = AppStage.upload;
       analysisProgress = 0;
     } finally {
-      isLoading = false;
-      notifyListeners();
+      if (run == _analysisRun) {
+        isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -714,46 +692,71 @@ class AppController extends ChangeNotifier {
   /// Обновление ленты по кнопке «Обновить» — со спиннером и понятным результатом.
   /// Возвращает текст для SnackBar или null, если всё ок и есть товары.
   Future<String?> refreshFeedFromUser() async {
-    feedRefreshing = true;
     productFeedError = null;
-    notifyListeners();
-
     await _refreshProductFeed();
-    feedRefreshing = false;
-    notifyListeners();
     unawaited(_refreshSecondaryRemoteData());
 
     if (productFeedError != null) {
       return productFeedError;
     }
     if (productFeed.isEmpty) {
-      return 'Лента пустая. Возможные причины:\n'
-          '• каталог не импортирован на сервер;\n'
-          '• фильтры профиля (бюджет, категории) скрыли товары — сбросьте фильтры ⚙';
-    }
-    if (filteredProductFeed.isEmpty && productFeed.isNotEmpty) {
-      return 'Товары есть, но фильтры скрыли все карточки. Сбросьте фильтры (иконка справа вверху).';
+      return 'Подходящих вещей пока нет. Попробуйте изменить или сбросить фильтры.';
     }
     return null;
   }
 
-  Future<void> _refreshProductFeed() async {
+  Future<void> _refreshProductFeed() {
+    if (_feedLoad != null && _feedLoadGeneration == _feedRequestGeneration) {
+      return _feedLoad!;
+    }
+    final generation = _feedRequestGeneration;
+    _feedLoadGeneration = generation;
+    feedRefreshing = true;
+    notifyListeners();
+    return _feedLoad = _fetchFeed(generation).whenComplete(() {
+      if (generation == _feedRequestGeneration) {
+        _feedLoad = null;
+        feedRefreshing = false;
+        notifyListeners();
+      }
+    });
+  }
+
+  Future<void> _fetchFeed(int generation) async {
     try {
-      final rows = await api.productFeed(limit: 30);
-      productFeed = rows.map(prod.FeedCard.fromApi).toList();
+      final excluded = <String>{
+        ..._dismissedProductIds.toList().reversed.take(90),
+        ...productFeed.map((card) => card.product.id).take(30),
+      };
+      final rows = await api.productFeed(
+        limit: 30,
+        minPrice: feedMinPrice,
+        maxPrice: feedMaxPrice,
+        categories: feedFilterCategories,
+        sizes: feedFilterSizes,
+        colors: feedFilterColors,
+        excludeIds: excluded.toList(),
+      );
+      if (generation != _feedRequestGeneration) return;
+      final seen = {..._dismissedProductKeys};
+      // Merge at response time: swipes during a slow request stay dismissed,
+      // while the current card and the remaining queue retain their position.
+      productFeed = [...productFeed, ...rows.map(prod.FeedCard.fromApi)].where((
+        card,
+      ) {
+        final keys = card.product.identityKeys;
+        if (keys.any(seen.contains)) return false;
+        seen.addAll(keys);
+        return true;
+      }).toList();
       productFeedError = null;
     } catch (e) {
-      productFeed = [];
+      if (generation != _feedRequestGeneration) return;
       productFeedError = ApiClient.formatError(e);
     }
   }
 
   Future<void> _refreshSecondaryRemoteData() async {
-    try {
-      feed = await api.feed();
-    } catch (_) {
-      feed = [];
-    }
     try {
       summary = await api.summary();
     } catch (_) {
@@ -762,7 +765,7 @@ class AppController extends ChangeNotifier {
     try {
       fitProfile = await api.fitProfileMe();
     } catch (_) {
-      fitProfile = {};
+      // A temporary network failure must not erase the selected profile.
     }
     try {
       tasteProfile = await api.tasteProfileMe();
@@ -845,19 +848,22 @@ class AppController extends ChangeNotifier {
 
   void goToReanalyze() {
     selectedPhotoPath = null;
+    photoPaths.clear();
+    error = null;
+    styleTarget = '${fitProfile['gender_target'] ?? styleTarget}';
     stage = AppStage.upload;
     notifyListeners();
   }
 
   void exitUploadFlow() {
+    _analysisRun++;
+    isLoading = false;
+    selectedPhotoPath = null;
+    photoPaths.clear();
+    error = null;
     if (token != null && token!.isNotEmpty) {
-      if (_fitProfileReady(fitProfile)) {
-        stage = AppStage.home;
-        tab = 0;
-      } else {
-        stage = AppStage.home;
-        tab = 3;
-      }
+      stage = AppStage.home;
+      tab = 3;
     } else {
       stage = AppStage.welcome;
     }
@@ -865,6 +871,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    unawaited(api.logoutSession());
     await TokenStorage.clear();
     api.clearToken();
     token = null;
@@ -881,8 +888,18 @@ class AppController extends ChangeNotifier {
     fitProfile = {};
     tasteProfile = {};
     savedIds.clear();
+    _clearRelated();
     _detailViewSent.clear();
     _productViewSent.clear();
+    _dismissedProductKeys.clear();
+    _dismissedProductIds.clear();
+    feedMinPrice = null;
+    feedMaxPrice = null;
+    feedFilterCategories = [];
+    feedFilterSizes = [];
+    feedFilterColors = [];
+    _pendingProductActions.clear();
+    _feedRequestGeneration++;
     stage = AppStage.welcome;
     notifyListeners();
   }
@@ -913,41 +930,52 @@ class AppController extends ChangeNotifier {
     String eventType, {
     Map<String, dynamic>? meta,
   }) async {
-    await _run(() async {
-      final res = await api.recordRecommendationEvent(
-        eventType: eventType,
-        productId: productId,
-        meta: meta,
-      );
-      try {
-        final name = switch (eventType) {
-          'like' => 'product_liked',
-          'save' => 'product_saved',
-          'open_product' => 'product_opened',
-          'affiliate_click' => 'product_affiliate_click',
-          _ => null,
-        };
-        if (name != null) {
-          await api.metricsEvent(name);
+    final advances = {'like', 'dislike', 'skip', 'save'}.contains(eventType);
+    if (_pendingProductActions.contains(productId)) return;
+    _pendingProductActions.add(productId);
+    if (advances) {
+      final keys = <String>{'id:$productId'};
+      for (final card in productFeed) {
+        if (card.product.id == productId) {
+          keys.addAll(card.product.identityKeys);
         }
-      } catch (_) {}
-      if (res['milestone_reached'] == true && context.mounted) {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => ResultScreen(controller: this)),
+      }
+      _dismissedProductKeys.addAll(keys);
+      _dismissedProductIds.add(productId);
+      productFeed.removeWhere((c) => c.product.identityKeys.any(keys.contains));
+      if (productFeed.length <= 8) unawaited(_refreshProductFeed());
+      notifyListeners();
+    }
+    try {
+      await _run(() async {
+        final res = await api.recordRecommendationEvent(
+          eventType: eventType,
+          productId: productId,
+          meta: meta,
         );
-      }
-      if (eventType == 'save') {
-        // оптимистично: просто перезагрузим
-      }
-      if (eventType == 'like' ||
-          eventType == 'dislike' ||
-          eventType == 'skip') {
-        productFeed = productFeed
-            .where((c) => c.product.id != productId)
-            .toList();
-      }
-      await refreshRemoteData();
-    });
+        try {
+          final name = switch (eventType) {
+            'like' => 'product_liked',
+            'save' => 'product_saved',
+            'open_product' => 'product_opened',
+            'affiliate_click' => 'product_affiliate_click',
+            _ => null,
+          };
+          if (name != null) {
+            await api.metricsEvent(name);
+          }
+        } catch (_) {}
+        if (res['milestone_reached'] == true && context.mounted) {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => ResultScreen(controller: this)),
+          );
+        }
+        if (eventType == 'save') savedProductRows = await api.savedProducts();
+        if (advances && productFeed.length < 5) await _refreshProductFeed();
+      });
+    } finally {
+      _pendingProductActions.remove(productId);
+    }
   }
 
   Future<void> updateFitProfile({
@@ -971,6 +999,8 @@ class AppController extends ChangeNotifier {
         interestCategories: interestCategories,
         styleScenarios: styleScenarios,
       );
+      styleTarget = genderTarget;
+      _clearRelated();
       await refreshRemoteData();
     });
   }
@@ -990,21 +1020,29 @@ class AppController extends ChangeNotifier {
     });
   }
 
-  Future<void> generateOutfitsV2({
+  Future<int> generateOutfitsV2({
     int count = 3,
     String scenario = 'daily',
   }) async {
+    var createdCount = 0;
     await _run(() async {
-      await api.outfitsGenerate(count: count, scenario: scenario);
+      final scenarios = scenario == 'all'
+          ? const ['daily', 'office', 'evening']
+          : [scenario];
+      for (final key in scenarios) {
+        final created = await api.outfitsGenerate(count: count, scenario: key);
+        createdCount += created.length;
+      }
       outfits = await api.outfitsList();
       savedOutfits = await api.outfitsList(savedOnly: true);
       try {
         await api.metricsEvent(
           'outfit_generated',
-          meta: {'count': count, 'scenario': scenario},
+          meta: {'count': createdCount, 'scenario': scenario},
         );
       } catch (_) {}
     });
+    return createdCount;
   }
 
   Future<void> saveOutfit(String outfitId) async {
@@ -1012,7 +1050,6 @@ class AppController extends ChangeNotifier {
       await api.outfitsSave(outfitId);
       outfits = await api.outfitsList();
       savedOutfits = await api.outfitsList(savedOnly: true);
-      await refreshRemoteData();
     });
   }
 
@@ -1021,7 +1058,6 @@ class AppController extends ChangeNotifier {
       await api.outfitsUnsave(outfitId);
       outfits = await api.outfitsList();
       savedOutfits = await api.outfitsList(savedOnly: true);
-      await refreshRemoteData();
     });
   }
 
@@ -1031,7 +1067,11 @@ class AppController extends ChangeNotifier {
         eventType: 'unsave',
         productId: productId,
       );
-      await refreshRemoteData();
+      savedProductRows = savedProductRows
+          .where(
+            (row) => (row['product'] as Map?)?['id']?.toString() != productId,
+          )
+          .toList();
     });
   }
 
@@ -1090,61 +1130,34 @@ class AppController extends ChangeNotifier {
   }
 }
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
-  @override
-  State<SplashScreen> createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends State<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future<void>.delayed(const Duration(milliseconds: 900), () {
-        if (!mounted) return;
-        final app = ModishApp.of(context);
-        if (app.stage == AppStage.splash) {
-          app.goToWelcome();
-        }
-      });
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
-    return MobileViewport(
+    return const MobileViewport(
       minimalBackdrop: true,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(28),
-              child: Image.asset(
-                'assets/icon/app_icon.png',
-                width: 120,
-                height: 120,
-                fit: BoxFit.cover,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          HeroFashionBackdrop(),
+          SafeArea(
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: EdgeInsets.only(bottom: 48),
+                child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.accentSoft,
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 20),
-            const Text(
-              'Modish',
-              style: TextStyle(
-                color: AppColors.ink,
-                fontSize: 22,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Персональный AI-стилист',
-              style: TextStyle(color: AppColors.muted, fontSize: 16),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1168,7 +1181,10 @@ class HomeScreen extends StatelessWidget {
         return MobileViewport(
           child: Scaffold(
             backgroundColor: Colors.transparent,
-            body: IndexedStack(index: controller.tab, children: pages),
+            body: SafeArea(
+              bottom: false,
+              child: IndexedStack(index: controller.tab, children: pages),
+            ),
             bottomNavigationBar: ModishBottomNav(
               index: controller.tab,
               onChanged: controller.setTab,

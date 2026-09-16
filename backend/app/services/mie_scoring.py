@@ -100,7 +100,8 @@ def compute_fit_score(
 
   if not hard_reject and fit is not None:
     if product_passes_size(product, fit):
-      if product.available_sizes:
+      from .feed_filters import product_has_confirmed_size
+      if product_has_confirmed_size(product, fit):
         score += 0.10
         reasons.append("Есть ваш размер")
       else:

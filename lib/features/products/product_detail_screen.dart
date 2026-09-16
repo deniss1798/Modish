@@ -33,6 +33,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   void initState() {
     super.initState();
     _card = widget.card;
+    widget.controller.addListener(_rebuild);
+    widget.controller.loadRelatedProducts(_card.product.id);
     _selectedSize = _card.product.availableSizes.isNotEmpty
         ? _card.product.availableSizes.first
         : null;
@@ -40,6 +42,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ? _card.product.colors.first
         : null;
     _pullLatest();
+  }
+
+  void _rebuild() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_rebuild);
+    super.dispose();
   }
 
   Future<void> _pullLatest() async {
@@ -349,13 +361,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 p.id,
                               ),
                       ),
-                      const SizedBox(height: 10),
-                      Center(
-                        child: Text(
-                          'Мы получим комиссию с покупки',
-                          style: AppTextStyles.caption,
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -415,6 +420,7 @@ class _ProductImageCarouselState extends State<_ProductImageCarousel> {
             onPageChanged: (i) => setState(() => _page = i),
             itemBuilder: (context, i) => ProductFillImage(
               imageUrl: widget.urls[i],
+              fallbackImageUrls: widget.urls,
               borderRadius: BorderRadius.zero,
             ),
           ),
@@ -461,8 +467,9 @@ Future<void> _openAffiliateShop(
       return;
     }
     final uri = Uri.parse(url);
-    if (!await canLaunchUrl(uri)) return;
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      throw Exception('Не удалось открыть браузер. Попробуйте ещё раз.');
+    }
     if (context.mounted) {
       try {
         await controller.api.recordRecommendationEvent(

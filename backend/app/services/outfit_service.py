@@ -506,10 +506,10 @@ def generate_outfits(
         scenario=scenario,
         replace_existing=replace_existing,
       )
-      if created:
-        return created
+      return created
     except Exception as exc:
       _record_outfit_engine_v2_failure(db, user, scenario=scenario, exc=exc)
+      raise
 
   return _generate_outfits_fallback(
     db,

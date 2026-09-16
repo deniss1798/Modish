@@ -10,74 +10,115 @@ class SettingsScreen extends StatelessWidget {
   final AppController controller;
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      appBar: AppBar(
-        backgroundColor: AppColors.bg,
-        elevation: 0,
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.pop(context)),
-        title: const Text('Настройки', style: AppTextStyles.sectionTitle),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Text('Аккаунт', style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          SoftCard(
-            child: Column(
-              children: [
-                MenuTile(
-                  icon: Icons.tune,
-                  title: 'Параметры подборки',
-                  subtitle: 'Рост, вес, пол, размер, бюджет',
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => EditProfileScreen(controller: controller),
-                    ),
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: AppColors.bg,
+    appBar: AppBar(
+      title: const Text('Настройки', style: AppTextStyles.sectionTitle),
+    ),
+    body: ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        SoftCard(
+          child: Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.person_outline),
+                title: const Text('Аккаунт'),
+                subtitle: SelectableText(controller.email),
+              ),
+              const Divider(color: AppColors.line),
+              MenuTile(
+                icon: Icons.tune,
+                title: 'Параметры подборки',
+                subtitle: 'Пол, размер, рост и бюджет',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => EditProfileScreen(controller: controller),
                   ),
                 ),
-                const Divider(color: AppColors.line),
-                MenuTile(icon: Icons.person_outline, title: 'Email', subtitle: controller.email, onTap: () {}),
-                const Divider(color: AppColors.line),
-                MenuTile(icon: Icons.lock_outline, title: 'Безопасность', onTap: () {}),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(height: 20),
-          Text('Приложение', style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          SoftCard(
-            child: Column(
-              children: [
-                MenuTile(icon: Icons.notifications_outlined, title: 'Уведомления', onTap: () {}),
-                const Divider(color: AppColors.line),
-                MenuTile(icon: Icons.language, title: 'Язык', subtitle: 'Русский', onTap: () {}),
-                const Divider(color: AppColors.line),
-                MenuTile(icon: Icons.dark_mode_outlined, title: 'Тема', subtitle: 'Светлая', onTap: () {}),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          Text('Поддержка', style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          SoftCard(
-            child: Column(
-              children: [
-                MenuTile(icon: Icons.help_outline, title: 'Помощь', onTap: () {}),
-                const Divider(color: AppColors.line),
-                MenuTile(
-                  icon: Icons.logout,
-                  title: 'Выйти',
-                  trailing: const SizedBox.shrink(),
-                  onTap: controller.isLoading ? null : () => controller.logout(),
+        ),
+        const SizedBox(height: 20),
+        SoftCard(
+          child: Column(
+            children: [
+              const ListTile(
+                leading: Icon(Icons.language),
+                title: Text('Язык приложения'),
+                subtitle: Text('Русский'),
+              ),
+              const ListTile(
+                leading: Icon(Icons.dark_mode_outlined),
+                title: Text('Оформление'),
+                subtitle: Text('Тёмное'),
+              ),
+              const Divider(color: AppColors.line),
+              MenuTile(
+                icon: Icons.help_outline,
+                title: 'Как пользоваться Modish',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const HelpScreen()),
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        PrimaryButton(
+          label: 'Выйти из аккаунта',
+          onPressed: controller.isLoading
+              ? null
+              : () async {
+                  await controller.logout();
+                  if (context.mounted) {
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+                  }
+                },
+        ),
+      ],
+    ),
+  );
+}
+
+class HelpScreen extends StatelessWidget {
+  const HelpScreen({super.key});
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Помощь')),
+    body: const SingleChildScrollView(
+      padding: EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Как устроена лента', style: AppTextStyles.sectionTitle),
+          SizedBox(height: 12),
+          Text(
+            'Свайп вправо отмечает понравившуюся вещь, влево — пропускает. Кнопка «Не моё» сообщает, что такой товар вам не подходит. Закладка добавляет его в «Сохранённое».',
+          ),
+          SizedBox(height: 24),
+          Text('Подбор и фильтры', style: AppTextStyles.sectionTitle),
+          SizedBox(height: 12),
+          Text(
+            'Укажите пол, размер и бюджет в параметрах подборки. Фильтры в ленте ищут товары по каталогу. Несколько значений одного фильтра расширяют выбор, разные фильтры применяются вместе. Если подходящих вещей нет, сбросьте часть условий.',
+          ),
+          SizedBox(height: 24),
+          Text('Образы и магазины', style: AppTextStyles.sectionTitle),
+          SizedBox(height: 12),
+          Text(
+            'Во вкладке «Образы» выберите сценарий и нажмите «Обновить образы». Карточку вещи можно открыть и перейти на её страницу в магазине. Покупка, доставка и возврат оформляются у магазина.',
+          ),
+          SizedBox(height: 24),
+          Text('Если фото не загрузилось', style: AppTextStyles.sectionTitle),
+          SizedBox(height: 12),
+          Text(
+            'Нажмите на сообщение под значком фотографии, чтобы повторить загрузку. Если магазин удалил фото или товар, выберите другую вещь.',
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
 }

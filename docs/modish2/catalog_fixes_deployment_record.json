@@ -1,0 +1,122 @@
+{
+  "report": {
+    "started_at": "2026-09-13T14:34:43.411664+00:00",
+    "previous_image": "sha256:0421468e1c1fb952b2daccb11379a5d89c0b284d3f9a3bde522e410a8e33bae0",
+    "previous_tag": "modish-backend:outfit-fixes-20260913",
+    "tag": "modish-backend:catalog-fixes-20260913",
+    "migrations_applied": false,
+    "source_files": 120,
+    "catalog_repair": {
+      "result": "applied",
+      "scanned": 183543,
+      "changed": 80812,
+      "counts": {
+        "None->womenswear": 57237,
+        "None->menswear": 23530,
+        "menswear->womenswear": 45
+      }
+    },
+    "status": "deployed",
+    "image_id": "sha256:347857dc74da5dbffeebd9a626e0c26d5bb7c374b7377a3786ba41a681085e03",
+    "checks": [
+      {
+        "url": "http://127.0.0.1:8000/health",
+        "status": 200
+      },
+      {
+        "url": "http://127.0.0.1:8000/products?limit=1",
+        "status": 200
+      },
+      {
+        "url": "https://modish.org.ru/health",
+        "status": 200
+      },
+      {
+        "url": "https://modish.org.ru/products?limit=1",
+        "status": 200
+      }
+    ],
+    "isolated_checks": [
+      {
+        "gender": "menswear",
+        "swipes": 120,
+        "sources": [
+          "baon",
+          "demix",
+          "mongolshop",
+          "sportmaster",
+          "vipavenue"
+        ],
+        "seconds": 13.79
+      },
+      {
+        "gender": "menswear",
+        "filters": 12
+      },
+      {
+        "gender": "menswear",
+        "scenario": "daily",
+        "outfits": 3
+      },
+      {
+        "gender": "menswear",
+        "scenario": "office",
+        "outfits": 1
+      },
+      {
+        "gender": "menswear",
+        "scenario": "evening",
+        "outfits": 1
+      },
+      {
+        "gender": "womenswear",
+        "swipes": 120,
+        "sources": [
+          "baon",
+          "befree",
+          "demix",
+          "mongolshop",
+          "shoppinglive",
+          "sportmaster",
+          "vipavenue"
+        ],
+        "seconds": 14.73
+      },
+      {
+        "gender": "womenswear",
+        "filters": 12
+      },
+      {
+        "gender": "womenswear",
+        "scenario": "daily",
+        "outfits": 3
+      },
+      {
+        "gender": "womenswear",
+        "scenario": "office",
+        "outfits": 3
+      },
+      {
+        "gender": "womenswear",
+        "scenario": "evening",
+        "outfits": 3
+      }
+    ],
+    "image_probes": 54,
+    "unit_tests": 87,
+    "finished_at": "2026-09-13T14:36:21.772702+00:00"
+  },
+  "current_tag": "modish-backend:catalog-fixes-20260913",
+  "current_image": "sha256:347857dc74da5dbffeebd9a626e0c26d5bb7c374b7377a3786ba41a681085e03",
+  "apk": {
+    "path": "C:/Users/User/Downloads/Modish-1.0.0-build4.apk",
+    "version": "1.0.0+4",
+    "sha256": "FC56BE6F04BE2E175FB7566E49AEAE1F843C3924A948E008697122480519E4F7",
+    "signerSha256": "56aa2a86188fb19e48f6dfbbb67bd59c4bd7aa67783b97edc8217a0bb6cc4f0d"
+  },
+  "cleanup": {
+    "temporary_test_database_removed": true,
+    "test_secrets_removed": true,
+    "production_containers_preserved": true
+  }
+}

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 from app.integrations.admitad.feed_parser import parse_admitad_csv
 from app.integrations.admitad.source_presets import ADMITAD_CSV_SOURCES
@@ -27,6 +28,14 @@ SAMPLE_AIMCLO_ROW = (
 
 
 class AdmitadCsvImportTests(unittest.TestCase):
+  def setUp(self) -> None:
+    environment = patch.dict("os.environ", {
+      "ADMITAD_ENABLED": "true", "ADMITAD_WEBSITE_ID": "123",
+      "ADMITAD_EXPORT_USER": "synthetic-user", "ADMITAD_EXPORT_CODE": "synthetic-test-code",
+    })
+    environment.start()
+    self.addCleanup(environment.stop)
+
   def test_presets_contain_all_admitad_shops(self) -> None:
     codes = {p.code for p in ADMITAD_CSV_SOURCES}
     self.assertEqual(

@@ -7,17 +7,22 @@ import '../../core/widgets/modish_widgets.dart';
 import '../../core/widgets/product_image.dart';
 import '../products/models.dart' as prod;
 import '../products/product_detail_screen.dart';
+import 'outfit_presentation.dart';
 
 class OutfitDetailScreen extends StatelessWidget {
-  const OutfitDetailScreen({super.key, required this.outfit, required this.controller});
+  const OutfitDetailScreen({
+    super.key,
+    required this.outfit,
+    required this.controller,
+  });
   final Map<String, dynamic> outfit;
   final AppController controller;
 
   static const _slots = [
+    ('one_piece', 'Платье / комплект'),
     ('top', 'Верх'),
     ('bottom', 'Низ'),
     ('shoes', 'Обувь'),
-    ('accessory', 'Аксессуар'),
   ];
 
   Future<void> _toggleSaved(BuildContext context) async {
@@ -47,7 +52,10 @@ class OutfitDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scenario = '${outfit['style_direction'] ?? 'Образ'}';
-    final reason = (outfit['reason'] ?? '').toString();
+    final reason = (outfit['reason'] ?? '')
+        .toString()
+        .replaceAll(RegExp(r'engine:.*'), '')
+        .trim();
     final total = (outfit['total_price'] ?? 0).toString();
     final saved = outfit['is_saved'] == true;
     final pmap = outfit['products'] is Map
@@ -59,19 +67,24 @@ class OutfitDetailScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: AppColors.bg,
         elevation: 0,
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.pop(context)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
         actions: [
           IconButton(
             icon: Icon(saved ? Icons.bookmark : Icons.bookmark_border),
             tooltip: saved ? 'Убрать из сохранённого' : 'Сохранить образ',
-            onPressed: controller.isLoading ? null : () => _toggleSaved(context),
+            onPressed: controller.isLoading
+                ? null
+                : () => _toggleSaved(context),
           ),
         ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
         children: [
-          Text(scenario, style: AppTextStyles.displaySm),
+          Text(outfitScenarioLabel(scenario), style: AppTextStyles.displaySm),
           const SizedBox(height: 6),
           Text(reason, style: AppTextStyles.bodyMuted),
           const SizedBox(height: 16),
@@ -92,6 +105,7 @@ class OutfitDetailScreen extends StatelessWidget {
                         width: 76,
                         height: 96,
                         child: ProductFillImage(
+                          fit: BoxFit.contain,
                           imageUrl: (m['image_url'] ?? '').toString(),
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -106,10 +120,15 @@ class OutfitDetailScreen extends StatelessWidget {
                               (m['title'] ?? 'Товар').toString(),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontWeight: FontWeight.w600),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                             const SizedBox(height: 4),
-                            Text('${m['brand'] ?? ''} · ${m['price'] ?? ''} ₽', style: AppTextStyles.bodyMuted),
+                            Text(
+                              '${m['brand'] ?? ''} · ${m['price'] ?? ''} ₽',
+                              style: AppTextStyles.bodyMuted,
+                            ),
                           ],
                         ),
                       ),
@@ -130,7 +149,9 @@ class OutfitDetailScreen extends StatelessWidget {
           const SizedBox(height: 10),
           SecondaryButton(
             label: saved ? 'Убрать из сохранённого' : 'Сохранить образ',
-            onPressed: controller.isLoading ? null : () => _toggleSaved(context),
+            onPressed: controller.isLoading
+                ? null
+                : () => _toggleSaved(context),
           ),
         ],
       ),
@@ -158,7 +179,11 @@ class OutfitDetailScreen extends StatelessWidget {
     }
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(opened > 0 ? 'Открыто ссылок: $opened' : 'Ссылки недоступны')),
+        SnackBar(
+          content: Text(
+            opened > 0 ? 'Открыто ссылок: $opened' : 'Ссылки недоступны',
+          ),
+        ),
       );
     }
   }

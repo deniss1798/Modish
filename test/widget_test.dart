@@ -9,10 +9,10 @@ void main() {
     await tester.pump(const Duration(seconds: 4));
     await tester.pumpAndSettle();
 
-    expect(find.byType(GoldWordmark), findsWidgets);
+    expect(find.byType(HeroFashionBackdrop), findsWidgets);
 
-    final welcome = find.textContaining('персональный');
-    final feedTab = find.text('Подборка');
+    final welcome = find.text('Войти');
+    final feedTab = find.text('Лента');
     expect(
       welcome.evaluate().isNotEmpty || feedTab.evaluate().isNotEmpty,
       isTrue,

@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any
+from types import SimpleNamespace
 
 from ...catalog_normalize import (
   infer_size_system,
   normalize_category,
-  normalize_gender_target,
   normalize_product_colors,
   normalize_sizes,
+  product_gender_from_model,
 )
 from .normalized_product import NormalizedProduct
 
@@ -18,7 +19,9 @@ def normalized_to_dict(n: NormalizedProduct) -> dict[str, Any]:
   cat = normalize_category(n.category)
   sizes = normalize_sizes(n.sizes)
   size_system = infer_size_system(sizes)
-  gender = normalize_gender_target(n.gender_target, title=n.title, category=cat) or n.gender_target
+  gender = product_gender_from_model(SimpleNamespace(
+    **vars(n), raw_params_json=n.raw_params, feed_raw_json=n.raw_data,
+  ))
   return {
     "external_id": n.external_id,
     "source": n.source_code,

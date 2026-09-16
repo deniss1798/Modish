@@ -1,0 +1,89 @@
+{
+  "started_at": "2026-09-13T08:03:55.917093+00:00",
+  "previous_image": "sha256:195295b64a9a2628e97e923f530c80ed28329fe21e71448ebd49653d91c2befe",
+  "status": "deployed",
+  "health": {
+    "status": "ok",
+    "database": "ok",
+    "version": "1.0.0-alpha"
+  },
+  "checks": [
+    {
+      "base": "http://127.0.0.1:8000",
+      "route": "/health",
+      "status": 200
+    },
+    {
+      "base": "http://127.0.0.1:8000",
+      "route": "/products?limit=1",
+      "status": 200
+    },
+    {
+      "base": "https://modish.org.ru",
+      "route": "/health",
+      "status": 200
+    },
+    {
+      "base": "https://modish.org.ru",
+      "route": "/products?limit=1",
+      "status": 200
+    }
+  ],
+  "image_id": "sha256:0421468e1c1fb952b2daccb11379a5d89c0b284d3f9a3bde522e410a8e33bae0",
+  "source_files": 117,
+  "unit_tests": 82,
+  "restored_catalog_products": 183543,
+  "isolated_checks": [
+    "health",
+    "full_catalog",
+    "outfits",
+    "diversity",
+    "gender",
+    "feed",
+    "skip_exclusion",
+    "wow"
+  ],
+  "migrations_applied": false,
+  "finished_at": "2026-09-13T08:04:00.536618+00:00",
+  "database_and_redis_preserved": true,
+  "anonymous_feed_status": 401,
+  "scenario_results": [
+    {
+      "gender": "womenswear",
+      "scenario": "daily",
+      "outfits": 3,
+      "seconds": 12.35
+    },
+    {
+      "gender": "womenswear",
+      "scenario": "office",
+      "outfits": 3,
+      "seconds": 12.29
+    },
+    {
+      "gender": "womenswear",
+      "scenario": "evening",
+      "outfits": 3,
+      "seconds": 10.85
+    },
+    {
+      "gender": "menswear",
+      "scenario": "daily",
+      "outfits": 3,
+      "seconds": 11.09
+    },
+    {
+      "gender": "menswear",
+      "scenario": "office",
+      "outfits": 1,
+      "seconds": 10.2
+    },
+    {
+      "gender": "menswear",
+      "scenario": "evening",
+      "outfits": 1,
+      "seconds": 9.76
+    }
+  ],
+  "isolated_test_resources_removed": true
+}

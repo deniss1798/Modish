@@ -1,0 +1,75 @@
+=== backend/scripts ===
+total 20
+drwx------ 2 root root 4096 Jul  1 21:24 .
+drwx------ 7 root root 4096 Jul  1 21:24 ..
+-rw-r--r-- 1 root root 5269 Jul  1 21:24 demo_feed.py
+-rw-r--r-- 1 root root  157 Jul  1 21:24 entrypoint.sh
+
+=== entrypoint.sh content ===
+#!/bin/sh
+set -e
+echo "Running Alembic migrations..."
+alembic upgrade head
+echo "Starting API..."
+exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+=== entrypoint.sh first bytes (hex) ===
+0000000   #   !   /   b   i   n   /   s   h  \r  \n   s   e   t       -
+0000020   e  \r  \n   e   c   h   o       "   R   u   n   n   i   n   g
+0000040       A   l   e   m   b   i   c       m   i   g   r   a   t   i
+0000060   o   n   s   .   .   .   "  \r  \n   a   l   e   m   b   i   c
+0000100       u   p   g   r   a   d   e       h   e   a   d  \r  \n   e
+0000120
+
+=== root docker-compose.yml ===
+services:
+  backend:
+    build: ./backend
+    container_name: modish_backend
+    restart: always
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    image: postgres:16
+    container_name: modish_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: modish
+      POSTGRES_USER: modish_user
+      POSTGRES_PASSWORD: modish_password_change_me
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: modish_redis
+    restart: always
+    volumes:
+      - ./redis_data:/data
+
+=== backend Dockerfile ===
+FROM python:3.12-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+ENV PYTHONUNBUFFERED=1
+RUN chmod +x scripts/entrypoint.sh
+CMD ["scripts/entrypoint.sh"]
+
+=== container config ===
+Cmd=[scripts/entrypoint.sh] Entrypoint=[] WorkDir=/app
+=== mounts ===
+
+=== image file check ===
+total 20
+drwx------ 1 root root 4096 Jul  1 21:24 .
+drwxr-xr-x 1 root root 4096 Jul  1 21:24 ..
+-rw-r--r-- 1 root root 5269 Jul  1 21:24 demo_feed.py
+-rwxr-xr-x 1 root root  157 Jul  1 21:24 entrypoint.sh

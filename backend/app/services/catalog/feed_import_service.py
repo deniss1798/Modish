@@ -17,6 +17,8 @@ from ...integrations.admitad.feed_parser import (
   parse_yml_catalog_xml,
 )
 from ...models import CatalogSyncRun, Product, ProductSource
+from ...log_redaction import redact
+from ...config import get_admitad_export_config
 from .affiliate_link_service import apply_deeplink_for_product
 from .feed_row_mapper import row_to_normalized
 from .product_normalizer import orm_kwargs_from_normalized
@@ -91,7 +93,7 @@ def _download_feed_body(url: str, *, max_attempts: int = 4) -> str:
       time.sleep(min(1.5 * (2**attempt), 25.0))
   msg = f"feed download failed after {max_attempts} attempts"
   if last_err:
-    raise RuntimeError(f"{msg}: {last_err}") from last_err
+    raise RuntimeError(f"{msg}: {redact(str(last_err))}") from None
   raise RuntimeError(msg)
 
 
@@ -221,6 +223,8 @@ def sync_partner_feed(db: Session, *, source: ProductSource) -> CatalogSyncRun:
   ingest = IngestResult()
   err: str | None = None
   try:
+    if source.network == "admitad" and get_admitad_export_config() is None:
+      raise ValueError("Admitad export is disabled")
     if not source.feed_url:
       raise RuntimeError("feed_url is empty")
     body = _download_feed_body(source.feed_url)
@@ -232,7 +236,7 @@ def sync_partner_feed(db: Session, *, source: ProductSource) -> CatalogSyncRun:
         f"(skipped={ingest.skipped}, breakdown={ingest.skip_breakdown})"
       )
   except Exception as exc:  # noqa: BLE001
-    err = str(exc)[:2000]
+    err = redact(str(exc))[:2000]
   ok = err is None
   _finalize_run(db, run=run, source=source, ingest=ingest, err=err, ok=ok)
   db.commit()
@@ -267,7 +271,7 @@ def sync_partner_feed_from_text(
         f"(skipped={ingest.skipped}, breakdown={ingest.skip_breakdown})"
       )
   except Exception as exc:  # noqa: BLE001
-    err = str(exc)[:2000]
+    err = redact(str(exc))[:2000]
   ok = err is None
   _finalize_run(db, run=run, source=source, ingest=ingest, err=err, ok=ok)
   db.commit()

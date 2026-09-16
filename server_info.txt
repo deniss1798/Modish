@@ -1,0 +1,70 @@
+=== /opt ===
+total 20
+drwxr-xr-x  5 root root 4096 May 14 20:09 .
+drwxr-xr-x 21 root root 4096 May 14 19:21 ..
+drwxr-xr-x 19 root root 4096 May 27 18:49 Modish
+drwx--x--x  4 root root 4096 May 14 19:24 containerd
+drwxr-xr-x  6 root root 4096 May 14 19:57 modish_test_backup
+
+=== project candidates ===
+FOUND: /opt/Modish
+README.md
+_docx_extract
+_tz.zip
+analysis_options.yaml
+android
+assets
+backend
+deploy
+docker-compose.yml
+feeds
+ios
+lib
+linux
+macos
+postgres_data
+pubspec.lock
+pubspec.yaml
+redis_data
+scripts
+test
+web
+windows
+Dockerfile
+README.md
+alembic
+alembic.ini
+app
+requirements.txt
+scripts
+test_feeds
+tests
+
+=== docker ===
+NAMES             IMAGE            STATUS       PORTS
+modish_backend    modish-backend   Up 5 weeks   0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp
+modish_postgres   postgres:16      Up 6 weeks   5432/tcp
+modish_redis      redis:7          Up 6 weeks   6379/tcp
+
+=== compose files ===
+/opt/Modish/docker-compose.yml
+/opt/Modish/deploy/docker-compose.prod.yml
+/opt/modish_test_backup/docker-compose.yml
+
+=== env keys (names only, no secrets) ===
+/opt/Modish/backend/.env:
+POSTGRES_PASSWORD
+DATABASE_URL
+JWT_SECRET
+JWT_EXPIRES_HOURS
+REDIS_URL
+SECRET_KEY
+ADMIN_TOKEN
+
+=== health ===
+{"status":"ok","database":"ok","version":"1.0.0-alpha"}
+=== nginx ===
+modish
+
+=== disk ===
+/dev/sda1        48G  7.4G   40G  16% /

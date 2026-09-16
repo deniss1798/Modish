@@ -94,6 +94,9 @@ def bootstrap_admitad_csv_sources(
       raise ValueError(f"No presets for codes: {sorted(want)}")
 
   results: list[dict[str, Any]] = []
+  # Validate before the first database mutation, including disabled integration.
+  for preset in presets:
+    _ = preset.feed_url
   for preset in presets:
     src, created = _upsert_source(db, preset)
     rules_added = _ensure_clothing_rules(db, source_id=src.id)
@@ -117,7 +120,7 @@ def bootstrap_admitad_csv_sources(
         "code": src.code,
         "source_id": src.id,
         "created": created,
-        "feed_url": src.feed_url,
+        "feed_configured": bool(src.feed_url),
         "rules_added": rules_added,
         "sync": sync_info,
       }

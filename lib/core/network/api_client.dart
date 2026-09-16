@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http_parser/http_parser.dart';
@@ -12,27 +13,65 @@ import '../../features/recommendations/models.dart';
 ///
 /// Локально / эмулятор: по умолчанию `10.0.2.2:8000` (Android) или `127.0.0.1:8000`.
 class ApiClient {
-  ApiClient({this.onUnauthorized})
-    : _dio = Dio(
-        BaseOptions(
-          baseUrl: resolvedBaseUrl(),
-          connectTimeout: const Duration(seconds: 45),
-          sendTimeout: const Duration(seconds: 45),
-          receiveTimeout: const Duration(seconds: 45),
-          headers: const {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          },
-        ),
-      ) {
+  ApiClient({this.onUnauthorized, Dio? dio})
+    : _dio =
+          dio ??
+          Dio(
+            BaseOptions(
+              baseUrl: resolvedBaseUrl(),
+              connectTimeout: const Duration(seconds: 45),
+              sendTimeout: const Duration(seconds: 45),
+              receiveTimeout: const Duration(seconds: 45),
+              headers: const {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+              },
+            ),
+          ) {
     _dio.interceptors.add(
       InterceptorsWrapper(
+        onRequest: (options, handler) {
+          options.extra.putIfAbsent('sessionVersion', () => _sessionVersion);
+          if (options.extra['publicAuth'] == true) {
+            options.headers.remove('Authorization');
+          }
+          handler.next(options);
+        },
         onError: (error, handler) async {
+          final request = error.requestOptions;
+          if (request.extra['publicAuth'] != true &&
+              request.extra['sessionVersion'] != _sessionVersion) {
+            handler.next(error);
+            return;
+          }
           if (error.response?.statusCode == 401 &&
-              onUnauthorized != null &&
-              error.requestOptions.path != '/auth/login' &&
-              error.requestOptions.path != '/auth/register') {
-            onUnauthorized!();
+              request.extra['publicAuth'] != true &&
+              request.extra['authRetried'] != true) {
+            final sessionVersion = _sessionVersion;
+            try {
+              final sentToken = request.headers['Authorization'];
+              final currentToken = _dio.options.headers['Authorization'];
+              if (sentToken == currentToken || currentToken == null) {
+                await _refreshAccess();
+              }
+              if (sessionVersion != _sessionVersion) {
+                handler.next(error);
+                return;
+              }
+              request.extra['authRetried'] = true;
+              request.headers['Authorization'] =
+                  _dio.options.headers['Authorization'];
+              handler.resolve(await _dio.fetch(request));
+              return;
+            } on DioException catch (refreshError) {
+              if (sessionVersion == _sessionVersion &&
+                  refreshError.response?.statusCode == 401) {
+                clearToken();
+                onUnauthorized?.call();
+              }
+              handler.next(refreshError);
+              return;
+            }
           }
           if (_shouldRetry(error) &&
               error.requestOptions.extra['retried'] != true) {
@@ -57,8 +96,68 @@ class ApiClient {
 
   /// Вызывается при 401 (кроме login/register) — сброс сессии в приложении.
   VoidCallback? onUnauthorized;
+  Future<void> Function(String access, String? refresh)? onSessionChanged;
+  String? refreshToken;
+  Future<void>? _refreshing;
+  int _sessionVersion = 0;
+
+  Future<void> _acceptSession(dynamic data) async {
+    final access = data['access_token'] as String;
+    refreshToken = data['refresh_token'] as String?;
+    applyToken(access);
+    await onSessionChanged?.call(access, refreshToken);
+  }
+
+  Future<void> _refreshAccess() {
+    return _refreshing ??= _doRefresh().whenComplete(() => _refreshing = null);
+  }
+
+  Future<void> _doRefresh() async {
+    final refresh = refreshToken;
+    if (refresh == null) {
+      throw DioException(
+        requestOptions: RequestOptions(path: '/auth/refresh'),
+        response: Response(
+          requestOptions: RequestOptions(path: '/auth/refresh'),
+          statusCode: 401,
+        ),
+      );
+    }
+    final version = _sessionVersion;
+    final response = await _dio.post(
+      '/auth/refresh',
+      data: {'refresh_token': refresh},
+      options: Options(extra: {'publicAuth': true}),
+    );
+    if (version == _sessionVersion) await _acceptSession(response.data);
+  }
+
+  Future<void> upgradeSession() async {
+    if (refreshToken != null) return;
+    final response = await _dio.post('/auth/session');
+    await _acceptSession(response.data);
+  }
+
+  Future<void> logoutSession() async {
+    final refresh = refreshToken;
+    clearToken();
+    if (refresh == null) return;
+    try {
+      await _dio.post(
+        '/auth/logout',
+        data: {'refresh_token': refresh},
+        options: Options(
+          extra: {'publicAuth': true},
+          receiveTimeout: const Duration(seconds: 5),
+        ),
+      );
+    } catch (_) {}
+  }
 
   static bool _shouldRetry(DioException e) {
+    if (!{'GET', 'HEAD'}.contains(e.requestOptions.method.toUpperCase())) {
+      return false;
+    }
     if (e.type == DioExceptionType.connectionError ||
         e.type == DioExceptionType.connectionTimeout ||
         e.type == DioExceptionType.receiveTimeout) {
@@ -146,6 +245,8 @@ class ApiClient {
   }
 
   void clearToken() {
+    _sessionVersion++;
+    refreshToken = null;
     _dio.options.headers.remove('Authorization');
   }
 
@@ -154,13 +255,15 @@ class ApiClient {
       '/auth/register',
       data: {'email': email.trim(), 'password': password},
       options: Options(
+        extra: {'publicAuth': true},
         sendTimeout: const Duration(seconds: 60),
         receiveTimeout: const Duration(seconds: 60),
       ),
     );
 
+    _sessionVersion++;
+    await _acceptSession(response.data);
     final token = '${response.data['access_token']}';
-    applyToken(token);
     return token;
   }
 
@@ -169,13 +272,15 @@ class ApiClient {
       '/auth/login',
       data: {'email': email.trim(), 'password': password},
       options: Options(
+        extra: {'publicAuth': true},
         sendTimeout: const Duration(seconds: 60),
         receiveTimeout: const Duration(seconds: 60),
       ),
     );
 
+    _sessionVersion++;
+    await _acceptSession(response.data);
     final token = '${response.data['access_token']}';
-    applyToken(token);
     return token;
   }
 
@@ -286,14 +391,32 @@ class ApiClient {
   Future<List<Map<String, dynamic>>> productFeed({
     int limit = 30,
     String? source,
+    int? minPrice,
+    int? maxPrice,
+    List<String> categories = const [],
+    List<String> sizes = const [],
+    List<String> colors = const [],
+    List<String> excludeIds = const [],
   }) async {
-    final queryParameters = <String, dynamic>{'limit': limit};
+    final queryParameters = <String, dynamic>{
+      'limit': limit,
+      'min_price': ?minPrice,
+      'max_price': ?maxPrice,
+      if (categories.isNotEmpty) 'categories': categories,
+      if (sizes.isNotEmpty) 'sizes': sizes,
+      if (colors.isNotEmpty) 'colors': colors,
+      if (excludeIds.isNotEmpty) 'exclude_ids': excludeIds,
+    };
 
     if (source != null && source.trim().isNotEmpty) {
       queryParameters['source'] = source.trim();
     }
 
-    final response = await _dio.get('/feed', queryParameters: queryParameters);
+    final response = await _dio.get(
+      '/feed',
+      queryParameters: queryParameters,
+      options: Options(listFormat: ListFormat.multi),
+    );
 
     final list = (response.data as List).cast<Map<String, dynamic>>();
     return list;
@@ -321,6 +444,15 @@ class ApiClient {
   Future<Map<String, dynamic>> productById(String id) async {
     final response = await _dio.get('/products/$id');
     return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  Future<List<Map<String, dynamic>>> productComplements(String id) async {
+    final response = await _dio.get(
+      '/products/${Uri.encodeComponent(id)}/complements',
+    );
+    return (response.data as List)
+        .map((row) => Map<String, dynamic>.from(row as Map))
+        .toList();
   }
 
   Future<List<Map<String, dynamic>>> productsBrands({int limit = 80}) async {

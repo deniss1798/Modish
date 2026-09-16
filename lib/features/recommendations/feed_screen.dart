@@ -59,6 +59,9 @@ class _FeedScreenState extends State<FeedScreen> {
     if (id != null && id != _lastViewRecordedId) {
       _lastViewRecordedId = id;
       unawaited(controller.recordProductViewIfNeeded(id));
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(controller.loadRelatedProducts(id));
+      });
     }
     if (id == null) {
       _lastViewRecordedId = null;
@@ -70,31 +73,11 @@ class _FeedScreenState extends State<FeedScreen> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 12, 4),
+          padding: const EdgeInsets.fromLTRB(20, 0, 12, 4),
           child: Row(
             children: [
               const GoldWordmark(fontSize: 26),
               const Spacer(),
-              if (controller.filteredProductFeed.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.line),
-                  ),
-                  child: Text(
-                    '${controller.filteredProductFeed.length}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.accent,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
               IconButton(
                 tooltip: 'Поиск',
                 icon: const Icon(Icons.search, size: 22),
@@ -122,17 +105,6 @@ class _FeedScreenState extends State<FeedScreen> {
             ],
           ),
         ),
-        if (card != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 6),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Свайп вправо — нравится · влево — пропуск',
-                style: AppTextStyles.caption.copyWith(fontSize: 10),
-              ),
-            ),
-          ),
         Expanded(
           child: RefreshIndicator(
             color: AppColors.accent,
@@ -152,13 +124,17 @@ class _FeedScreenState extends State<FeedScreen> {
                         ),
                       ],
                     )
-                  : _SwipeProductCard(controller: controller, card: card),
+                  : _SwipeProductCard(
+                      key: ValueKey(card.product.id),
+                      controller: controller,
+                      card: card,
+                    ),
             ),
           ),
         ),
         if (card != null && related.isNotEmpty) ...[
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 4),
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text('С чем носить', style: AppTextStyles.sectionTitle),
@@ -175,7 +151,7 @@ class _FeedScreenState extends State<FeedScreen> {
             ),
           ),
           SizedBox(
-            height: 120,
+            height: MediaQuery.sizeOf(context).height < 760 ? 84 : 104,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               scrollDirection: Axis.horizontal,
@@ -236,7 +212,8 @@ class _FeedScreenState extends State<FeedScreen> {
 }
 
 bool _hasActiveFilters(AppController c) {
-  return c.feedMinPrice != null ||
+  return c.feedFilterCategories.isNotEmpty ||
+      c.feedMinPrice != null ||
       c.feedMaxPrice != null ||
       c.feedFilterSizes.isNotEmpty ||
       c.feedFilterColors.isNotEmpty;
@@ -250,7 +227,27 @@ class _EmptyFeed extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final err = controller.productFeedError?.trim();
-    final busy = controller.feedRefreshing || controller.isLoading;
+    final busy = controller.feedRefreshing;
+    if (busy) {
+      return const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: AppColors.accent, strokeWidth: 2),
+            SizedBox(height: 24),
+            Text(
+              'Ищем следующие вещи',
+              style: TextStyle(fontSize: 19, fontWeight: FontWeight.w600),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Подбираем варианты под ваш стиль',
+              style: TextStyle(color: AppColors.muted),
+            ),
+          ],
+        ),
+      );
+    }
     return Center(
       child: EmptyState(
         icon: err != null && err.isNotEmpty
@@ -258,20 +255,32 @@ class _EmptyFeed extends StatelessWidget {
             : Icons.style_outlined,
         title: err != null && err.isNotEmpty
             ? 'Не удалось загрузить'
-            : 'Пока пусто',
+            : 'Подходящих вещей пока нет',
         message: err != null && err.isNotEmpty
             ? err
-            : 'Подтянем вещи с сервера или подберём после импорта каталога.',
-        actionLabel: 'Обновить',
+            : (_hasActiveFilters(controller)
+                  ? 'Попробуйте убрать часть условий или сбросить фильтры.'
+                  : 'Вы просмотрели доступные вещи. Попробуйте обновить ленту позже.'),
+        actionLabel: _hasActiveFilters(controller)
+            ? 'Сбросить фильтры'
+            : 'Обновить',
         busy: busy,
-        onAction: busy ? null : onRefresh,
+        onAction: busy
+            ? null
+            : (_hasActiveFilters(controller)
+                  ? () => controller.applyFeedFilters()
+                  : onRefresh),
       ),
     );
   }
 }
 
 class _SwipeProductCard extends StatefulWidget {
-  const _SwipeProductCard({required this.controller, required this.card});
+  const _SwipeProductCard({
+    super.key,
+    required this.controller,
+    required this.card,
+  });
   final AppController controller;
   final prod.FeedCard card;
 
@@ -286,6 +295,7 @@ class _SwipeProductCardState extends State<_SwipeProductCard>
 
   Future<void> _flyOut(String event) async {
     if (_animating) return;
+    final productId = widget.card.product.id;
     setState(() => _animating = true);
     final target = event == 'like' ? 420.0 : -420.0;
     final start = _dx;
@@ -296,11 +306,7 @@ class _SwipeProductCardState extends State<_SwipeProductCard>
       setState(() => _dx = start + (target - start) * (i / steps));
     }
     if (!mounted) return;
-    await widget.controller.sendProductEvent(
-      context,
-      widget.card.product.id,
-      event,
-    );
+    await widget.controller.sendProductEvent(context, productId, event);
     if (mounted) {
       setState(() {
         _dx = 0;
@@ -452,6 +458,7 @@ class _FeedImageCarouselState extends State<_FeedImageCarousel> {
               itemBuilder: (context, i) {
                 return ProductFillImage(
                   imageUrl: urls[i],
+                  fallbackImageUrls: urls,
                   borderRadius: BorderRadius.zero,
                 );
               },
@@ -488,133 +495,149 @@ class _ProductCardView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = card.product;
-    final gallery = p.galleryUrls;
-    final radius = BorderRadius.circular(8);
-    final disc = p.discountPercent;
-    final showDisc = disc != null && disc > 0;
+    final currency = {'RUB', 'RUR'}.contains(p.currency) ? '₽' : p.currency;
     return SoftCard(
-      padding: const EdgeInsets.all(8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            flex: 12,
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: _FeedImageCarousel(
-                    urls: gallery,
-                    borderRadius: radius,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, 12, 4, 4),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  p.brand,
-                  style: AppTextStyles.caption.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  p.title.isEmpty ? 'Товар' : p.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    height: 1.25,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                if (p.availableSizes.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    'Размер: ${p.availableSizes.take(6).join(', ')}',
-                    style: AppTextStyles.caption,
-                  ),
-                ],
-                if (p.shopLabel.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    p.shopLabel.toUpperCase(),
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.accent,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 6),
-                Row(
+      padding: const EdgeInsets.all(10),
+      child: LayoutBuilder(
+        builder: (context, bounds) {
+          final compact = bounds.maxHeight < 350;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: Stack(
                   children: [
-                    Text(
-                      '${p.price} ${p.currency}',
-                      style: AppTextStyles.price.copyWith(fontSize: 16),
+                    Positioned.fill(
+                      child: _FeedImageCarousel(
+                        urls: p.galleryUrls,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
-                    if (p.oldPrice != null && p.oldPrice! > p.price) ...[
-                      const SizedBox(width: 8),
-                      Text(
-                        '${p.oldPrice} ${p.currency}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.muted,
-                          decoration: TextDecoration.lineThrough,
+                    if ((p.discountPercent ?? 0) > 0)
+                      Positioned(
+                        top: 10,
+                        right: 10,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.bg.withValues(alpha: 0.88),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '−${p.discountPercent}%',
+                            style: const TextStyle(
+                              color: AppColors.accentSoft,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
                       ),
-                    ],
-                    if (showDisc) ...[
-                      const SizedBox(width: 8),
-                      Text(
-                        '−$disc%',
-                        style: const TextStyle(
-                          color: AppColors.accent,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(6, 12, 6, 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            p.brand.toUpperCase(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.accentSoft,
+                              fontSize: 10,
+                              letterSpacing: 1.8,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            p.shopLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.caption,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      p.title.isEmpty ? 'Товар' : p.title,
+                      maxLines: compact ? 1 : 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        height: 1.25,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Text(
+                          '${p.price} $currency',
+                          style: AppTextStyles.price.copyWith(fontSize: 20),
+                        ),
+                        if (p.oldPrice != null && p.oldPrice! > p.price) ...[
+                          const SizedBox(width: 10),
+                          Text(
+                            '${p.oldPrice} $currency',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.muted,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                        ],
+                        const Spacer(),
+                        if (p.availableSizes.isNotEmpty && !compact)
+                          Flexible(
+                            child: Text(
+                              p.availableSizes.take(3).join(' · '),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.caption,
+                            ),
+                          ),
+                      ],
+                    ),
+                    if (!compact && card.reasons.isNotEmpty) ...[
+                      const SizedBox(height: 9),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.auto_awesome_outlined,
+                            size: 13,
+                            color: AppColors.accent,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              card.reasons.first,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.caption,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ],
                 ),
-                if (card.reasons.isNotEmpty ||
-                    card.reason.trim().isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children:
-                        (card.reasons.isNotEmpty ? card.reasons : [card.reason])
-                            .take(3)
-                            .map(
-                              (r) => Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 9,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.chipBg,
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  r.trim(),
-                                  style: AppTextStyles.caption.copyWith(
-                                    color: AppColors.ink,
-                                  ),
-                                ),
-                              ),
-                            )
-                            .toList(),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }

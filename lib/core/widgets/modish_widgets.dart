@@ -13,10 +13,7 @@ class MobileViewport extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final content = Align(
-      alignment: Alignment.topCenter,
-      child: SizedBox(width: 390, child: child),
-    );
+    final content = SizedBox.expand(child: child);
     if (minimalBackdrop) {
       return Scaffold(backgroundColor: AppColors.bg, body: content);
     }
@@ -48,16 +45,24 @@ class Brand extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (gold) {
-      return GoldWordmark(fontSize: width * 0.19);
-    }
-    return Image.asset(
-      _logoPath,
-      width: width,
-      fit: BoxFit.contain,
-      alignment: Alignment.centerLeft,
-      errorBuilder: (context, error, stackTrace) =>
-          GoldWordmark(fontSize: width * 0.19),
+    return Semantics(
+      label: 'Modish',
+      image: true,
+      child: ClipRect(
+        child: Align(
+          widthFactor: 0.70,
+          heightFactor: 0.48,
+          child: ColorFiltered(
+            colorFilter: const ColorFilter.mode(AppColors.bg, BlendMode.screen),
+            child: Image.asset(
+              _logoPath,
+              width: width / 0.70,
+              fit: BoxFit.contain,
+              excludeFromSemantics: true,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -69,43 +74,7 @@ class GoldWordmark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final base = TextStyle(
-      fontFamily: 'Georgia',
-      fontSize: fontSize,
-      fontWeight: FontWeight.w500,
-      height: 1.05,
-      color: Colors.white,
-    );
-    return ShaderMask(
-      blendMode: BlendMode.srcIn,
-      shaderCallback: (bounds) => const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [AppColors.accentSoft, AppColors.accent],
-      ).createShader(bounds),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text('Mod', style: base),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '✦',
-                style: base.copyWith(
-                  fontSize: fontSize * 0.28,
-                  height: 0.85,
-                  fontFamily: null,
-                ),
-              ),
-              Text('i', style: base),
-            ],
-          ),
-          Text('sh', style: base),
-        ],
-      ),
-    );
+    return Brand(width: fontSize * 3.65);
   }
 }
 
@@ -119,8 +88,12 @@ class SoftCard extends StatelessWidget {
     return Container(
       padding: padding ?? const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(8),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1D1C1A), AppColors.card],
+        ),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppColors.line),
         boxShadow: const [
           BoxShadow(
@@ -162,8 +135,8 @@ class PrimaryButton extends StatelessWidget {
         backgroundColor: bg,
         foregroundColor: fg,
         disabledBackgroundColor: AppColors.line,
-        minimumSize: const Size(0, 50),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        minimumSize: const Size(0, 54),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       child: Row(
         mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,
@@ -213,8 +186,8 @@ class SecondaryButton extends StatelessWidget {
       style: OutlinedButton.styleFrom(
         foregroundColor: fg,
         side: BorderSide(color: border),
-        minimumSize: const Size(0, 50),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        minimumSize: const Size(0, 54),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       child: Text(
         label,
@@ -389,7 +362,7 @@ class ModishBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: AppColors.bg,
+        color: AppColors.card,
         border: Border(top: BorderSide(color: AppColors.line)),
       ),
       child: SafeArea(
@@ -402,11 +375,13 @@ class ModishBottomNav extends StatelessWidget {
               final on = i == index;
               return Expanded(
                 child: Material(
-                  color: on ? AppColors.card : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
+                  color: on
+                      ? AppColors.accent.withValues(alpha: 0.12)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(20),
                   child: InkWell(
                     onTap: () => onChanged(i),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(20),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       child: Column(
@@ -552,17 +527,17 @@ class FeedActionBar extends StatelessWidget {
           _FeedAction(
             icon: Icons.open_in_new_rounded,
             label: 'Подробнее',
-            color: AppColors.accent,
+            color: AppColors.accentSoft,
             onTap: onOpen,
             highlight: true,
           ),
           _FeedAction(
             icon: Icons.favorite_border_rounded,
             label: 'Нравится',
-            color: AppColors.success,
+            color: AppColors.accent,
             onTap: onLike,
           ),
-        ],
+        ].map((action) => Expanded(child: action)).toList(),
       ),
     );
   }
@@ -597,7 +572,14 @@ class _FeedAction extends StatelessWidget {
               width: highlight ? 54 : 48,
               height: highlight ? 54 : 48,
               decoration: BoxDecoration(
-                color: highlight ? AppColors.accent : AppColors.card,
+                gradient: highlight
+                    ? const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [AppColors.accentSoft, AppColors.accent],
+                      )
+                    : null,
+                color: highlight ? null : AppColors.card,
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: highlight ? AppColors.accent : AppColors.line,
@@ -610,7 +592,12 @@ class _FeedAction extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 5),
-            Text(label, style: AppTextStyles.caption.copyWith(fontSize: 10)),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.caption.copyWith(fontSize: 10),
+            ),
           ],
         ),
       ),
@@ -631,7 +618,7 @@ class HeroFashionBackdrop extends StatelessWidget {
         Image.asset(
           _imagePath,
           fit: BoxFit.cover,
-          alignment: const Alignment(-0.45, 0),
+          alignment: Alignment.center,
           errorBuilder: (context, error, stackTrace) => const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -653,12 +640,12 @@ class HeroFashionBackdrop extends StatelessWidget {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Color(0x52000000),
-                Color(0x28000000),
-                Color(0x5A000000),
-                Color(0xE6000000),
+                Color(0x00000000),
+                Color(0x00000000),
+                Color(0x00000000),
+                Color(0xD9000000),
               ],
-              stops: [0.0, 0.28, 0.52, 1.0],
+              stops: [0.0, 0.40, 0.60, 1.0],
             ),
           ),
         ),

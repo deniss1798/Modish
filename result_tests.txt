@@ -1,0 +1,51 @@
+test_categories_canonical (__main__.RecommendationV3Tests.test_categories_canonical) ... ok
+test_colors_canonical (__main__.RecommendationV3Tests.test_colors_canonical) ... ok
+test_diversity_no_long_runs (__main__.RecommendationV3Tests.test_diversity_no_long_runs) ... ok
+test_feed_personalized_for_woman (__main__.RecommendationV3Tests.test_feed_personalized_for_woman) ... ok
+test_learning_like_shifts_scores (__main__.RecommendationV3Tests.test_learning_like_shifts_scores) ... ok
+test_popularity_component (__main__.RecommendationV3Tests.test_popularity_component) ... ok
+test_products_imported (__main__.RecommendationV3Tests.test_products_imported) ... ok
+test_style_tags_not_empty (__main__.RecommendationV3Tests.test_style_tags_not_empty) ... ok
+test_underwear_not_in_feed (__main__.RecommendationV3Tests.test_underwear_not_in_feed) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 1.532s
+
+OK
+test_collection_id_fallback_as_group_id (__main__.BefreeImportTests.test_collection_id_fallback_as_group_id) ... ok
+test_missing_picture_row_still_parses (__main__.BefreeImportTests.test_missing_picture_row_still_parses) ... ok
+test_parse_yml_offers_count (__main__.BefreeImportTests.test_parse_yml_offers_count) ... ok
+test_row_maps_group_id_and_offer_id (__main__.BefreeImportTests.test_row_maps_group_id_and_offer_id) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.009s
+
+OK
+test_aimclo_sizes_from_title (__main__.AdmitadCsvImportTests.test_aimclo_sizes_from_title) ... ok
+test_blocked_accessories_category (__main__.AdmitadCsvImportTests.test_blocked_accessories_category) ... ok
+test_detect_parser_format_csv_query (__main__.AdmitadCsvImportTests.test_detect_parser_format_csv_query) ... ok
+test_fable_row_maps_gender_from_category (__main__.AdmitadCsvImportTests.test_fable_row_maps_gender_from_category) ... ok
+test_param_comma_separated_sizes (__main__.AdmitadCsvImportTests.test_param_comma_separated_sizes) ... ok
+test_param_expands_sizes_and_color (__main__.AdmitadCsvImportTests.test_param_expands_sizes_and_color) ... ok
+test_presets_contain_all_admitad_shops (__main__.AdmitadCsvImportTests.test_presets_contain_all_admitad_shops) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.011s
+
+OK
+test_budget_hard_cap (__main__.FeedFiltersTests.test_budget_hard_cap) ... ok
+test_size_xl_not_s_only (__main__.FeedFiltersTests.test_size_xl_not_s_only) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.000s
+
+OK
+test_menswear_allows_mens_jacket (__main__.GenderFilterTests.test_menswear_allows_mens_jacket) ... ok
+test_menswear_blocks_dress (__main__.GenderFilterTests.test_menswear_blocks_dress) ... ok
+test_unisex_user_sees_all (__main__.GenderFilterTests.test_unisex_user_sees_all) ... ok
+test_womenswear_blocks_mens_hint (__main__.GenderFilterTests.test_womenswear_blocks_mens_hint) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.000s
+
+OK

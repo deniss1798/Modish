@@ -1,0 +1,131 @@
+test_case_from_dict_normalizes_dataset_row (recommendation_benchmark.test_offline_benchmark.OfflineBenchmarkTests.test_case_from_dict_normalizes_dataset_row) ... ok
+test_compare_rankings_keeps_algorithm_labels (recommendation_benchmark.test_offline_benchmark.OfflineBenchmarkTests.test_compare_rankings_keeps_algorithm_labels) ... ok
+test_evaluate_rankings_reports_core_and_fit_metrics (recommendation_benchmark.test_offline_benchmark.OfflineBenchmarkTests.test_evaluate_rankings_reports_core_and_fit_metrics) ... ok
+test_load_benchmark_cases_from_json (recommendation_benchmark.test_offline_benchmark.OfflineBenchmarkTests.test_load_benchmark_cases_from_json) ... ok
+test_run_benchmark_executes_recommendation_pipeline (recommendation_benchmark.test_offline_benchmark.OfflineBenchmarkTests.test_run_benchmark_executes_recommendation_pipeline) ... ok
+test_core_metrics_at_k (recommendation_benchmark.test_ranking_metrics.RankingMetricsTests.test_core_metrics_at_k) ... ok
+test_fit_and_both_metrics (recommendation_benchmark.test_ranking_metrics.RankingMetricsTests.test_fit_and_both_metrics) ... ok
+test_negative_metrics (recommendation_benchmark.test_ranking_metrics.RankingMetricsTests.test_negative_metrics) ... ok
+test_aimclo_sizes_from_title (test_admitad_csv_import.AdmitadCsvImportTests.test_aimclo_sizes_from_title) ... ok
+test_blocked_accessories_category (test_admitad_csv_import.AdmitadCsvImportTests.test_blocked_accessories_category) ... ok
+test_detect_parser_format_csv_query (test_admitad_csv_import.AdmitadCsvImportTests.test_detect_parser_format_csv_query) ... ok
+test_fable_row_maps_gender_from_category (test_admitad_csv_import.AdmitadCsvImportTests.test_fable_row_maps_gender_from_category) ... ok
+test_param_comma_separated_sizes (test_admitad_csv_import.AdmitadCsvImportTests.test_param_comma_separated_sizes) ... ok
+test_param_expands_sizes_and_color (test_admitad_csv_import.AdmitadCsvImportTests.test_param_expands_sizes_and_color) ... ok
+test_presets_contain_all_admitad_shops (test_admitad_csv_import.AdmitadCsvImportTests.test_presets_contain_all_admitad_shops) ... ok
+test_candidate_retrieval_searches_beyond_latest_products (test_candidate_retrieval.CandidateRetrievalTests.test_candidate_retrieval_searches_beyond_latest_products) ... ok
+test_fit_retrieval_uses_budget_and_size_constraints (test_candidate_retrieval.CandidateRetrievalTests.test_fit_retrieval_uses_budget_and_size_constraints) ... ok
+test_retrieval_respects_max_candidates (test_candidate_retrieval.CandidateRetrievalTests.test_retrieval_respects_max_candidates) ... ok
+test_taste_retrieval_uses_user_twin_style_signal (test_candidate_retrieval.CandidateRetrievalTests.test_taste_retrieval_uses_user_twin_style_signal) ... ok
+test_conflicting_metadata_is_not_unisex (test_catalog_device_regressions.CatalogDeviceRegressions.test_conflicting_metadata_is_not_unisex) ... ok
+test_expired_affiliate_link_unwraps_to_exact_merchant (test_catalog_device_regressions.CatalogDeviceRegressions.test_expired_affiliate_link_unwraps_to_exact_merchant) ... ok
+test_filter_searches_beyond_first_page_and_preserves_constraints (test_catalog_device_regressions.CatalogDeviceRegressions.test_filter_searches_beyond_first_page_and_preserves_constraints) ... ok
+test_import_keeps_russian_gender_forms_and_befree_paths (test_catalog_device_regressions.CatalogDeviceRegressions.test_import_keeps_russian_gender_forms_and_befree_paths) ... ok
+test_merchant_gender_overrides_old_guessed_label (test_catalog_device_regressions.CatalogDeviceRegressions.test_merchant_gender_overrides_old_guessed_label) ... ok
+test_collection_id_fallback_as_group_id (test_catalog_import.BefreeImportTests.test_collection_id_fallback_as_group_id) ... ok
+test_missing_picture_row_still_parses (test_catalog_import.BefreeImportTests.test_missing_picture_row_still_parses) ... ok
+test_parse_yml_offers_count (test_catalog_import.BefreeImportTests.test_parse_yml_offers_count) ... ok
+test_row_maps_group_id_and_offer_id (test_catalog_import.BefreeImportTests.test_row_maps_group_id_and_offer_id) ... ok
+test_batch_indexes_active_catalog_embeddings (test_embedding_service.EmbeddingServiceTests.test_batch_indexes_active_catalog_embeddings) ... ok
+test_embedding_retrieval_adds_candidate_source (test_embedding_service.EmbeddingServiceTests.test_embedding_retrieval_adds_candidate_source) ... ok
+test_product_embedding_text_contains_retrieval_fields (test_embedding_service.EmbeddingServiceTests.test_product_embedding_text_contains_retrieval_fields) ... ok
+test_skip_is_not_used_in_negative_centroid (test_embedding_service.EmbeddingServiceTests.test_skip_is_not_used_in_negative_centroid) ... ok
+test_sql_vector_store_upsert_search_delete (test_embedding_service.EmbeddingServiceTests.test_sql_vector_store_upsert_search_delete) ... ok
+test_user_taste_embedding_uses_positive_and_negative_events (test_embedding_service.EmbeddingServiceTests.test_user_taste_embedding_uses_positive_and_negative_events) ... ok
+test_budget_hard_cap (test_feed_filters.FeedFiltersTests.test_budget_hard_cap) ... ok
+test_size_xl_not_s_only (test_feed_filters.FeedFiltersTests.test_size_xl_not_s_only) ... ok
+test_dislike_reason_is_stored_without_global_color_blacklist (test_feedback_semantics.FeedbackSemanticsTests.test_dislike_reason_is_stored_without_global_color_blacklist) ... ok
+test_event_config_weights_and_aliases (test_feedback_semantics.FeedbackSemanticsTests.test_event_config_weights_and_aliases) ... ok
+test_legacy_buy_click_is_saved_as_affiliate_click (test_feedback_semantics.FeedbackSemanticsTests.test_legacy_buy_click_is_saved_as_affiliate_click) ... ok
+test_positive_event_does_not_write_legacy_liked_lists (test_feedback_semantics.FeedbackSemanticsTests.test_positive_event_does_not_write_legacy_liked_lists) ... ok
+test_reasonless_dislike_is_item_level_and_soft_legacy_signal (test_feedback_semantics.FeedbackSemanticsTests.test_reasonless_dislike_is_item_level_and_soft_legacy_signal) ... ok
+test_skip_is_weak_and_not_dislike (test_feedback_semantics.FeedbackSemanticsTests.test_skip_is_weak_and_not_dislike) ... ok
+test_view_is_weak_and_does_not_touch_brand_or_color (test_feedback_semantics.FeedbackSemanticsTests.test_view_is_weak_and_does_not_touch_brand_or_color) ... ok
+test_menswear_allows_mens_jacket (test_gender_filters.GenderFilterTests.test_menswear_allows_mens_jacket) ... ok
+test_menswear_blocks_dress (test_gender_filters.GenderFilterTests.test_menswear_blocks_dress) ... ok
+test_unisex_user_sees_all (test_gender_filters.GenderFilterTests.test_unisex_user_sees_all) ... ok
+test_womenswear_blocks_mens_hint (test_gender_filters.GenderFilterTests.test_womenswear_blocks_mens_hint) ... ok
+test_context_score_uses_feed_scenario (test_mie_scoring.MIEScoringTests.test_context_score_uses_feed_scenario) ... ok
+test_fit_hard_filter_cannot_be_compensated_by_taste (test_mie_scoring.MIEScoringTests.test_fit_hard_filter_cannot_be_compensated_by_taste) ... ok
+test_score_breakdown_contains_normalized_components (test_mie_scoring.MIEScoringTests.test_score_breakdown_contains_normalized_components) ... ok
+test_taste_ranking_changes_after_repeated_feedback (test_mie_scoring.MIEScoringTests.test_taste_ranking_changes_after_repeated_feedback) ... ok
+test_taste_score_uses_known_evidence_denominator (test_mie_scoring.MIEScoringTests.test_taste_score_uses_known_evidence_denominator) ... ok
+test_catalog_edge_cases_are_rejected (test_outfit_engine_v2.OutfitEngineV2Tests.test_catalog_edge_cases_are_rejected) ... ok
+test_combination_rejects_conflicting_seasons_and_multiple_accents (test_outfit_engine_v2.OutfitEngineV2Tests.test_combination_rejects_conflicting_seasons_and_multiple_accents) ... ok
+test_compatibility_rewards_consistent_items (test_outfit_engine_v2.OutfitEngineV2Tests.test_compatibility_rewards_consistent_items) ... ok
+test_empty_v2_does_not_fall_back_to_incomplete_outfit (test_outfit_engine_v2.OutfitEngineV2Tests.test_empty_v2_does_not_fall_back_to_incomplete_outfit) ... ok
+test_explicit_gender_in_title_overrides_incorrect_feed_label (test_outfit_engine_v2.OutfitEngineV2Tests.test_explicit_gender_in_title_overrides_incorrect_feed_label) ... ok
+test_formal_scenarios_reject_sports_and_casual_only_items (test_outfit_engine_v2.OutfitEngineV2Tests.test_formal_scenarios_reject_sports_and_casual_only_items) ... ok
+test_generate_outfits_v2_creates_scored_slot_combination (test_outfit_engine_v2.OutfitEngineV2Tests.test_generate_outfits_v2_creates_scored_slot_combination) ... ok
+test_generate_outfits_wrapper_uses_v2_when_possible (test_outfit_engine_v2.OutfitEngineV2Tests.test_generate_outfits_wrapper_uses_v2_when_possible) ... ok
+test_mislabelled_underwear_swimwear_and_slippers_never_form_outfits (test_outfit_engine_v2.OutfitEngineV2Tests.test_mislabelled_underwear_swimwear_and_slippers_never_form_outfits) ... ok
+test_old_invalid_and_duplicate_outfits_hidden_without_deleting_saved (test_outfit_engine_v2.OutfitEngineV2Tests.test_old_invalid_and_duplicate_outfits_hidden_without_deleting_saved) ... ok
+test_other_scenarios_do_not_exhaust_all_shoes (test_outfit_engine_v2.OutfitEngineV2Tests.test_other_scenarios_do_not_exhaust_all_shoes) ... ok
+test_outfits_change_at_least_two_items_and_have_no_accessory (test_outfit_engine_v2.OutfitEngineV2Tests.test_outfits_change_at_least_two_items_and_have_no_accessory) ... ok
+test_skip_is_not_hard_excluded_from_outfit_candidates (test_outfit_engine_v2.OutfitEngineV2Tests.test_skip_is_not_hard_excluded_from_outfit_candidates) ... ok
+test_unknown_gender_is_not_guessed_in_an_outfit (test_outfit_engine_v2.OutfitEngineV2Tests.test_unknown_gender_is_not_guessed_in_an_outfit) ... ok
+test_wrapper_does_not_replace_failed_engine_with_unsafe_outfits (test_outfit_engine_v2.OutfitEngineV2Tests.test_wrapper_does_not_replace_failed_engine_with_unsafe_outfits) ... Outfit Engine v2 failed; falling back to legacy outfit service
+Traceback (most recent call last):
+  File "C:\Users\User\Desktop\modish\backend\app\services\outfit_service.py", line 502, in generate_outfits
+    created = generate_outfits_v2(
+      db,
+    ...<3 lines>...
+      replace_existing=replace_existing,
+    )
+  File "C:\Users\User\AppData\Local\Python\pythoncore-3.14-64\Lib\unittest\mock.py", line 1175, in __call__
+    return self._mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\AppData\Local\Python\pythoncore-3.14-64\Lib\unittest\mock.py", line 1179, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\User\AppData\Local\Python\pythoncore-3.14-64\Lib\unittest\mock.py", line 1234, in _execute_mock_call
+    raise effect
+RuntimeError: boom
+ok
+test_log_feed_impressions_stores_ranking_metadata (test_product_analytics.ProductAnalyticsTests.test_log_feed_impressions_stores_ranking_metadata) ... ok
+test_accessories_not_restored_by_empty_feed_fallbacks (test_recommendation_exclusions.RecommendationExclusionTests.test_accessories_not_restored_by_empty_feed_fallbacks) ... ok
+test_exclusions_expand_to_same_source_group_variants (test_recommendation_exclusions.RecommendationExclusionTests.test_exclusions_expand_to_same_source_group_variants) ... ok
+test_feed_deduplicates_images_even_without_group_ids (test_recommendation_exclusions.RecommendationExclusionTests.test_feed_deduplicates_images_even_without_group_ids) ... ok
+test_generate_feed_does_not_return_same_group_variant (test_recommendation_exclusions.RecommendationExclusionTests.test_generate_feed_does_not_return_same_group_variant) ... ok
+test_categories_canonical (test_recommendation_v3.RecommendationV3Tests.test_categories_canonical) ... ok
+test_colors_canonical (test_recommendation_v3.RecommendationV3Tests.test_colors_canonical) ... ok
+test_diversity_no_long_runs (test_recommendation_v3.RecommendationV3Tests.test_diversity_no_long_runs) ... ok
+test_feed_personalized_for_woman (test_recommendation_v3.RecommendationV3Tests.test_feed_personalized_for_woman) ... ok
+test_learning_like_shifts_scores (test_recommendation_v3.RecommendationV3Tests.test_learning_like_shifts_scores) ... ok
+test_popularity_component (test_recommendation_v3.RecommendationV3Tests.test_popularity_component) ... ok
+test_products_imported (test_recommendation_v3.RecommendationV3Tests.test_products_imported) ... ok
+test_style_tags_not_empty (test_recommendation_v3.RecommendationV3Tests.test_style_tags_not_empty) ... ok
+test_underwear_not_in_feed (test_recommendation_v3.RecommendationV3Tests.test_underwear_not_in_feed) ... ok
+test_expired_and_unknown_sessions_are_rejected (test_release6_regressions.Release6Regressions.test_expired_and_unknown_sessions_are_rejected) ... ok
+test_home_beauty_and_unknown_goods_never_enter_feed (test_release6_regressions.Release6Regressions.test_home_beauty_and_unknown_goods_never_enter_feed) ... ok
+test_inflight_swipes_excluded_even_before_events_are_committed (test_release6_regressions.Release6Regressions.test_inflight_swipes_excluded_even_before_events_are_committed) ... ok
+test_refresh_is_persistent_revocable_and_not_an_access_token (test_release6_regressions.Release6Regressions.test_refresh_is_persistent_revocable_and_not_an_access_token) ... ok
+test_valid_clothing_is_preserved (test_release6_regressions.Release6Regressions.test_valid_clothing_is_preserved) ... ok
+test_scanner_returns_only_types_and_allows_placeholders (test_secret_scan.SecretScanTests.test_scanner_returns_only_types_and_allows_placeholders) ... ok
+test_disabled_admitad_cannot_download_previously_stored_url (test_secure_config.SecureConfigTests.test_disabled_admitad_cannot_download_previously_stored_url) ... ok
+test_disabled_admitad_needs_no_credentials (test_secure_config.SecureConfigTests.test_disabled_admitad_needs_no_credentials) ... ok
+test_disabled_bootstrap_does_not_modify_database (test_secure_config.SecureConfigTests.test_disabled_bootstrap_does_not_modify_database) ... ok
+test_enabled_admitad_rejects_placeholder_without_echo (test_secure_config.SecureConfigTests.test_enabled_admitad_rejects_placeholder_without_echo) ... ok
+test_export_url_encodes_credentials_and_uses_https (test_secure_config.SecureConfigTests.test_export_url_encodes_credentials_and_uses_https) ... ok
+test_log_redaction_includes_exception_and_query (test_secure_config.SecureConfigTests.test_log_redaction_includes_exception_and_query) ... ok
+test_missing_optional_ai_does_not_block_database_config (test_secure_config.SecureConfigTests.test_missing_optional_ai_does_not_block_database_config) ... ok
+test_production_rejects_placeholder_jwt (test_secure_config.SecureConfigTests.test_production_rejects_placeholder_jwt) ... ok
+test_children_excluded_by_title_age_and_height (test_styling_regressions.StylingRegressions.test_children_excluded_by_title_age_and_height) ... ok
+test_complements_balance_missing_roles_and_never_pad_same_role (test_styling_regressions.StylingRegressions.test_complements_balance_missing_roles_and_never_pad_same_role) ... ok
+test_old_overalls_outfit_is_hidden (test_styling_regressions.StylingRegressions.test_old_overalls_outfit_is_hidden) ... ok
+test_roles_describe_sold_item_and_exclude_ambiguous_sets (test_styling_regressions.StylingRegressions.test_roles_describe_sold_item_and_exclude_ambiguous_sets) ... ok
+test_size_badge_requires_exact_confirmed_size (test_styling_regressions.StylingRegressions.test_size_badge_requires_exact_confirmed_size) ... ok
+test_size_variants_cannot_exhaust_feed_before_remaining_catalogue (test_styling_regressions.StylingRegressions.test_size_variants_cannot_exhaust_feed_before_remaining_catalogue) ... ok
+test_sport_pants_and_formal_shoes_are_incompatible (test_styling_regressions.StylingRegressions.test_sport_pants_and_formal_shoes_are_incompatible) ... ok
+test_taste_read_does_not_insert_embeddings_and_upsert_is_idempotent (test_styling_regressions.StylingRegressions.test_taste_read_does_not_insert_embeddings_and_upsert_is_idempotent) ... ok
+test_apply_decay_keeps_updated_at_as_signal_clock (test_user_twin_service.UserTwinServiceTests.test_apply_decay_keeps_updated_at_as_signal_clock) ... ok
+test_get_user_taste_features_orders_by_confidence (test_user_twin_service.UserTwinServiceTests.test_get_user_taste_features_orders_by_confidence) ... ok
+test_old_weak_events_decay (test_user_twin_service.UserTwinServiceTests.test_old_weak_events_decay) ... ok
+test_purchase_dominates_like (test_user_twin_service.UserTwinServiceTests.test_purchase_dominates_like) ... ok
+test_repeated_negative_signals_decrease_preference (test_user_twin_service.UserTwinServiceTests.test_repeated_negative_signals_decrease_preference) ... ok
+test_repeated_positive_signals_increase_confidence (test_user_twin_service.UserTwinServiceTests.test_repeated_positive_signals_increase_confidence) ... ok
+
+----------------------------------------------------------------------
+Ran 109 tests in 6.459s
+
+OK

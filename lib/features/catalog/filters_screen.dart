@@ -13,8 +13,31 @@ class FiltersScreen extends StatefulWidget {
 }
 
 class _FiltersScreenState extends State<FiltersScreen> {
-  final _categories = ['Верхняя одежда', 'Топы', 'Брюки', 'Обувь', 'Сумки'];
-  final _sizes = ['XS', 'S', 'M', 'L', 'XL'];
+  final _categories = ['Верхняя одежда', 'Топы', 'Низ', 'Обувь'];
+  final _sizes = [
+    'XS',
+    'S',
+    'M',
+    'L',
+    'XL',
+    'XXL',
+    'XXXL',
+    '36',
+    '37',
+    '38',
+    '39',
+    '40',
+    '41',
+    '42',
+    '43',
+    '44',
+    '46',
+    '48',
+    '50',
+    '52',
+    '54',
+    '56',
+  ];
   final _colors = [
     'Черный',
     'Белый',
@@ -27,7 +50,31 @@ class _FiltersScreenState extends State<FiltersScreen> {
   final Set<String> _selCat = {};
   final Set<String> _selSize = {};
   final Set<String> _selColor = {};
-  RangeValues _price = const RangeValues(1000, 20000);
+  RangeValues _price = const RangeValues(0, 100000);
+  bool _priceEnabled = false;
+  static const categoryKeys = {
+    'Верхняя одежда': 'outerwear',
+    'Топы': 'tops',
+    'Низ': 'bottoms',
+    'Обувь': 'shoes',
+  };
+  @override
+  void initState() {
+    super.initState();
+    final c = widget.controller;
+    _selCat.addAll(
+      categoryKeys.keys.where(
+        (k) => c.feedFilterCategories.contains(categoryKeys[k]),
+      ),
+    );
+    _selSize.addAll(c.feedFilterSizes);
+    _selColor.addAll(c.feedFilterColors);
+    _priceEnabled = c.feedMinPrice != null || c.feedMaxPrice != null;
+    _price = RangeValues(
+      (c.feedMinPrice ?? 0).toDouble().clamp(0, 100000),
+      (c.feedMaxPrice ?? 100000).toDouble().clamp(0, 100000),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +94,8 @@ class _FiltersScreenState extends State<FiltersScreen> {
               _selCat.clear();
               _selSize.clear();
               _selColor.clear();
-              _price = const RangeValues(1000, 20000);
+              _price = const RangeValues(0, 100000);
+              _priceEnabled = false;
             }),
             child: const Text(
               'Сбросить',
@@ -110,17 +158,22 @@ class _FiltersScreenState extends State<FiltersScreen> {
           Text('Цена', style: AppTextStyles.sectionTitle),
           RangeSlider(
             values: _price,
-            min: 500,
-            max: 30000,
-            divisions: 59,
+            min: 0,
+            max: 100000,
+            divisions: 200,
             labels: RangeLabels(
               '${_price.start.round()}',
               '${_price.end.round()}',
             ),
-            onChanged: (v) => setState(() => _price = v),
+            onChanged: (v) => setState(() {
+              _price = v;
+              _priceEnabled = true;
+            }),
           ),
           Text(
-            'от ${_price.start.round()} ₽ до ${_price.end.round()} ₽',
+            _priceEnabled
+                ? 'от ${_price.start.round()} ₽ до ${_price.end.round()} ₽'
+                : 'Любая цена',
             style: AppTextStyles.bodyMuted,
           ),
           const SizedBox(height: 24),
@@ -150,24 +203,27 @@ class _FiltersScreenState extends State<FiltersScreen> {
                 borderRadius: BorderRadius.circular(18),
                 onTap: () =>
                     setState(() => on ? _selColor.remove(c) : _selColor.add(c)),
-                child: Container(
-                  width: 30,
-                  height: 30,
-                  decoration: BoxDecoration(
-                    color: _swatch(c),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: on ? AppColors.accent : AppColors.line,
-                      width: on ? 2 : 1,
+                child: Tooltip(
+                  message: c,
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: _swatch(c),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: on ? AppColors.accent : AppColors.line,
+                        width: on ? 2 : 1,
+                      ),
                     ),
+                    child: on
+                        ? Icon(
+                            Icons.check,
+                            size: 16,
+                            color: c == 'Белый' ? AppColors.ink : Colors.white,
+                          )
+                        : null,
                   ),
-                  child: on
-                      ? Icon(
-                          Icons.check,
-                          size: 16,
-                          color: c == 'Белый' ? AppColors.ink : Colors.white,
-                        )
-                      : null,
                 ),
               );
             }).toList(),
@@ -181,8 +237,9 @@ class _FiltersScreenState extends State<FiltersScreen> {
             label: 'Показать товары',
             onPressed: () {
               widget.controller.applyFeedFilters(
-                minPrice: _price.start.round(),
-                maxPrice: _price.end.round(),
+                minPrice: _priceEnabled ? _price.start.round() : null,
+                maxPrice: _priceEnabled ? _price.end.round() : null,
+                categories: _selCat.map((c) => categoryKeys[c]!).toList(),
                 sizes: _selSize.toList(),
                 colors: _selColor.toList(),
               );
@@ -197,7 +254,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
 
 IconData _categoryIcon(String value) {
   if (value.contains('Топ')) return Icons.checkroom_outlined;
-  if (value.contains('Брю')) return Icons.view_week_outlined;
+  if (value.contains('Низ')) return Icons.view_week_outlined;
   if (value.contains('Обув')) return Icons.ice_skating_outlined;
   if (value.contains('Сум')) return Icons.shopping_bag_outlined;
   return Icons.dry_cleaning_outlined;

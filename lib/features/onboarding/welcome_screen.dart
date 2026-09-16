@@ -22,29 +22,29 @@ class WelcomeScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 8),
-                  const Center(child: GoldWordmark(fontSize: 38)),
                   const Spacer(),
-                  Text(
-                    'Ваш\nперсональный\nстилист',
-                    textAlign: TextAlign.left,
-                    style: AppTextStyles.display.copyWith(
-                      color: AppColors.ink,
-                      fontSize: 32,
-                      height: 1.08,
+                  if (MediaQuery.sizeOf(context).height >= 800)
+                    Text(
+                      'Стиль, который\nчувствует вас',
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.display.copyWith(
+                        color: AppColors.ink,
+                        fontSize: 28,
+                        height: 1.08,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
+                  if (MediaQuery.sizeOf(context).height >= 800)
+                    const SizedBox(height: 14),
                   Text(
-                    'AI-подборки, вдохновение\nи лучшие вещи в одном месте',
-                    textAlign: TextAlign.left,
+                    'Открывайте вещи. Собирайте образы.\nНаходите своё.',
+                    textAlign: TextAlign.center,
                     style: AppTextStyles.body.copyWith(
                       color: AppColors.ink.withValues(alpha: 0.88),
                       fontSize: 15,
                       height: 1.45,
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
                   PrimaryButton(
                     label: 'Войти',
                     onPressed: () => controller.goToAuth(registerMode: false),

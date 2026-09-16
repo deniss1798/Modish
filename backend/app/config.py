@@ -1,8 +1,9 @@
-"""Загрузка переменных окружения из backend/.env (строго для секретов и БД)."""
+"""Конфигурация из environment с локальным fallback в backend/.env."""
 
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -28,11 +29,46 @@ def require_env(name: str) -> str:
 
 
 def get_database_url() -> str:
-  return require_env("DATABASE_URL")
+  value = require_env("DATABASE_URL")
+  if is_production() and (not value.startswith("postgresql") or _is_placeholder(value)):
+    raise ValueError("DATABASE_URL must be a configured PostgreSQL URL in production")
+  return value
 
 
 def get_jwt_secret() -> str:
-  return require_env("JWT_SECRET")
+  value = require_env("JWT_SECRET")
+  if is_production() and (len(value) < 32 or _is_placeholder(value)):
+    raise ValueError("JWT_SECRET must be configured with at least 32 characters in production")
+  return value
+
+
+def is_production() -> bool:
+  return os.getenv("APP_ENV", "development").strip().lower() in {"production", "prod"}
+
+
+def _is_placeholder(value: str) -> bool:
+  lowered = value.lower()
+  return any(marker in lowered for marker in (
+    "change_me", "changeme", "replace_me", "your_", "example", "placeholder", "<", ">",
+  ))
+
+
+def get_admitad_export_config() -> tuple[str, str, str] | None:
+  """Optional integration; never echo credential values in validation errors."""
+  enabled = os.getenv("ADMITAD_ENABLED", "false").strip().lower()
+  if enabled not in {"true", "false", "1", "0"}:
+    raise ValueError("ADMITAD_ENABLED must be true or false")
+  if enabled in {"false", "0"}:
+    return None
+  values = []
+  for name in ("ADMITAD_WEBSITE_ID", "ADMITAD_EXPORT_USER", "ADMITAD_EXPORT_CODE"):
+    value = os.getenv(name, "").strip()
+    if not value or _is_placeholder(value) or any(ord(c) < 32 for c in value):
+      raise ValueError(f"{name} must be configured for Admitad export")
+    values.append(value)
+  if not re.fullmatch(r"[0-9]+", values[0]):
+    raise ValueError("ADMITAD_WEBSITE_ID must be numeric")
+  return values[0], values[1], values[2]
 
 
 def get_jwt_expires_hours() -> int:

@@ -70,10 +70,14 @@ class ProductFillImage extends StatefulWidget {
     super.key,
     required this.imageUrl,
     this.borderRadius = BorderRadius.zero,
+    this.fit = BoxFit.contain,
+    this.fallbackImageUrls = const [],
   });
 
   final String imageUrl;
   final BorderRadius borderRadius;
+  final BoxFit fit;
+  final List<String> fallbackImageUrls;
 
   @override
   State<ProductFillImage> createState() => _ProductFillImageState();
@@ -82,8 +86,8 @@ class ProductFillImage extends StatefulWidget {
 class _ProductFillImageState extends State<ProductFillImage> {
   static final Dio _dio = Dio(
     BaseOptions(
-      connectTimeout: const Duration(seconds: 25),
-      receiveTimeout: const Duration(seconds: 45),
+      connectTimeout: const Duration(seconds: 8),
+      receiveTimeout: const Duration(seconds: 12),
       followRedirects: true,
       maxRedirects: 8,
       validateStatus: (code) => code != null && code >= 200 && code < 500,
@@ -91,7 +95,7 @@ class _ProductFillImageState extends State<ProductFillImage> {
     ),
   );
 
-  static const List<String> _fallbackUrls = [];
+  static final Map<String, Uint8List> _cache = {};
 
   late List<String> _candidates;
   int _index = 0;
@@ -119,7 +123,8 @@ class _ProductFillImageState extends State<ProductFillImage> {
     super.didUpdateWidget(oldWidget);
     final next = _normalizeImageUrl(widget.imageUrl);
     final prev = _normalizeImageUrl(oldWidget.imageUrl);
-    if (next != prev) {
+    if (next != prev ||
+        !listEquals(widget.fallbackImageUrls, oldWidget.fallbackImageUrls)) {
       _stallTimer?.cancel();
       _requestGen++;
       setState(() {
@@ -136,23 +141,29 @@ class _ProductFillImageState extends State<ProductFillImage> {
   void _armStallTimer(String url, int gen) {
     _stallTimer?.cancel();
     if (_candidates.isEmpty || gen != _requestGen) return;
-    _stallTimer = Timer(const Duration(seconds: 20), () {
+    _stallTimer = Timer(const Duration(seconds: 12), () {
       if (!mounted || gen != _requestGen) return;
       if (_bytes != null) return;
       debugPrint(
-        'ProductFillImage: stall (no bytes in 20s) gen=$gen idx=$_index url=$url',
+        'ProductFillImage: stall (no bytes in 12s) gen=$gen idx=$_index url=$url',
       );
       _advanceAfterFailure();
     });
   }
 
   List<String> _buildCandidates(String primary) {
-    if (_isDemoOrGenericImageUrl(primary)) return const [];
-    if (primary.isEmpty) return const [];
-    final out = <String>[primary];
-    for (final fb in _fallbackUrls) {
-      if (fb != primary && !out.contains(fb)) {
-        out.add(fb);
+    final out = <String>[];
+    for (final raw in [primary, ...widget.fallbackImageUrls]) {
+      final url = _normalizeImageUrl(raw);
+      if (url.isEmpty || _isDemoOrGenericImageUrl(url)) continue;
+      final base = ApiClient.resolvedBaseUrl().replaceAll(RegExp(r'/+$'), '');
+      final proxy =
+          '$base/media/proxy-image?url=${Uri.encodeQueryComponent(url)}';
+      for (final candidate
+          in ApiClient.useImageProxyForProductImages()
+              ? [proxy, url]
+              : [url, proxy]) {
+        if (!out.contains(candidate)) out.add(candidate);
       }
     }
     return out;
@@ -162,6 +173,15 @@ class _ProductFillImageState extends State<ProductFillImage> {
     if (_candidates.isEmpty || _index >= _candidates.length) return;
     final url = _candidates[_index];
     final gen = ++_requestGen;
+    final cached = _cache[url];
+    if (cached != null) {
+      setState(() {
+        _bytes = cached;
+        _loading = false;
+        _decodeAdvanceScheduled = false;
+      });
+      return;
+    }
     setState(() {
       _bytes = null;
       _loading = true;
@@ -169,7 +189,7 @@ class _ProductFillImageState extends State<ProductFillImage> {
     });
     _armStallTimer(url, gen);
 
-    final headers = _effectiveFetchUrl(url) == url
+    final headers = !url.contains('/media/proxy-image?')
         ? _imageRequestHeaders(url)
         : const <String, String>{};
     if (kDebugMode) {
@@ -178,10 +198,7 @@ class _ProductFillImageState extends State<ProductFillImage> {
     }
 
     _dio
-        .get<List<int>>(
-          _effectiveFetchUrl(url),
-          options: Options(headers: headers),
-        )
+        .get<List<int>>(url, options: Options(headers: headers))
         .then((resp) {
           if (!mounted || gen != _requestGen) return;
           _stallTimer?.cancel();
@@ -217,6 +234,8 @@ class _ProductFillImageState extends State<ProductFillImage> {
             _bytes = Uint8List.fromList(data);
             _loading = false;
           });
+          if (_cache.length >= 40) _cache.remove(_cache.keys.first);
+          if (data.length <= 2 * 1024 * 1024) _cache[url] = _bytes!;
         })
         .catchError((Object e, StackTrace? st) {
           if (!mounted || gen != _requestGen) return;
@@ -231,6 +250,8 @@ class _ProductFillImageState extends State<ProductFillImage> {
 
   void _advanceAfterFailure() {
     if (!mounted) return;
+    _requestGen++;
+    _stallTimer?.cancel();
     setState(() {
       _loading = false;
       _bytes = null;
@@ -248,6 +269,7 @@ class _ProductFillImageState extends State<ProductFillImage> {
   void _onDecodeError(Object error, StackTrace? stack) {
     if (_decodeAdvanceScheduled) return;
     _decodeAdvanceScheduled = true;
+    if (_index < _candidates.length) _cache.remove(_candidates[_index]);
     debugPrint(
       'ProductFillImage: Image.memory decode error idx=$_index → $error',
     );
@@ -264,7 +286,7 @@ class _ProductFillImageState extends State<ProductFillImage> {
     final clip = widget.borderRadius != BorderRadius.zero;
     final norm = _normalizeImageUrl(widget.imageUrl);
 
-    if (norm.isEmpty) {
+    if (norm.isEmpty && _candidates.isEmpty) {
       return _wrapClip(_placeholder(Icons.image_not_supported_outlined), clip);
     }
 
@@ -300,7 +322,7 @@ class _ProductFillImageState extends State<ProductFillImage> {
           return Image.memory(
             _bytes!,
             key: ValueKey<int>(_bytes!.length + _index),
-            fit: BoxFit.cover,
+            fit: widget.fit,
             width: c.maxWidth,
             height: c.maxHeight,
             gaplessPlayback: true,
@@ -378,7 +400,39 @@ class _ProductFillImageState extends State<ProductFillImage> {
         color: AppColors.line.withValues(alpha: 0.4),
         borderRadius: widget.borderRadius,
       ),
-      child: Center(child: Icon(icon, size: 40, color: AppColors.muted)),
+      child: Stack(
+        children: [
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 32, color: AppColors.muted),
+                const SizedBox(height: 6),
+                const Text(
+                  'Фото недоступно',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 10, color: AppColors.muted),
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: TextButton(
+              onPressed: () {
+                setState(() {
+                  _index = 0;
+                  _bytes = null;
+                  _decodeAdvanceScheduled = false;
+                });
+                _kickLoad();
+              },
+              child: const Text('Повторить', style: TextStyle(fontSize: 10)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

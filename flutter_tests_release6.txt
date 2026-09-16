@@ -1,0 +1,52 @@
+00:00 +0: loading C:/Users/User/Desktop/modish/test/api_feed_request_test.dart
+00:00 +0: C:/Users/User/Desktop/modish/test/api_feed_request_test.dart: Complement request targets the selected garment
+Modish API baseUrl: https://example.test
+00:00 +1: C:/Users/User/Desktop/modish/test/api_feed_request_test.dart: Selected filters reach the HTTP endpoint with repeated query keys
+Modish API baseUrl: https://example.test
+00:00 +2: C:/Users/User/Desktop/modish/test/app_regressions_test.dart: Refill preserves the remaining cards while swipes are in flight
+00:00 +2: C:/Users/User/Desktop/modish/test/session_refresh_test.dart: Concurrent expired requests share one refresh and retry successfully
+Modish API baseUrl: https://modish.test
+00:00 +3: C:/Users/User/Desktop/modish/test/app_regressions_test.dart: Refill preserves the remaining cards while swipes are in flight
+00:00 +3: C:/Users/User/Desktop/modish/test/session_refresh_test.dart: A network failure during refresh preserves the session
+Modish API baseUrl: https://modish.test
+00:00 +4: C:/Users/User/Desktop/modish/test/app_regressions_test.dart: Refill preserves the remaining cards while swipes are in flight
+00:00 +4: C:/Users/User/Desktop/modish/test/session_refresh_test.dart: Invalid refresh ends session, public login carries no old bearer
+Modish API baseUrl: https://modish.test
+00:00 +5: C:/Users/User/Desktop/modish/test/app_regressions_test.dart: Refill preserves the remaining cards while swipes are in flight
+Modish API baseUrl: https://modish.org.ru
+00:00 +6: C:/Users/User/Desktop/modish/test/ui_release6_preview_test.dart: Release 6 phone layouts fit and render
+00:00 +6: C:/Users/User/Desktop/modish/test/app_regressions_test.dart: Changing filters discards a previous slow feed response
+Modish API baseUrl: https://modish.org.ru
+00:00 +7: C:/Users/User/Desktop/modish/test/ui_release6_preview_test.dart: Release 6 phone layouts fit and render
+00:00 +7: C:/Users/User/Desktop/modish/test/app_regressions_test.dart: Complements use catalogue results and never pad from the feed
+Modish API baseUrl: https://modish.org.ru
+00:00 +8: C:/Users/User/Desktop/modish/test/ui_release6_preview_test.dart: Release 6 phone layouts fit and render
+00:00 +8: C:/Users/User/Desktop/modish/test/app_regressions_test.dart: Concurrent complement requests are coalesced per garment
+Modish API baseUrl: https://modish.org.ru
+00:00 +9: C:/Users/User/Desktop/modish/test/ui_release6_preview_test.dart: Release 6 phone layouts fit and render
+Modish API baseUrl: https://modish.org.ru
+00:01 +9: C:/Users/User/Desktop/modish/test/app_regressions_test.dart: Filters query the server and keep selections on reopening
+Modish API baseUrl: https://modish.org.ru
+00:01 +10: C:/Users/User/Desktop/modish/test/ui_release6_preview_test.dart: Release 6 phone layouts fit and render
+00:01 +10: C:/Users/User/Desktop/modish/test/widget_test.dart: Modish: старт и экран после boot
+Modish API baseUrl: https://modish.org.ru
+00:01 +11: C:/Users/User/Desktop/modish/test/ui_release6_preview_test.dart: Release 6 phone layouts fit and render
+00:01 +11: C:/Users/User/Desktop/modish/test/app_regressions_test.dart: Settings has working help and does not offer dead sections
+Modish API baseUrl: https://modish.org.ru
+00:01 +12: C:/Users/User/Desktop/modish/test/ui_release6_preview_test.dart: Release 6 phone layouts fit and render
+00:02 +12: C:/Users/User/Desktop/modish/test/app_regressions_test.dart: Home content stays below the system status bar
+Modish API baseUrl: https://modish.org.ru
+00:02 +13: C:/Users/User/Desktop/modish/test/ui_release6_preview_test.dart: Release 6 phone layouts fit and render
+00:02 +13: C:/Users/User/Desktop/modish/test/app_regressions_test.dart: Welcome background fills the entire phone width
+Modish API baseUrl: https://modish.org.ru
+00:02 +14: C:/Users/User/Desktop/modish/test/ui_release6_preview_test.dart: Release 6 phone layouts fit and render
+00:02 +14: C:/Users/User/Desktop/modish/test/app_regressions_test.dart: Wow shows actual product slots and opens the outfit
+Modish API baseUrl: https://modish.org.ru
+00:02 +15: C:/Users/User/Desktop/modish/test/ui_release6_preview_test.dart: Release 6 phone layouts fit and render
+00:02 +15: C:/Users/User/Desktop/modish/test/app_regressions_test.dart: Dress outfit displays two slots without empty top/bottom/accessory
+Modish API baseUrl: https://modish.org.ru
+00:02 +16: C:/Users/User/Desktop/modish/test/ui_release6_preview_test.dart: Release 6 phone layouts fit and render
+00:02 +16: C:/Users/User/Desktop/modish/test/app_regressions_test.dart: Swipe removes aliases immediately and a late refresh cannot restore them
+Modish API baseUrl: https://modish.org.ru
+00:02 +17: C:/Users/User/Desktop/modish/test/ui_release6_preview_test.dart: Release 6 phone layouts fit and render
+00:02 +18: All tests passed!

@@ -2,16 +2,19 @@ from __future__ import annotations
 
 from ...catalog_normalize import normalize_category
 from ...models import Product
+from ..catalog_audience import product_is_adult
+from ..catalog_scope import product_is_fashion
 
 
 def product_has_purchasable_link(product: Product) -> bool:
-  aff = (product.affiliate_url or "").strip()
-  url = (product.product_url or "").strip()
-  return bool(aff or url)
+  from .affiliate_link_service import resolve_outbound_url
+  return bool(resolve_outbound_url(product))
 
 
 def product_is_feed_eligible(product: Product) -> bool:
   """Скрываем товары без фото, цены, ссылки или категории."""
+  if not product_is_adult(product) or not product_is_fashion(product):
+    return False
   if not product.is_active or not product.is_available:
     return False
   if product.is_deleted_from_feed:

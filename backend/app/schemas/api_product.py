@@ -2,8 +2,12 @@
 from __future__ import annotations
 
 from typing import Any
+from html import unescape
 
 from ..models import Product
+from ..catalog_normalize import product_gender_from_model
+from ..services.catalog.affiliate_link_service import resolve_outbound_url
+from ..services.garment_roles import product_role
 
 # Человекочитаемые названия витрин (source code → подпись в приложении).
 _SHOP_LABEL_BY_SOURCE: dict[str, str] = {
@@ -58,9 +62,10 @@ def product_to_api(p: Product) -> dict[str, Any]:
     "offer_id": p.external_id,
     "source": p.source,
     "source_id": p.source_id,
-    "title": p.title,
+    "title": unescape(p.title or ""),
     "brand": p.brand,
     "category": p.category,
+    "outfit_slot": product_role(p),
     "subcategory": p.subcategory,
     "price": p.price,
     "old_price": p.old_price,
@@ -68,7 +73,8 @@ def product_to_api(p: Product) -> dict[str, Any]:
     "currency": p.currency,
     "availability_status": p.availability_status,
     "image_url": p.image_url,
-    "product_url": p.product_url,
+    "product_url": resolve_outbound_url(p),
+    "outbound_url": resolve_outbound_url(p),
     "affiliate_url": p.affiliate_url,
     "original_url": p.original_url,
     "merchant_category": p.merchant_category,
@@ -81,7 +87,7 @@ def product_to_api(p: Product) -> dict[str, Any]:
     "material": p.material,
     "season": p.season,
     "occasion": p.occasion,
-    "gender_target": p.gender_target,
+    "gender_target": product_gender_from_model(p),
     "fit": p.fit,
     "silhouette": p.silhouette,
     "style_tags": p.style_tags or [],

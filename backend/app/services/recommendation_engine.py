@@ -17,6 +17,7 @@ from ..models import FitProfile, Product, RecommendationEventV2, StyleProfile, T
 from .catalog.rule_filters import load_rules_by_source_id, product_gender_compatible, product_passes_source_rules
 from .catalog.catalog_quality import product_is_feed_eligible
 from .candidate_retrieval_service import retrieve_candidates
+from .catalog_filters import CatalogFilters
 from .feed_filters import product_passes_hard_filters
 from .mie_scoring import TasteFeatureMap, compute_mie_score, load_user_taste_feature_map
 from .recommendation_config import ALGORITHM_VERSION, DEFAULT_RANKING_ALGORITHM
@@ -354,8 +355,19 @@ def generate_feed(
   source: str | None = None,
   scenario: str = "daily",
   max_to_score: int = 700,
+  filters: CatalogFilters | None = None,
 ) -> list[ScoredProduct]:
+  from .product_identity import product_identity_keys
+
+  # Serialize per-user cache writes across concurrent feed/outfit requests.
+  # PostgreSQL holds this lock until the caller commits; SQLite tests ignore it.
+  db.execute(select(User.id).where(User.id == user.id).with_for_update()).scalar_one()
+
   exclude_product_ids = expand_product_exclusions(db, exclude_product_ids)
+  excluded_keys: set[str] = set()
+  if exclude_product_ids:
+    for hidden in db.execute(select(Product).where(Product.id.in_(exclude_product_ids))).scalars():
+      excluded_keys.update(product_identity_keys(hidden))
   base_ctx = build_feed_context(db, user, scenario=scenario)
   retrieval = retrieve_candidates(
     db,
@@ -367,6 +379,8 @@ def generate_feed(
     source=source,
     scenario=scenario,
     max_candidates=max_to_score,
+    min_price=0 if filters and filters.active else 500,
+    filters=filters,
   )
   products = retrieval.products
   rules_by_source = load_rules_by_source_id(db)
@@ -380,8 +394,8 @@ def generate_feed(
 
   def _is_hidden_category(p: Product) -> bool:
     cats = _product_category_norms(p)
-    hidden = {"бельё"} - interest_norm
-    return bool(cats and cats <= hidden)
+    hidden = ({"бельё"} - interest_norm) | {"аксессуары", "сумки", "рюкзаки"}
+    return bool(cats & hidden) or bool(product_identity_keys(p) & excluded_keys)
 
   filtered: list[Product] = []
   for p in products:
@@ -391,15 +405,20 @@ def generate_feed(
       continue
     if not product_passes_source_rules(p, rules_by_source):
       continue
-    if not product_passes_hard_filters(p, fit):
+    if filters and filters.active:
+      if not filters.matches(p) or not product_gender_compatible(p, fit.gender_target if fit else None):
+        continue
+    elif not product_passes_hard_filters(p, fit):
       continue
     filtered.append(p)
 
   # Если выбраны категории в профиле и лента пустая — ослабляем только фильтр категорий.
-  if not filtered and fit and fit.interest_categories:
+  if not filtered and not (filters and filters.active) and fit and fit.interest_categories:
     from .feed_filters import product_passes_budget, product_passes_size
 
     for p in products:
+      if _is_hidden_category(p):
+        continue
       if not product_is_feed_eligible(p):
         continue
       if not product_passes_source_rules(p, rules_by_source):
@@ -413,10 +432,12 @@ def generate_feed(
       filtered.append(p)
 
   # Всё ещё пусто — ослабляем бюджет/размер, пол и категории не трогаем.
-  if not filtered and products and fit:
+  if not filtered and not (filters and filters.active) and products and fit:
     from .feed_filters import product_passes_size
 
     for p in products:
+      if _is_hidden_category(p):
+        continue
       if not product_is_feed_eligible(p):
         continue
       if not product_passes_source_rules(p, rules_by_source):
@@ -437,7 +458,41 @@ def generate_feed(
   scored.sort(key=lambda x: x.final_score, reverse=True)
   lim = max(1, min(100, int(limit)))
   # Diversity Layer поверх отсортированного списка, затем срез
-  top = _apply_diversity(scored[: lim * 3])[:lim]
+  unique = []
+  seen_keys: set[str] = set()
+  for item in scored:
+    keys = product_identity_keys(item.product)
+    if keys & seen_keys:
+      continue
+    seen_keys.update(keys)
+    unique.append(item)
+  top = _apply_diversity(unique[: lim * 3])[:lim]
+  if len(top) < lim and not (filters and filters.active):
+    # Size variants and recently dismissed identities can exhaust a bounded
+    # ranking pool while the catalogue still contains plenty of matching items.
+    from .candidate_retrieval_service import _base_conditions, _fit_gender_condition, _fit_budget_condition, _ordered_recent
+    conditions = _base_conditions(source=source, exclude_product_ids=exclude_product_ids, min_price=500)
+    for condition in (_fit_gender_condition(fit), _fit_budget_condition(fit)):
+      if condition is not None:
+        conditions.append(condition)
+    query = _ordered_recent(select(Product).where(*conditions)).limit(5000)
+    for p in db.execute(query.execution_options(yield_per=250)).scalars():
+      keys = product_identity_keys(p)
+      if keys & seen_keys or _is_hidden_category(p):
+        continue
+      if not product_is_feed_eligible(p) or not product_passes_source_rules(p, rules_by_source):
+        continue
+      if not product_passes_hard_filters(p, fit):
+        continue
+      ctx.candidate_sources[p.id] = {"catalog_refill"}
+      item = score_product(db, user, p, ctx)
+      if item.final_score <= 0:
+        continue
+      seen_keys.update(keys)
+      filtered.append(p)
+      top.append(item)
+      if len(top) >= lim:
+        break
   from .recommendation_cache_service import persist_recommendation_caches  # noqa: PLC0415
 
   persist_recommendation_caches(

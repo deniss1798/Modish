@@ -1,0 +1,75 @@
+{
+  "target_sha": "da5a0be1ae96b9656ede7d97dee3799ff3b4c5ca",
+  "started_at": "2026-09-12T18:52:12.660333+00:00",
+  "old_image_id": "sha256:031b2679c55de691511602130aac419a3c489ddaa27837422d847f0400690deb",
+  "migration_exit": 0,
+  "migration_seconds": 1.98,
+  "result": "deployed",
+  "image_id": "sha256:195295b64a9a2628e97e923f530c80ed28329fe21e71448ebd49653d91c2befe",
+  "health": {
+    "status": "ok",
+    "database": "ok",
+    "version": "1.0.0-alpha"
+  },
+  "finished_at": "2026-09-12T18:52:18.104786+00:00",
+  "http_checks": [
+    {
+      "base": "http://127.0.0.1:8000",
+      "endpoint": "/health",
+      "status": 200,
+      "passed": true,
+      "seconds": 0.05
+    },
+    {
+      "base": "http://127.0.0.1:8000",
+      "endpoint": "/products",
+      "status": 200,
+      "passed": true,
+      "seconds": 0.28
+    },
+    {
+      "base": "http://127.0.0.1:8000",
+      "endpoint": "/feed",
+      "status": 401,
+      "passed": true,
+      "seconds": 0.0
+    },
+    {
+      "base": "https://modish.org.ru",
+      "endpoint": "/health",
+      "status": 200,
+      "passed": true,
+      "seconds": 0.02
+    },
+    {
+      "base": "https://modish.org.ru",
+      "endpoint": "/products",
+      "status": 200,
+      "passed": true,
+      "seconds": 0.3
+    },
+    {
+      "base": "https://modish.org.ru",
+      "endpoint": "/feed",
+      "status": 401,
+      "passed": true,
+      "seconds": 0.01
+    }
+  ],
+  "db_revision": "20260824_0019",
+  "counts": {
+    "users": 11,
+    "products": 183543,
+    "outfits": 33
+  },
+  "tls_valid_until": "2026-12-11",
+  "tls_renewal_dry_run": "passed",
+  "restored_target_smoke": "passed",
+  "restored_rollback_smoke": "passed",
+  "target_unit_tests": 70,
+  "original_checkout_preserved": true,
+  "restored_full_catalog_smoke": "passed",
+  "external_client_https_check": "passed",
+  "source_files_verified": 109,
+  "isolated_test_resources_removed": true
+}

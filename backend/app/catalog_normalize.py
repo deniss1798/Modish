@@ -627,9 +627,9 @@ def normalize_style_scenario(tag: str | None) -> str:
 def normalize_gender_target(raw: str | None, *, title: str = "", category: str = "") -> str | None:
   if raw:
     g = str(raw).strip().lower()
-    if g in ("male", "m", "man", "mens", "menswear", "мужской", "муж"):
+    if g in ("male", "m", "man", "men", "mens", "menswear", "мужской", "мужская", "мужское", "мужские", "муж"):
       return "menswear"
-    if g in ("female", "f", "woman", "womens", "womenswear", "женский", "жен"):
+    if g in ("female", "f", "woman", "women", "womens", "womenswear", "женский", "женская", "женское", "женские", "жен"):
       return "womenswear"
     if g in ("unisex", "uni", "унисекс"):
       return "unisex"
@@ -667,7 +667,39 @@ def resolve_product_gender(
 
 
 def product_gender_from_model(product) -> str | None:
-  """Product ORM → resolved gender."""
+  """Read merchant evidence before the previously inferred catalog label.
+
+  Importers used to miss Russian adjective forms and encoded merchant URLs.
+  Conflicting explicit evidence is unresolved, never implicitly unisex.
+  """
+  from urllib.parse import unquote
+
+  evidence: set[str] = set()
+  for raw in (getattr(product, "raw_params_json", None), getattr(product, "feed_raw_json", None)):
+    if not isinstance(raw, dict):
+      continue
+    for key, value in raw.items():
+      if str(key).lower() in {"пол", "gender", "sex", "target_gender", "param_пол", "param_gender", "param_sex"}:
+        g = normalize_gender_target(str(value or ""))
+        if g:
+          evidence.add(g)
+  for name in ("original_url", "product_url", "affiliate_url"):
+    url = unquote(unquote(str(getattr(product, name, "") or ""))).lower()
+    # Match complete URL path segments, not 'men' inside 'women'.
+    if re.search(r"/(zhenskaya|women|womens|woman|female|zhenshchinam)(/|[?#]|$)", url):
+      evidence.add("womenswear")
+    if re.search(r"/(muzhskaya|men|mens|man|male|muzhchinam)(/|[?#]|$)", url):
+      evidence.add("menswear")
+  if len(evidence) > 1:
+    return None
+  if evidence:
+    return next(iter(evidence))
+  # A description's lead describes this item; later text may suggest an outfit
+  # for somebody else, so do not infer gender from the entire description.
+  lead = str(getattr(product, "description", "") or "").split("\n", 1)[0][:240]
+  described = infer_gender_from_text(lead)
+  if described:
+    return described
   return resolve_product_gender(
     gender_target=getattr(product, "gender_target", None),
     title=getattr(product, "title", "") or "",

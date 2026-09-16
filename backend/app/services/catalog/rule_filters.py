@@ -86,6 +86,15 @@ def product_gender_compatible(product: Product, user_gender: str | None) -> bool
   if not ug or ug in ("unisex", "unknown"):
     return True
 
+  # Explicit garment text must not be overridden by a bad/unisex feed label.
+  hay = " ".join(str(getattr(product, name, "") or "") for name in (
+    "title", "category", "category_name", "subcategory", "merchant_category", "merchant_subcategory",
+  )).lower()
+  if ug == "womenswear" and any(h in hay for h in _MALE_ONLY_HAYSTACK):
+    return False
+  if ug == "menswear" and any(h in hay for h in _FEMALE_ONLY_HAYSTACK):
+    return False
+
   pg = product_gender_from_model(product)
   if pg == ug:
     return True
@@ -113,10 +122,11 @@ def product_gender_compatible(product: Product, user_gender: str | None) -> bool
   if ug == "womenswear":
     if any(h in hay for h in _MALE_ONLY_HAYSTACK):
       return False
-  return True
+  return False  # Missing gender is not evidence that a garment is unisex.
 
 
 _FEMALE_ONLY_HAYSTACK = (
+  "женщин", "топ-бандо", "топ бандо", "ботильон", "балетк", "слингбэк", "каблук", "лодочк", "мюли",
   "женск",
   "для женщин",
   "women",
@@ -129,6 +139,7 @@ _FEMALE_ONLY_HAYSTACK = (
 )
 
 _MALE_ONLY_HAYSTACK = (
+  "мужчин",
   "мужск",
   "для мужчин",
   " mens ",

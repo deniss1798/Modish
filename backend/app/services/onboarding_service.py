@@ -297,7 +297,8 @@ def complete_onboarding_wow(
   wow_outfits: list[dict[str, Any]] = []
   for o in outfits:
     api_o = outfit_to_api(o, _products_for_outfit(o))
-    label = (o.style_direction or o.reason or "Образ").strip()
+    from .outfit_engine_v2 import SCENARIO_LABELS
+    label = SCENARIO_LABELS.get(o.style_direction, "Персональный образ")
     api_o["title"] = label
     api_o["explanation"] = _wow_explanation(
       title=label,

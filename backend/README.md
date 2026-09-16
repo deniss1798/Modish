@@ -1,5 +1,7 @@
 # Modish Backend (предрелиз)
 
+Изменения по руководству Modish 2.3: [текущее состояние](../docs/modish2/current_state.md). Admitad export теперь выключен по умолчанию; включение требует новых значений `ADMITAD_WEBSITE_ID`, `ADMITAD_EXPORT_USER`, `ADMITAD_EXPORT_CODE` и `ADMITAD_ENABLED=true`. См. [порядок ротации](../docs/modish2/credential_rotation.md). Bootstrap больше не возвращает credential-bearing `feed_url`: вместо него `feed_configured`.
+
 FastAPI + PostgreSQL + SQLAlchemy + Alembic. JWT и bcrypt. Лимиты и сохранения по ТЗ v1.
 
 ## Запуск

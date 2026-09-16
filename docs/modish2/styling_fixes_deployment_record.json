@@ -1,0 +1,714 @@
+{
+  "deployment": {
+    "started_at": "2026-09-15T05:33:43.733813+00:00",
+    "previous_tag": "modish-backend:catalog-fixes-20260913",
+    "previous_image": "sha256:347857dc74da5dbffeebd9a626e0c26d5bb7c374b7377a3786ba41a681085e03",
+    "tag": "modish-backend:styling-fixes-20260913",
+    "migrations_applied": false,
+    "source_files": 124,
+    "catalog_data_changed": false,
+    "status": "deployed",
+    "image_id": "sha256:616e3501ca18e6ff309ed5a9d8dc1b096b2e52389ba770854da1e23c97acddf1",
+    "unit_tests": 95,
+    "checks": [
+      {
+        "url": "http://127.0.0.1:8000/health",
+        "status": 200
+      },
+      {
+        "url": "http://127.0.0.1:8000/products?limit=2",
+        "status": 200
+      },
+      {
+        "url": "http://127.0.0.1:8000/openapi.json",
+        "status": 200
+      },
+      {
+        "url": "https://modish.org.ru/health",
+        "status": 200
+      },
+      {
+        "url": "https://modish.org.ru/products?limit=2",
+        "status": 200
+      },
+      {
+        "url": "https://modish.org.ru/openapi.json",
+        "status": 200
+      }
+    ],
+    "isolated_checks": [
+      {
+        "concurrent_embedding_writers": 8,
+        "rows": 1
+      },
+      {
+        "gender": "menswear",
+        "size": "XL",
+        "mixed_swipes": 120,
+        "view_events": 120,
+        "parallel_feed_requests": 16
+      },
+      {
+        "gender": "menswear",
+        "scenario": "daily",
+        "complete_outfits": 3
+      },
+      {
+        "gender": "menswear",
+        "scenario": "office",
+        "complete_outfits": 3
+      },
+      {
+        "gender": "menswear",
+        "scenario": "evening",
+        "complete_outfits": 3
+      },
+      {
+        "gender": "womenswear",
+        "size": "XL",
+        "mixed_swipes": 120,
+        "view_events": 120,
+        "parallel_feed_requests": 16
+      },
+      {
+        "gender": "womenswear",
+        "scenario": "daily",
+        "complete_outfits": 3
+      },
+      {
+        "gender": "womenswear",
+        "scenario": "office",
+        "complete_outfits": 3
+      },
+      {
+        "gender": "womenswear",
+        "scenario": "evening",
+        "complete_outfits": 3
+      }
+    ],
+    "finished_at": "2026-09-15T05:34:21.971147+00:00"
+  },
+  "smoke": {
+    "checks": [
+      {
+        "concurrent_embedding_writers": 8,
+        "rows": 1
+      },
+      {
+        "gender": "menswear",
+        "size": "XL",
+        "mixed_swipes": 120,
+        "view_events": 120,
+        "parallel_feed_requests": 16
+      },
+      {
+        "gender": "menswear",
+        "scenario": "daily",
+        "complete_outfits": 3
+      },
+      {
+        "gender": "menswear",
+        "scenario": "office",
+        "complete_outfits": 3
+      },
+      {
+        "gender": "menswear",
+        "scenario": "evening",
+        "complete_outfits": 3
+      },
+      {
+        "gender": "womenswear",
+        "size": "XL",
+        "mixed_swipes": 120,
+        "view_events": 120,
+        "parallel_feed_requests": 16
+      },
+      {
+        "gender": "womenswear",
+        "scenario": "daily",
+        "complete_outfits": 3
+      },
+      {
+        "gender": "womenswear",
+        "scenario": "office",
+        "complete_outfits": 3
+      },
+      {
+        "gender": "womenswear",
+        "scenario": "evening",
+        "complete_outfits": 3
+      }
+    ],
+    "outfits": [
+      {
+        "gender": "menswear",
+        "scenario": "daily",
+        "items": [
+          {
+            "title": "Футболка мужская Kappa, Черный",
+            "role": "top"
+          },
+          {
+            "title": "Брюки BAON",
+            "role": "bottom"
+          },
+          {
+            "title": "Кеды кожаные Gary",
+            "role": "shoes"
+          }
+        ]
+      },
+      {
+        "gender": "menswear",
+        "scenario": "daily",
+        "items": [
+          {
+            "title": "Лонгслив на пуговицах хлопковый",
+            "role": "top"
+          },
+          {
+            "title": "Брюки-карго",
+            "role": "bottom"
+          },
+          {
+            "title": "Кеды стеганые",
+            "role": "shoes"
+          }
+        ]
+      },
+      {
+        "gender": "menswear",
+        "scenario": "daily",
+        "items": [
+          {
+            "title": "Футболка мужская Reebok, Черный",
+            "role": "top"
+          },
+          {
+            "title": "Брюки BAON",
+            "role": "bottom"
+          },
+          {
+            "title": "Кеды кожаные",
+            "role": "shoes"
+          }
+        ]
+      },
+      {
+        "gender": "menswear",
+        "scenario": "office",
+        "items": [
+          {
+            "title": "Джемпер кашемировый",
+            "role": "top"
+          },
+          {
+            "title": "Брюки шерстяные",
+            "role": "bottom"
+          },
+          {
+            "title": "Лоферы кожаные",
+            "role": "shoes"
+          }
+        ]
+      },
+      {
+        "gender": "menswear",
+        "scenario": "office",
+        "items": [
+          {
+            "title": "Водолазка шерстяная",
+            "role": "top"
+          },
+          {
+            "title": "Брюки шерстяные",
+            "role": "bottom"
+          },
+          {
+            "title": "Лоферы кожаные",
+            "role": "shoes"
+          }
+        ]
+      },
+      {
+        "gender": "menswear",
+        "scenario": "office",
+        "items": [
+          {
+            "title": "Рубашка Slim Fit хлопковая",
+            "role": "top"
+          },
+          {
+            "title": "Брюки шерстяные",
+            "role": "bottom"
+          },
+          {
+            "title": "Лоферы замшевые",
+            "role": "shoes"
+          }
+        ]
+      },
+      {
+        "gender": "menswear",
+        "scenario": "evening",
+        "items": [
+          {
+            "title": "Рубашка Slim Fit льняная",
+            "role": "top"
+          },
+          {
+            "title": "Брюки BAON",
+            "role": "bottom"
+          },
+          {
+            "title": "Лоферы кожаные",
+            "role": "shoes"
+          }
+        ]
+      },
+      {
+        "gender": "menswear",
+        "scenario": "evening",
+        "items": [
+          {
+            "title": "Рубашка Relaxed Fit шерстяная",
+            "role": "top"
+          },
+          {
+            "title": "Брюки в клетку Spasso",
+            "role": "bottom"
+          },
+          {
+            "title": "Лоферы кожаные",
+            "role": "shoes"
+          }
+        ]
+      },
+      {
+        "gender": "menswear",
+        "scenario": "evening",
+        "items": [
+          {
+            "title": "Рубашка Slim Fit хлопковая",
+            "role": "top"
+          },
+          {
+            "title": "Брюки BAON",
+            "role": "bottom"
+          },
+          {
+            "title": "Лоферы замшевые",
+            "role": "shoes"
+          }
+        ]
+      },
+      {
+        "gender": "womenswear",
+        "scenario": "daily",
+        "items": [
+          {
+            "title": "Лонгслив с принтом, вышивкой и стразами",
+            "role": "top"
+          },
+          {
+            "title": "Брюки хлопковые",
+            "role": "bottom"
+          },
+          {
+            "title": "Лоферы замшевые",
+            "role": "shoes"
+          }
+        ]
+      },
+      {
+        "gender": "womenswear",
+        "scenario": "daily",
+        "items": [
+          {
+            "title": "Поло из фактурного трикотажа на основе вискозы",
+            "role": "top"
+          },
+          {
+            "title": "Зауженные брюки с двойным поясом на кулиске",
+            "role": "bottom"
+          },
+          {
+            "title": "Босоножки замшевые",
+            "role": "shoes"
+          }
+        ]
+      },
+      {
+        "gender": "womenswear",
+        "scenario": "daily",
+        "items": [
+          {
+            "title": "Свитшот-трансформер",
+            "role": "top"
+          },
+          {
+            "title": "Брюки хлопковые",
+            "role": "bottom"
+          },
+          {
+            "title": "Ботинки комбинированные на овчине",
+            "role": "shoes"
+          }
+        ]
+      },
+      {
+        "gender": "womenswear",
+        "scenario": "office",
+        "items": [
+          {
+            "title": "Блуза хлопковая",
+            "role": "top"
+          },
+          {
+            "title": "Брюки из блестящего материала с вискозой в составе",
+            "role": "bottom"
+          },
+          {
+            "title": "Туфли кожаные",
+            "role": "shoes"
+          }
+        ]
+      },
+      {
+        "gender": "womenswear",
+        "scenario": "office",
+        "items": [
+          {
+            "title": "Сарафан BAON",
+            "role": "one_piece"
+          },
+          {
+            "title": "Лоферы кожаные",
+            "role": "shoes"
+          }
+        ]
+      },
+      {
+        "gender": "womenswear",
+        "scenario": "office",
+        "items": [
+          {
+            "title": "Блузка из вискозы EcoVero с геометрическим принтом",
+            "role": "top"
+          },
+          {
+            "title": "Брюки из вискозы",
+            "role": "bottom"
+          },
+          {
+            "title": "Лоферы кожаные на байке",
+            "role": "shoes"
+          }
+        ]
+      },
+      {
+        "gender": "womenswear",
+        "scenario": "evening",
+        "items": [
+          {
+            "title": "Блуза однотонная",
+            "role": "top"
+          },
+          {
+            "title": "Брюки хлопковые",
+            "role": "bottom"
+          },
+          {
+            "title": "Туфли кожаные",
+            "role": "shoes"
+          }
+        ]
+      },
+      {
+        "gender": "womenswear",
+        "scenario": "evening",
+        "items": [
+          {
+            "title": "Рубашка хлопковая",
+            "role": "top"
+          },
+          {
+            "title": "Брюки с эластичным поясом на кулиске",
+            "role": "bottom"
+          },
+          {
+            "title": "Лоферы кожаные",
+            "role": "shoes"
+          }
+        ]
+      },
+      {
+        "gender": "womenswear",
+        "scenario": "evening",
+        "items": [
+          {
+            "title": "Блузка из хлопка и модала с кружевными вставками на рукавах",
+            "role": "top"
+          },
+          {
+            "title": "Брюки однотонные",
+            "role": "bottom"
+          },
+          {
+            "title": "Лоферы кожаные Marienne",
+            "role": "shoes"
+          }
+        ]
+      }
+    ],
+    "complements": [
+      {
+        "gender": "menswear",
+        "anchor": "Брюки мужские Columbia Landroamer Scout Pant, Бежевый",
+        "roles": [
+          "shoes",
+          "top"
+        ],
+        "count": 6
+      },
+      {
+        "gender": "menswear",
+        "anchor": "Брюки мужские Northland, Черный",
+        "roles": [
+          "shoes",
+          "top"
+        ],
+        "count": 6
+      },
+      {
+        "gender": "menswear",
+        "anchor": "Пуховик однотонный",
+        "roles": [
+          "bottom",
+          "shoes",
+          "top"
+        ],
+        "count": 6
+      },
+      {
+        "gender": "menswear",
+        "anchor": "Майка мужская DC Shoes Tank Circle Star, Черный",
+        "roles": [
+          "bottom",
+          "top"
+        ],
+        "count": 6
+      },
+      {
+        "gender": "womenswear",
+        "anchor": "Куртка джинсовая",
+        "roles": [
+          "bottom",
+          "shoes",
+          "top"
+        ],
+        "count": 6
+      },
+      {
+        "gender": "womenswear",
+        "anchor": "Рубашка из вискозы",
+        "roles": [
+          "bottom",
+          "shoes"
+        ],
+        "count": 6
+      },
+      {
+        "gender": "womenswear",
+        "anchor": "Полусапоги MURIAL на меху",
+        "roles": [],
+        "count": 0
+      },
+      {
+        "gender": "womenswear",
+        "anchor": "Джинсы хлопковые",
+        "roles": [
+          "shoes",
+          "top"
+        ],
+        "count": 6
+      }
+    ],
+    "catalog_products": 183545,
+    "result": "passed",
+    "long_test_image_id": "sha256:a136823fe32f6ebbada5e2fc053003b6489cce19768760ee3d28c27e2920ab05",
+    "final_quality_checks": [
+      {
+        "gender": "menswear",
+        "scenario": "daily",
+        "outfits": 3
+      },
+      {
+        "gender": "menswear",
+        "scenario": "office",
+        "outfits": 3
+      },
+      {
+        "gender": "menswear",
+        "scenario": "evening",
+        "outfits": 3
+      },
+      {
+        "gender": "womenswear",
+        "scenario": "daily",
+        "outfits": 3
+      },
+      {
+        "gender": "womenswear",
+        "scenario": "office",
+        "outfits": 3
+      },
+      {
+        "gender": "womenswear",
+        "scenario": "evening",
+        "outfits": 3
+      }
+    ],
+    "dc_shoes_tank_complements": {
+      "count": 6,
+      "roles": [
+        "bottom",
+        "shoes"
+      ]
+    }
+  },
+  "manifest": {
+    "baseline": "da5a0be1ae96b9656ede7d97dee3799ff3b4c5ca",
+    "files": {
+      "backend/Dockerfile": "ac75f0ef9488d4e2a946b95bac9e71814762b92786594f675ed496f8f3c1e096",
+      "backend/README.md": "7bbdbd4fdccde1de3646752a2b22b90ee462df46a0217d773054944dc309829b",
+      "backend/alembic.ini": "3212b5f843eb070ce85f4e5a311fefd99f07dd3c005e5ab4f818d8b87c498451",
+      "backend/alembic/env.py": "28e86ea11c60f80a3a109ee74cb5c2c90c4bbd57d0846cf38da287e79fe53e95",
+      "backend/alembic/script.py.mako": "b90b57b4c7033df7b59247c8abdd4aafde43da4e68c66ec54470b45bea4fdbae",
+      "backend/alembic/versions/20260503_0001_init.py": "3362502642406c98edbe362ee28dbae90e16d1aa32d33c32fa48c822a9250d31",
+      "backend/alembic/versions/20260503_0002_pre_release.py": "dc20dab02762336c6dafe724237192cc20d73e43dc86608f5a63a9c37ef3408f",
+      "backend/alembic/versions/20260505_0003_user_preferences_fields.py": "22d85f6bc4c124469d6577e8f78bb79105ad085ceff1c8f5f2b18c40675794d4",
+      "backend/alembic/versions/20260505_0004_catalog_taste_events.py": "8f98601ec719fee0fd03f441cb98a1f1e16092c2a57cfe6366269f9043aad148",
+      "backend/alembic/versions/20260505_0005_fit_profile_outfits.py": "8c96295b9b05d501b118baf2d4ca214cfbfa5a8d7c3f3c04c1891f8d6aab167f",
+      "backend/alembic/versions/20260505_0006_metric_events.py": "971cef6541c1f33f9b8f87a191c2756589e02d3066ce3a9283769fabe6d32db0",
+      "backend/alembic/versions/20260505_0007_taste_profile_weights.py": "97ba937c5eab0266d9173d6f21c73ef4f40f86060a73b614230d74b16618c954",
+      "backend/alembic/versions/20260505_0008_user_product_state.py": "af6e41c35ee1008711bf9b781395dc2868a1aa8d953eb9d05bd808cb9e18d953",
+      "backend/alembic/versions/20260505_0009_product_fields.py": "1c61bcb143a19d8d58682337521856e46400dff7bf8ec2371f9bac0898649bbc",
+      "backend/alembic/versions/20260506_0010_affiliate_catalog.py": "32baa9eba260fd44be082cb08c87cf2bbcf6f9e4bc34a397cba1587dec10bddb",
+      "backend/alembic/versions/20260506_0011_recommendation_cache_fit_interests.py": "77aaf377cd2fb9d2a3748d6a3b74d2776db8ce1e378a02eb81ebbda0d1e3439b",
+      "backend/alembic/versions/20260513_0012_catalog_feed_product_columns.py": "403045713bf1ae38492f4df65e2c49c9af2ba085e20acf6a56af6ed4245a0214",
+      "backend/alembic/versions/20260513_0013_sync_run_skipped.py": "ef41711d0fc4e42798e2cf83ebf27a4fc9a99379cbe69b42d7950720b3970750",
+      "backend/alembic/versions/20260514_0013_product_impressions.py": "faf5a7f335025a20c3dca6c25b388166c0dc1a4aeda7e8a1e7e12c222e9f07fd",
+      "backend/alembic/versions/20260524_0014_style_profile_onboarding_v2.py": "d4a53b04d67537915a918d2b18e0726ea60b6d07336a2c69bbc370ec5fae4cd0",
+      "backend/alembic/versions/20260824_0015_event_weights_float.py": "924d6c1b0c408b392b70e91deab268aefdc78d3b096633d51c32995b30cab7e4",
+      "backend/alembic/versions/20260824_0016_user_taste_features.py": "60a2a1c4f4857d5c25bdf01b44c3da1a7cd7561c634ecc8c824c3ab62f0ae691",
+      "backend/alembic/versions/20260824_0017_user_taste_feature_decay_clock.py": "e9c4f2c95a5705c3cbe6056e44716e16b12ea382f5034148b59d829b32696907",
+      "backend/alembic/versions/20260824_0018_product_impression_ranking_metadata.py": "08ebbb636a1affaa5950d0a123be773a51cde6254da9e1316bdd080bccc933a5",
+      "backend/alembic/versions/20260824_0019_product_embeddings.py": "7b3e0d0fe5559df5805b3c9bf5478106a530a587ecc7da967279fbdb58230c56",
+      "backend/app/__init__.py": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6",
+      "backend/app/api/__init__.py": "c5dca48e352cdb6738b1440bd942bb923d2f98f4c1788ca112fa7f06ced427c0",
+      "backend/app/api/admin_products.py": "23c557e78e3fa60150c38943f835e56bd3b6a90aa24de3936cc0949191daeb7a",
+      "backend/app/api/affiliate.py": "f2190883ed49121ad71173daf65fbeb5908022723051a0a04fcd330e4291ec22",
+      "backend/app/api/analytics.py": "636c5dfa6fe6c6f8880b8cabf30a6ddddba543c5a5d3439293009fa3c5ea4194",
+      "backend/app/api/auth.py": "63cee8a4d28208d370d7d6fbf8e9256dc686bb210b083176aa1b4d357b4d815b",
+      "backend/app/api/catalog_admin.py": "299b1b507fac8113f83431465487fe6b589bc57ab02e53549d582f60c8c665b3",
+      "backend/app/api/deps.py": "98bf20093b6daab3badb65b8c87b9ce1dcb0d748fecde189efb3be2cb27eff0a",
+      "backend/app/api/fit_profile.py": "40a95ccda24f9c95b0f988157b5098f9d5275a691edf2bfee2ea712167df5353",
+      "backend/app/api/media_proxy.py": "03b7a0d2c1acdb4cc8f41e509e495c0b0f2c557cb8996a7ad23c0970e2349282",
+      "backend/app/api/onboarding.py": "49cd4e0bb40b8bf64808c90e9ee5b3c4f17f5305295be5219c4fe7733245c0e8",
+      "backend/app/api/outfits.py": "f1fb34fca218589ef885f150485d1aaf4dc93ddc27529f9744de7bb776fb60ac",
+      "backend/app/api/products.py": "ca95d0ed96ed0356fabb302898b2e4e2310a72721684ab1d01e7b1ec1faeb1b7",
+      "backend/app/api/profile.py": "c9a76472a97a41db00697190afae361b16e712053d4ee8510219036b7ea58c2d",
+      "backend/app/api/recommendations.py": "91191cb2db038d6d85cb26590a5072f991a82f31cfbd9ddf345880c223884dab",
+      "backend/app/api/seed.py": "2e8c6f939d28c367b9dc15f23f5467f68b491bc67d405a38e286e23a23f6ded6",
+      "backend/app/api/serializers.py": "949dbfbe27682321fb02f9b37dc51c298f39ea8bc30607bd721ca456d22b2545",
+      "backend/app/api/taste_profile.py": "e49e6421cbe0b86f98b3d27b2fe098d190ce8fbe7e8665ce5643bc6b95b15de7",
+      "backend/app/api/upload_utils.py": "afa8c94e8f4c5af0f7dda6d626253a48628997766af8f23a105237d0eaf7abc8",
+      "backend/app/business.py": "ee2b9ce12be7364fc271011d6ed0390cf35e66bf5afc473712b863d835c0c2f0",
+      "backend/app/catalog_demo.py": "c0cedd5a81d89c591c39009be304e41413b2b18656ed74813f6fed73e77ecfd5",
+      "backend/app/catalog_normalize.py": "e401d883ffc493d9e8a87101dbbda28faa55f8afb0424c6505f2542ce59b7bb6",
+      "backend/app/config.py": "4f70a1901bf74fa9ad09263591dbe1d3d18ad384d61ef093579fc7a9f15fba2e",
+      "backend/app/db.py": "7568cde33d70059592302d23000ca871e6ad0e38d9058b74d556987ec81e6639",
+      "backend/app/evaluation/__init__.py": "ffa34fb2b93f5a98b71298fb222619bfc41c1faabd88a12f5569fd3a80e6734f",
+      "backend/app/evaluation/offline_benchmark.py": "8aee4b3e3de313e6ea0b1b80c4cf9b9a9cabcf030b5d85cf9d3015fd9e00e894",
+      "backend/app/evaluation/ranking_metrics.py": "56dea67dc8d57a784a753379c19330c3ba5b037e2a388a2bc67d14fbb08a5fdb",
+      "backend/app/integrations/admitad/__init__.py": "10cfcad8a8e7c08d9e11720bc4f5844f740e2f0e06c0a7fcc4a69419e4d7fa2b",
+      "backend/app/integrations/admitad/clothing_rules.py": "0335c68ba3db7b5a646fe579b264e7ccfaee833655b80cc84a6404f337fe9f3b",
+      "backend/app/integrations/admitad/feed_parser.py": "27cd225423c0baef8feeafc06153b1df89bd476f5d616e9c62276f7337d08e14",
+      "backend/app/integrations/admitad/source_presets.py": "b1c5273f80178bdc802a6cfe730c2c9f39c4ab4aae4d4bbba19684a0e3568de3",
+      "backend/app/main.py": "aef3593854e1156048de1ca1660f8ba867e2f267ffb78deae5172d3ec29befad",
+      "backend/app/middleware.py": "c2caf8c790f77a73a7292dd54ef6f1436e90f174706f985c854b33fa279471cf",
+      "backend/app/models.py": "433a3acc0cdd164e7f4a5f8e516a8d743c712370ca08700f5e81cf6a52cf8a68",
+      "backend/app/schemas/__init__.py": "69529704a4a163418e4a0d8755865703909e6d3247ee071146340d58beb98b47",
+      "backend/app/schemas/api_product.py": "2436a6f5a611794668a9a2ed4538d70a7bd5a9a1e81c212d6ec4d33ce37e6522",
+      "backend/app/schemas/photo_analysis.py": "dbb937ccb569740fb8183763be837854ba38624fd1b33116dbd0ac6ad437e32b",
+      "backend/app/scripts/__init__.py": "cc0dcd33e9cbf9d836b238c50ea07d02a7efa07945343a575d2aba3a021252da",
+      "backend/app/scripts/import_products.py": "fd4e4dbda38e637179ca04a257d15c1944d24530dc48ee2e60ad706d823fbbc2",
+      "backend/app/scripts/index_product_embeddings.py": "77d4d8216cfb990e80bd19763dc69501d605d9026f3821f1cb484fe4bb62f45d",
+      "backend/app/scripts/sync_partner_feed.py": "f1a9bffd5319865a6ac7f7d37b2f34fd8322362f76e7f3feeaa1296b97193a30",
+      "backend/app/services/__init__.py": "7d0288da403dd2ae831c2a99c9d71f0ff33e604ecb0cb621e3a4cbba4d1906ff",
+      "backend/app/services/candidate_retrieval_service.py": "32576a961bf8b049c203508cd0a9c550a789fe41b0a784435aa15f307064db71",
+      "backend/app/services/catalog/__init__.py": "370b2ae25ff621130206e30b7702887091f5d93c69ca457d2c646779e92ce2d9",
+      "backend/app/services/catalog/admitad_bootstrap.py": "1fe45f0398fccb1224e07c77228b721b33083e623f64b40ff6909d8fcea59e6c",
+      "backend/app/services/catalog/affiliate_link_service.py": "657029c308a3289a5c48fc2b11c98773e78f6b8f4d0048dc81f079093f68af20",
+      "backend/app/services/catalog/catalog_quality.py": "b13329b64e836b94e3c2736c8e5e037975942d60cdb30e8864cca6cecdae4aa2",
+      "backend/app/services/catalog/feed_import_service.py": "7df7a36ba2e81c9e49ad4102b4529970210c7cdf646347653f1c24a2323b7732",
+      "backend/app/services/catalog/feed_row_mapper.py": "6def4185b95d51ec2a0e95be95bf12fc12ec593ba5fdd82d5b3459c5daf7b4c9",
+      "backend/app/services/catalog/normalized_product.py": "06c355af672ad19ce2f4d43fa6bd55b03dc07a785b6c967246714d1d29239bf9",
+      "backend/app/services/catalog/product_normalizer.py": "f1a9ccbe5b146f2a192fd3b67517a7a27cc7058841cf3dee60cf102a5774a304",
+      "backend/app/services/catalog/renormalize_service.py": "feaa668a42076eb64adb6ee01d7d92e8d2b82640371637f51be1f1789d0fbfcb",
+      "backend/app/services/catalog/rule_filters.py": "f23f81922b3b07832271ba52cfaf819121f877dd603403c014a0a34e831decc7",
+      "backend/app/services/catalog/style_tagger.py": "902aadb0173d1d79472f32b06640f7569d354bb231440f9c0c0e937deaf73e8a",
+      "backend/app/services/embedding_service.py": "3ebb793f0db0062ef1a21c0d20203b6cb32caf7ca6daed415bb949de1d0c920d",
+      "backend/app/services/feed_filters.py": "c7309458fb0ebf04a38e96b427e087de20c0294d76eefb8fab69e5cb877bdb0f",
+      "backend/app/services/mie_scoring.py": "b7c6a19be7d49f936afddf297478ed314d6f29996ed7d493f4c4c0235024613d",
+      "backend/app/services/onboarding_service.py": "85efe6d5627f80c4bd4e2e31b00923af54f9ce087887449f0987942b46323029",
+      "backend/app/services/outfit_engine_v2.py": "9cfb5fa2df0130da1aaa98a82afe6b1046f5776f3a5730678fdf51136c30531d",
+      "backend/app/services/outfit_service.py": "b2f61ed752081356037aea898350b15753f3e90d83b3b211b8aadc905945e922",
+      "backend/app/services/photo_analysis.py": "19690452788cba725ff07feb7031920b7c894d5fa21362797755fdabf2cd3008",
+      "backend/app/services/product_analytics_service.py": "ad6bae4871d79246891bbc3d65eb34af9202d671188d673b5c50f65b88869998",
+      "backend/app/services/recommendation_cache_service.py": "e6a45a3cedb713779a5d78652274d7a4c53274f9895f7ba1d6869fc8c8f7155e",
+      "backend/app/services/recommendation_config.py": "52ca9fc73456cc70dd32b9efb995e9897dab200b1d886104f436da866789d911",
+      "backend/app/services/recommendation_engine.py": "0e7e6aeecedd903a22d06d6ad3b06e6660003ea81a88cf7b3b53c3ca7937535c",
+      "backend/app/services/recommendation_service.py": "ef3e685f29d3ed8a0240ce34ec1fdc3bcb1939c1676ae714e4642a6ae95bc4b4",
+      "backend/app/services/style_analysis_service.py": "6a1397dd9460a1fc39720f6f506f8e8909ae0f304fccc00e10097f6ff3cafc6a",
+      "backend/app/services/user_twin_service.py": "914a1869332089136c626002725bd6e8cd7427760229a41a7f352d4d7160b439",
+      "backend/app/services/visual_analysis_service.py": "a5c492ca8a5b62cb23eb0f50babd21345a4aeeb616b0cf6ada40fa425f628e8d",
+      "backend/requirements.txt": "5eba1ed318658f2fe54d9136849138694c7fb7f3e5da087432cd890a7615f1b9",
+      "backend/scripts/entrypoint.sh": "479cb493220f50b163a55499433b3c069757bd541705c2b89e538468765b58a2",
+      "backend/test_feeds/befree_sample.xml": "8b4c4492ff6c8e6c9bd0b897a975c31df4bf2094139b3601310eeb8514d97b38",
+      "backend/test_feeds/osnovnoi_products_20260515_001507.csv": "32994852f2742d4c15599ac71f6ad47742ed35715fffdec61ef7c89ac1778c4f",
+      "backend/tests/recommendation_benchmark/__init__.py": "bbdb44f32ab6920cb120618e8c3dbab7131203adcc931d35491931aec938d9b4",
+      "backend/tests/recommendation_benchmark/test_offline_benchmark.py": "8cfcecd8757959148aceb6af248d0fa8528f420724b63254f5c883d695f651dd",
+      "backend/tests/recommendation_benchmark/test_ranking_metrics.py": "6c622f2f74bc62383ef24e3db0890124aa38bb2d1dc7e705c9219b82752d84b7",
+      "backend/tests/test_admitad_csv_import.py": "0784cbfdd1a824c83d90739c004e09e9c9c9e825fb01ee0544769bdaddb770d8",
+      "backend/tests/test_candidate_retrieval.py": "180ce03d855818a4ae3f19c1abe9460470fdb42040aeb554c03b4d13de9a458b",
+      "backend/tests/test_catalog_import.py": "27ddb008763dc57afeaddf0774152ec6cb52172760e80b8f74f41bf9d046f483",
+      "backend/tests/test_embedding_service.py": "ed5e46d7ee5280e090ec2239a4d760b27ffab2f40a62d1bf3b65bf2e38e8575a",
+      "backend/tests/test_feed_filters.py": "71d9967cb4dfacd5ef21987dd3842238e68ff4035be82ec9e154860ae602aee8",
+      "backend/tests/test_feedback_semantics.py": "3a86fe710e9031c425caa44644223cf9fd19831c1d2d2982c4a64f262fb1ce53",
+      "backend/tests/test_gender_filters.py": "64185a1125280ff1d8d3c9a7ec663d4bfe67d025d38c4745f3700f5527c19ed3",
+      "backend/tests/test_mie_scoring.py": "89bbf61492c1a771e8f2be4e41e740cebea58b4b0cda3abaf23cd9c18f15b528",
+      "backend/tests/test_outfit_engine_v2.py": "46c07daa2e4545eb85abee8fa19544f2941920b50efc6dc3c17cde20e214a7c3",
+      "backend/tests/test_product_analytics.py": "d670b5df7a2189a9d968a079b73011b7e4c34c912ed1790e314c2e5f47bdb07d",
+      "backend/tests/test_recommendation_exclusions.py": "d49ccae36d00423d775d17b155a0c5cba98fff5d713b928c091184488b4b181f",
+      "backend/tests/test_recommendation_v3.py": "ac0a940c1cadeb01c1523d963e780d6522c23159d7c2f1a540d213db76ea992c",
+      "backend/tests/test_user_twin_service.py": "e69acd492aaa45c0ff08cb93d27ec36dfe054b98f113e4d355a700f1207be4cb",
+      "backend/app/services/outfit_quality.py": "93e78c65cc199788a3a0bd3e03dccb8a746348fa093eac3dcff487391adbbb1e",
+      "backend/app/services/product_identity.py": "9e2f1ae16db43f9b4bd9ecb54867e7aa6cad7b7723e7f0f57b88afeca59b0d22",
+      "backend/app/services/catalog_filters.py": "953c05ccdbcd2fa7a0619f0c2450b2e143ac405566de23f411220fe7b81e9df8",
+      "backend/tests/test_catalog_device_regressions.py": "8e95223264c26d1d564d16a1c74b9274dd485f9761fef283101975d2d0b76f14",
+      "backend/scripts/repair_catalog_gender.py": "ec318dbd04952e31b78cbd03c84e0e53db6ead1c83d9f5ee39a678c1da8503bb",
+      "backend/app/services/catalog_audience.py": "fbd634ce3bd108ffea942423a26084a8c1797a9a356ed438aff26de79c4ac863",
+      "backend/app/services/garment_roles.py": "405c78ccb3b9701547343fe8c4f6889690cc17ba0f165e1463c1dbd706b25a2c",
+      "backend/app/services/product_complements.py": "b21f9b2659668ad7d602eac96f827b45fa5632a04c5f89451a2b298b4a7d3b40",
+      "backend/tests/test_styling_regressions.py": "76ed75ab1436b5b8e19d45c60a5913c8750fac4b4e99452bf07c0c9b70e7025c",
+      "backend/.dockerignore": "6a5ece7bd8e904242e2921fe51c1434673403a86893f641d35ab3dda5b015cd4"
+    }
+  },
+  "cleanup": {
+    "temporary_test_database_removed": true,
+    "test_secrets_removed": true,
+    "production_containers_preserved": true
+  }
+}

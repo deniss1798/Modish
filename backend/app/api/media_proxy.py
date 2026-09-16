@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import ipaddress
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 
 import httpx
 from fastapi import APIRouter, HTTPException, Query
@@ -52,10 +52,9 @@ def _host_allowed_for_proxy(hostname: str) -> bool:
     "befree.ru",
     "lamoda.ru",
     "lmcdn.ru",
-    "picsum.photos",
-    "fastly.picsum.photos",
-    "placehold.co",
-    "dummyimage.com",
+    "baon.ru", "vipavenue.ru", "sportmaster.ru", "demix.ru",
+    "sela.ru", "fablestore.ru", "mongolshop.ru", "tsum.com",
+    "serginnetti.ru", "aimclo.ru", "postmeridiem-brand.com", "shoppinglive.ru",
   )
   return any(h == s or h.endswith("." + s) for s in allowed_suffixes)
 
@@ -70,30 +69,35 @@ async def proxy_image(
   host = (parsed.hostname or "").strip()
   if not _host_allowed_for_proxy(host):
     raise HTTPException(status_code=403, detail="Хост не разрешён для прокси")
-  headers = _upstream_headers(url)
   try:
-    async with httpx.AsyncClient(
-      timeout=httpx.Timeout(35.0, connect=25.0),
-      follow_redirects=True,
-      limits=httpx.Limits(max_keepalive_connections=5, max_connections=10),
-    ) as client:
-      r = await client.get(url, headers=headers)
+    async with httpx.AsyncClient(timeout=httpx.Timeout(10.0, connect=5.0), follow_redirects=False) as client:
+      target = url
+      for attempt in range(5):
+        parsed = urlparse(target)
+        if parsed.scheme != "https" or parsed.port not in (None, 443) or parsed.username or not _host_allowed_for_proxy(parsed.hostname or ""):
+          raise HTTPException(status_code=403, detail="Адрес изображения не разрешён")
+        async with client.stream("GET", target, headers=_upstream_headers(target)) as r:
+          if r.status_code in (301, 302, 303, 307, 308):
+            target = urljoin(target, r.headers.get("location", ""))
+            continue
+          if r.status_code != 200:
+            raise HTTPException(status_code=502, detail="Магазин не отдал фотографию")
+          ct = (r.headers.get("content-type") or "").split(";")[0].lower()
+          if not (ct.startswith("image/") or ct == "application/octet-stream"):
+            raise HTTPException(status_code=502, detail="Магазин вернул не фотографию")
+          chunks = bytearray()
+          async for chunk in r.aiter_bytes():
+            chunks.extend(chunk)
+            if len(chunks) > _MAX_BYTES:
+              raise HTTPException(status_code=502, detail="Фотография слишком большая")
+          body = bytes(chunks)
+          if not body:
+            raise HTTPException(status_code=502, detail="Пустая фотография")
+          break
+      else:
+        raise HTTPException(status_code=502, detail="Слишком много перенаправлений")
   except httpx.RequestError as e:
-    raise HTTPException(status_code=502, detail=f"Upstream error: {e!s}") from e
-
-  if r.status_code != 200:
-    raise HTTPException(status_code=502, detail=f"Upstream HTTP {r.status_code}")
-
-  body = r.content
-  if len(body) > _MAX_BYTES:
-    raise HTTPException(status_code=502, detail="Слишком большой ответ")
-
-  ct = (r.headers.get("content-type") or "image/jpeg").split(";")[0].strip().lower()
-  if "text/html" in ct or "application/json" in ct:
-    raise HTTPException(status_code=502, detail="Upstream вернул не изображение")
-  if ct and not ct.startswith("image/") and "octet-stream" not in ct:
-    # Некоторые CDN отдают application/octet-stream
-    ct = "image/jpeg"
+    raise HTTPException(status_code=502, detail="Не удалось загрузить фотографию магазина") from e
 
   return Response(
     content=body,

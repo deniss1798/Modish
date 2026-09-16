@@ -5,7 +5,6 @@ import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/modish_widgets.dart';
 import '../catalog/brands_screen.dart';
 import '../settings/settings_screen.dart';
-import '../subscription/plus_screen.dart';
 import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -18,8 +17,12 @@ class ProfileScreen extends StatelessWidget {
     final plus = b['is_plus_available'] == true || '${b['status']}' == 'active';
     final summary = controller.summary;
     final fit = controller.fitProfile;
-    final suitableColors = List<String>.from(summary['suitable_colors'] as List? ?? const []);
-    final styleLines = List<String>.from(summary['style_direction_human'] as List? ?? const []);
+    final suitableColors = List<String>.from(
+      summary['suitable_colors'] as List? ?? const [],
+    );
+    final styleLines = List<String>.from(
+      summary['style_direction_human'] as List? ?? const [],
+    );
     final styleTags = _styleTags(styleLines, fit);
     final size = (fit['clothing_size'] ?? 'M').toString();
     final budgetMax = fit['budget_max'];
@@ -27,7 +30,8 @@ class ProfileScreen extends StatelessWidget {
     final name = controller.email.split('@').first;
 
     final feedCount = controller.productFeed.length;
-    final savedCount = controller.savedProductRows.length + controller.savedOutfits.length;
+    final savedCount =
+        controller.savedProductRows.length + controller.savedOutfits.length;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
@@ -39,7 +43,10 @@ class ProfileScreen extends StatelessWidget {
               CircleAvatar(
                 radius: 32,
                 backgroundColor: AppColors.chipBg,
-                child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?', style: AppTextStyles.displaySm),
+                child: Text(
+                  name.isNotEmpty ? name[0].toUpperCase() : '?',
+                  style: AppTextStyles.displaySm,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -48,16 +55,29 @@ class ProfileScreen extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Text(name, style: AppTextStyles.displaySm.copyWith(fontSize: 22)),
+                        Text(
+                          name,
+                          style: AppTextStyles.displaySm.copyWith(fontSize: 22),
+                        ),
                         if (plus) ...[
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.accent,
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: const Text('Plus', style: TextStyle(color: AppColors.onAccent, fontSize: 11, fontWeight: FontWeight.w600)),
+                            child: const Text(
+                              'Plus',
+                              style: TextStyle(
+                                color: AppColors.onAccent,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
                         ],
                       ],
@@ -86,7 +106,12 @@ class ProfileScreen extends StatelessWidget {
             children: [
               Text('Мой стиль', style: AppTextStyles.sectionTitle),
               const SizedBox(height: 14),
-              Text('Цвета', style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w600)),
+              Text(
+                'Цвета',
+                style: AppTextStyles.caption.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -99,25 +124,42 @@ class ProfileScreen extends StatelessWidget {
                         ),
                       ]
                     : suitableColors.take(5).map((c) {
-                        return Chip(label: Text(c), backgroundColor: AppColors.chipBg, side: BorderSide.none);
+                        return Chip(
+                          label: Text(c),
+                          backgroundColor: AppColors.chipBg,
+                          side: BorderSide.none,
+                        );
                       }).toList(),
               ),
               const SizedBox(height: 14),
-              Text('Предпочтения', style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w600)),
+              Text(
+                'Предпочтения',
+                style: AppTextStyles.caption.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: styleTags.map((s) {
-                  return Chip(label: Text(s), backgroundColor: AppColors.chipBg, side: BorderSide.none);
+                  return Chip(
+                    label: Text(s),
+                    backgroundColor: AppColors.chipBg,
+                    side: BorderSide.none,
+                  );
                 }).toList(),
               ),
               const SizedBox(height: 14),
               Row(
                 children: [
-                  Expanded(child: _InfoBox(label: 'Размер', value: size)),
+                  Expanded(
+                    child: _InfoBox(label: 'Размер', value: size),
+                  ),
                   const SizedBox(width: 10),
-                  Expanded(child: _InfoBox(label: 'Бюджет', value: budgetLabel)),
+                  Expanded(
+                    child: _InfoBox(label: 'Бюджет', value: budgetLabel),
+                  ),
                 ],
               ),
             ],
@@ -152,27 +194,13 @@ class ProfileScreen extends StatelessWidget {
               ),
               const Divider(color: AppColors.line),
               MenuTile(
-                icon: Icons.history,
-                title: 'История просмотров',
-                onTap: () => controller.setTab(0),
-              ),
-              const Divider(color: AppColors.line),
-              MenuTile(
                 icon: Icons.storefront_outlined,
                 title: 'Бренды',
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => BrandsScreen(controller: controller)),
-                ),
-              ),
-              const Divider(color: AppColors.line),
-              MenuTile(
-                icon: Icons.workspace_premium_outlined,
-                title: 'Modish Plus',
-                subtitle: '129 ₽ / месяц',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => PlusScreen(controller: controller)),
+                  MaterialPageRoute(
+                    builder: (_) => BrandsScreen(controller: controller),
+                  ),
                 ),
               ),
               const Divider(color: AppColors.line),
@@ -181,7 +209,9 @@ class ProfileScreen extends StatelessWidget {
                 title: 'Настройки',
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => SettingsScreen(controller: controller)),
+                  MaterialPageRoute(
+                    builder: (_) => SettingsScreen(controller: controller),
+                  ),
                 ),
               ),
               const Divider(color: AppColors.line),
@@ -208,11 +238,16 @@ List<String> _styleTags(List<String> styleLines, Map<String, dynamic> fit) {
     'minimal': 'Минимализм',
     'streetwear': 'Streetwear',
   };
-  final scenarios = List<String>.from(fit['style_scenarios'] as List? ?? const []);
+  final scenarios = List<String>.from(
+    fit['style_scenarios'] as List? ?? const [],
+  );
   if (scenarios.isNotEmpty) {
     return scenarios.map((s) => labels[s] ?? s).take(6).toList();
   }
-  final short = styleLines.where((s) => s.trim().isNotEmpty && s.length <= 28).take(6).toList();
+  final short = styleLines
+      .where((s) => s.trim().isNotEmpty && s.length <= 28)
+      .take(6)
+      .toList();
   if (short.isNotEmpty) return short;
   return const ['Минимализм', 'Casual'];
 }

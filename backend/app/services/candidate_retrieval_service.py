@@ -16,6 +16,10 @@ from ..catalog_normalize import letter_size_index, normalize_category, normalize
 from ..models import FitProfile, Product, RecommendationEventV2, TasteProfile, User
 from .embedding_service import retrieve_embedding_candidates
 from .mie_scoring import TasteFeatureMap
+from .catalog_filters import CatalogFilters
+from .catalog.rule_filters import product_gender_compatible
+from .catalog_audience import adult_catalog_conditions, product_is_adult
+from .catalog_scope import fashion_catalog_conditions, product_is_fashion
 
 
 SCENARIO_CATEGORIES: dict[str, set[str]] = {
@@ -47,6 +51,8 @@ def _base_conditions(
   min_price: int,
 ) -> list:
   conds = [
+    *adult_catalog_conditions(),
+    *fashion_catalog_conditions(),
     Product.is_active == 1,
     Product.is_available == 1,
     Product.is_deleted_from_feed == 0,
@@ -120,12 +126,11 @@ def _fit_gender_condition(fit: FitProfile | None):
   gender = (fit.gender_target or "").strip().lower()
   if gender not in {"menswear", "womenswear"}:
     return None
-  return or_(
-    Product.gender_target == gender,
-    Product.gender_target == "unisex",
-    Product.gender_target.is_(None),
-    Product.gender_target == "",
-  )
+  # Existing rows are repaired by scripts/repair_catalog_gender.py at release.
+  # Imports persist the same resolver's result. Keep this indexed gate cheap;
+  # authoritative merchant metadata is checked again before returning a card.
+  return Product.gender_target.in_([gender, "unisex"])
+
 
 
 def _norm_values(values: set[str]) -> set[str]:
@@ -199,6 +204,8 @@ def _add_rows(
   for product in rows:
     if not product or not product.id:
       continue
+    if not product_is_adult(product) or not product_is_fashion(product):
+      continue
     result.sources_by_product_id.setdefault(product.id, set()).add(source_name)
     if product.id in seen:
       continue
@@ -220,11 +227,28 @@ def retrieve_candidates(
   scenario: str = "daily",
   max_candidates: int = 700,
   min_price: int = 500,
+  filters: CatalogFilters | None = None,
 ) -> CandidateRetrievalResult:
   exclude = {str(pid) for pid in (exclude_product_ids or set()) if str(pid).strip()}
   base = _base_conditions(source=source, exclude_product_ids=exclude, min_price=min_price)
   max_candidates = max(50, min(1500, int(max_candidates)))
   result = CandidateRetrievalResult(products=[])
+  gender_cond = _fit_gender_condition(fit)
+  if gender_cond is not None:
+    base.append(gender_cond)
+
+  if filters and filters.active:
+    # Select from the catalog, not the current page. Explicit filters never relax.
+    query = _ordered_recent(select(Product).where(*base, *filters.sql_conditions()))
+    for product in db.execute(query.execution_options(yield_per=300)).scalars():
+      if not product_gender_compatible(product, fit.gender_target if fit else None):
+        continue
+      if not filters.matches(product):
+        continue
+      _add_rows(result, [product], source_name="filters", max_candidates=max_candidates)
+      if len(result.products) >= max_candidates:
+        break
+    return result
 
   feature_values = _merge_feature_values(
     _positive_feature_values(taste_features),

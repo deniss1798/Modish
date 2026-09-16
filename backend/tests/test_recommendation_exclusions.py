@@ -27,7 +27,7 @@ def _product(
     brand="test-brand",
     category="shirt",
     price=1990,
-    image_url="https://example.test/image.jpg",
+    image_url=f"https://example.test/{product_id}.jpg",
     product_url="https://example.test/product",
     affiliate_url="https://example.test/affiliate",
     group_id=group_id,
@@ -112,6 +112,22 @@ class RecommendationExclusionTests(unittest.TestCase):
     self.assertNotIn(self.p1.id, ids)
     self.assertNotIn(self.p2.id, ids)
     self.assertIn(self.p4.id, ids)
+
+  def test_feed_deduplicates_images_even_without_group_ids(self) -> None:
+    self.p2.group_id = None
+    self.p2.image_url = self.p1.image_url + "?width=600"
+    self.db.flush()
+    feed = generate_feed(self.db, self.user, limit=10)
+    ids = {item.product.id for item in feed}
+    self.assertEqual(len(ids & {self.p1.id, self.p2.id}), 1)
+    hidden_feed = generate_feed(self.db, self.user, limit=10, exclude_product_ids={self.p1.id})
+    self.assertNotIn(self.p2.id, {item.product.id for item in hidden_feed})
+
+  def test_accessories_not_restored_by_empty_feed_fallbacks(self) -> None:
+    for p in [self.p1, self.p2, self.p3, self.p4]:
+      p.category = "аксессуары"
+    self.db.flush()
+    self.assertEqual(generate_feed(self.db, self.user, limit=10), [])
 
 
 if __name__ == "__main__":

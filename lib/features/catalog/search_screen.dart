@@ -21,7 +21,7 @@ class _SearchScreenState extends State<SearchScreen> {
   bool _loading = false;
 
   static const _recent = ['бомбер', 'джинсы', 'сумка'];
-  static const _popular = ['Верхняя одежда', 'Обувь', 'Платья', 'Сумки'];
+  static const _popular = ['Верхняя одежда', 'Обувь', 'Платья', 'Брюки'];
 
   @override
   void dispose() {

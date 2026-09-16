@@ -25,6 +25,7 @@ from .api.profile import router as profile_router
 from .api.recommendations import router as recommendations_router
 from .api.taste_profile import router as taste_profile_router
 from .middleware import RateLimitMiddleware, RequestLogMiddleware
+from .log_redaction import install_log_redaction
 from .services.recommendation_engine import ensure_style_profile
 from .services.visual_analysis_service import generate_style_visual
 
@@ -32,6 +33,7 @@ logging.basicConfig(
   level=logging.INFO,
   format="%(asctime)s %(levelname)s %(name)s %(message)s",
 )
+install_log_redaction()
 
 app = FastAPI(title="Modish API", version="1.0.0-alpha")
 

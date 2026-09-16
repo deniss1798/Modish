@@ -6,6 +6,7 @@ from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -13,7 +14,8 @@ from sqlalchemy.orm import Session
 from .. import business
 from ..models import StyleProfile, User
 from ..services.recommendation_engine import ensure_style_profile, ensure_taste_profile
-from .deps import create_access_token, get_db, hash_password, verify_password
+from .deps import create_access_token, get_db, hash_password, verify_password, auth_scheme, user_from_token
+from ..services.auth_sessions import issue_session, valid_session, token_hash
 from .seed import seed_recommendations
 from .serializers import as_user_payload
 
@@ -27,8 +29,45 @@ class AuthRequest(BaseModel):
 
 class TokenResponse(BaseModel):
   access_token: str
+  refresh_token: str
   token_type: str = "bearer"
   user: dict[str, Any]
+
+
+def session_response(db, user):
+  refresh = issue_session(db, user.id)
+  db.commit()
+  return TokenResponse(access_token=create_access_token(user.id), refresh_token=refresh, user=as_user_payload(user))
+
+
+class RefreshRequest(BaseModel):
+  refresh_token: str = Field(min_length=32, max_length=256)
+
+
+@router.post('/auth/session', response_model=TokenResponse)
+def start_session(db: Session = Depends(get_db),
+    credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme)):
+  return session_response(db, user_from_token(credentials, db))
+
+
+@router.post('/auth/refresh', response_model=TokenResponse)
+def refresh(payload: RefreshRequest, db: Session = Depends(get_db)):
+  session = valid_session(db, payload.refresh_token)
+  user = db.get(User, session.user_id)
+  if user is None:
+    raise HTTPException(status_code=401, detail='Сессия истекла. Войдите снова.')
+  return TokenResponse(access_token=create_access_token(user.id),
+      refresh_token=payload.refresh_token, user=as_user_payload(user))
+
+
+@router.post('/auth/logout')
+def logout(payload: RefreshRequest, db: Session = Depends(get_db)):
+  from ..models import AuthSession
+  session = db.execute(select(AuthSession).where(AuthSession.token_hash == token_hash(payload.refresh_token))).scalar_one_or_none()
+  if session:
+    session.revoked_at = datetime.now(timezone.utc)
+    db.commit()
+  return {'ok': True}
 
 
 @router.post("/auth/register", response_model=TokenResponse)
@@ -69,7 +108,7 @@ def register(payload: AuthRequest, db: Session = Depends(get_db)) -> TokenRespon
   ensure_taste_profile(db, user.id)
   business.rebuild_user_summary(db, user.id)
   db.commit()
-  return TokenResponse(access_token=create_access_token(user.id), user=as_user_payload(user))
+  return session_response(db, user)
 
 
 @router.post("/auth/login", response_model=TokenResponse)
@@ -81,4 +120,4 @@ def login(payload: AuthRequest, db: Session = Depends(get_db)) -> TokenResponse:
   ensure_style_profile(db, user.id)
   ensure_taste_profile(db, user.id)
   db.commit()
-  return TokenResponse(access_token=create_access_token(user.id), user=as_user_payload(user))
+  return session_response(db, user)

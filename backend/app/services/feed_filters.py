@@ -66,6 +66,17 @@ def product_passes_size(product: Product, fit: FitProfile | None) -> bool:
   return max_avail >= user_idx - 1
 
 
+def product_has_confirmed_size(product: Product, fit: FitProfile | None) -> bool:
+  """Unknown/vendor numeric sizing must not be labelled as a confirmed XL."""
+  from .garment_roles import product_role
+  if fit is None or product_role(product) == "shoes":
+    return False
+  requested = normalize_size_token(str(fit.clothing_size or ""))
+  return bool(requested and requested in {
+    normalize_size_token(str(size)) for size in (product.available_sizes or [])
+  })
+
+
 def product_passes_interest_categories(product: Product, fit: FitProfile | None) -> bool:
   if fit is None or not fit.interest_categories:
     return True

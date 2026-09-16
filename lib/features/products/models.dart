@@ -32,11 +32,16 @@ class Product {
     this.description,
     this.sizeOriginal,
     this.colorOriginal,
+    this.source = '',
+    this.groupId = '',
+    this.vendorCode = '',
+    this.outfitSlot,
   });
 
   final String id;
   final String title;
   final String brand;
+
   /// Подпись витрины с бэкенда (Lamoda, бренд и т.д.), без URL.
   final String shopLabel;
   final String category;
@@ -45,6 +50,7 @@ class Product {
   final int? discountPercent;
   final String currency;
   final String imageUrl;
+
   /// Все URL картинок из фида (если бэкенд отдаёт).
   final List<String> imageUrls;
   final String productUrl;
@@ -56,11 +62,34 @@ class Product {
   final String? description;
   final String? sizeOriginal;
   final String? colorOriginal;
+  final String source;
+  final String groupId;
+  final String vendorCode;
+  final String? outfitSlot;
+
+  Set<String> get identityKeys {
+    final keys = <String>{'id:$id'};
+    for (final pair in [('group_id', groupId), ('vendor_code', vendorCode)]) {
+      if (source.isNotEmpty &&
+          pair.$2.isNotEmpty &&
+          !{'0', 'none', 'null', 'unknown'}.contains(pair.$2.toLowerCase())) {
+        keys.add('${pair.$1}:${source.toLowerCase()}:${pair.$2}');
+      }
+    }
+    final uri = Uri.tryParse(
+      imageUrl.startsWith('//') ? 'https:$imageUrl' : imageUrl,
+    );
+    if (uri != null && uri.host.isNotEmpty && uri.path.isNotEmpty) {
+      final query = uri.hasQuery && !uri.path.split('/').last.contains('.')
+          ? '?${uri.query}'
+          : '';
+      keys.add('image:${uri.host.toLowerCase()}${uri.path}$query');
+    }
+    return keys;
+  }
 
   /// Ссылка для открытия витрины (affiliate приоритетнее).
   String get outboundUrl {
-    final a = (affiliateUrl ?? '').trim();
-    if (a.isNotEmpty) return a;
     return productUrl.trim();
   }
 
@@ -73,14 +102,19 @@ class Product {
       return t;
     }
 
-    final fromFeed = imageUrls.map(norm).where((e) => e.isNotEmpty).toList();
+    final fromFeed = {
+      imageUrl,
+      ...imageUrls,
+    }.map(norm).where((e) => e.isNotEmpty).toList();
     if (fromFeed.isNotEmpty) return fromFeed;
     final one = norm(imageUrl);
     return one.isEmpty ? const <String>[] : <String>[one];
   }
 
   static String _shopLabelFromJson(Map<String, dynamic> json) {
-    final sl = (json['shop_label'] ?? json['shopLabel'] ?? '').toString().trim();
+    final sl = (json['shop_label'] ?? json['shopLabel'] ?? '')
+        .toString()
+        .trim();
     if (sl.isNotEmpty) return sl;
     final b = (json['brand'] ?? '').toString().trim();
     if (b.isNotEmpty) return b;
@@ -102,15 +136,22 @@ class Product {
       currency: (json['currency'] ?? 'RUB').toString(),
       imageUrl: (json['image_url'] ?? json['imageUrl'] ?? '').toString(),
       imageUrls: _imageUrlsFromJson(json['image_urls'] ?? json['imageUrls']),
-      productUrl: (json['product_url'] ?? '').toString(),
+      productUrl: (json['outbound_url'] ?? json['product_url'] ?? '')
+          .toString(),
       affiliateUrl: (json['affiliate_url'] ?? json['affiliateUrl'])?.toString(),
       originalUrl: (json['original_url'] ?? json['originalUrl'])?.toString(),
       colors: List<String>.from((json['colors'] as List?) ?? const []),
-      availableSizes: List<String>.from((json['available_sizes'] as List?) ?? const []),
+      availableSizes: List<String>.from(
+        (json['available_sizes'] as List?) ?? const [],
+      ),
       categoryName: json['category_name']?.toString(),
       description: json['description']?.toString(),
       sizeOriginal: json['size_original']?.toString(),
       colorOriginal: json['color_original']?.toString(),
+      source: (json['source'] ?? '').toString().trim(),
+      groupId: (json['group_id'] ?? '').toString().trim(),
+      vendorCode: (json['vendor_code'] ?? '').toString().trim(),
+      outfitSlot: json['outfit_slot']?.toString(),
     );
   }
 }
@@ -129,7 +170,9 @@ class FeedCard {
     final p = json['product'];
     final rs = json['reasons'];
     return FeedCard(
-      product: p is Map<String, dynamic> ? Product.fromApi(p) : Product.fromApi({}),
+      product: p is Map<String, dynamic>
+          ? Product.fromApi(p)
+          : Product.fromApi({}),
       reason: (json['reason'] ?? 'Подходит под ваш профиль').toString(),
       reasons: rs is List ? rs.map((e) => e.toString()).toList() : const [],
     );

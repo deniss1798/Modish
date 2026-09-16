@@ -218,11 +218,11 @@ def build_query_embedding(user_embedding: UserTasteEmbedding) -> list[float] | N
 class SqlAlchemyVectorStore:
   def upsert_product_embedding(self, db: Session, *, product: Product, embedding: list[float], text: str) -> ProductEmbedding:
     now = _now()
-    row = db.execute(
-      select(ProductEmbedding).where(ProductEmbedding.product_id == product.id)
-    ).scalar_one_or_none()
-    if row is None:
-      row = ProductEmbedding(
+    if db.get_bind().dialect.name == "postgresql":
+      from sqlalchemy.dialects.postgresql import insert
+    else:
+      from sqlalchemy.dialects.sqlite import insert
+    values = dict(
         id=str(uuid4()),
         product_id=product.id,
         embedding_model=EMBEDDING_MODEL,
@@ -232,17 +232,13 @@ class SqlAlchemyVectorStore:
         text_snapshot=text,
         created_at=now,
         updated_at=now,
-      )
-      db.add(row)
-    else:
-      row.embedding_model = EMBEDDING_MODEL
-      row.embedding_dim = len(embedding)
-      row.embedding_json = list(embedding)
-      row.text_hash = embedding_text_hash(text)
-      row.text_snapshot = text
-      row.updated_at = now
-    db.flush()
-    return row
+    )
+    stmt = insert(ProductEmbedding).values(**values)
+    stmt = stmt.on_conflict_do_update(index_elements=[ProductEmbedding.product_id],
+      set_={key: getattr(stmt.excluded, key) for key in values if key not in {"id", "product_id", "created_at"}})
+    db.execute(stmt)
+    return db.execute(select(ProductEmbedding).where(ProductEmbedding.product_id == product.id)
+      .execution_options(populate_existing=True)).scalar_one()
 
   def search_similar_products(
     self,
@@ -364,9 +360,15 @@ def build_user_taste_embedding(
     for product in db.execute(select(Product).where(Product.id.in_(product_ids))).scalars().all()
   }
   embeddings: dict[str, list[float]] = {}
+  cached = {e.product_id: e for e in db.execute(select(ProductEmbedding).where(ProductEmbedding.product_id.in_(product_ids))).scalars()}
   for product_id, product in products.items():
-    row = ensure_product_embedding(db, product)
-    embeddings[product_id] = list(row.embedding_json or [])
+    # Reading a feed must not insert shared product rows. The background indexer
+    # persists embeddings; cheap missing/stale vectors are computed in memory.
+    text = product_embedding_text(product)
+    row = cached.get(product_id)
+    embeddings[product_id] = (list(row.embedding_json or [])
+      if row and row.embedding_model == EMBEDDING_MODEL and row.text_hash == embedding_text_hash(text)
+      else embed_text(text))
 
   positive_vectors: list[tuple[list[float], float]] = []
   negative_vectors: list[tuple[list[float], float]] = []

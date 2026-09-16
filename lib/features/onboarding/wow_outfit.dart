@@ -1,3 +1,5 @@
+import '../outfits/outfit_presentation.dart';
+
 /// Образ из Wow-moment онбординга (`POST /onboarding/complete`).
 class WowOutfit {
   const WowOutfit({
@@ -5,12 +7,14 @@ class WowOutfit {
     required this.title,
     this.explanation,
     required this.itemCount,
+    required this.apiData,
   });
 
   final String id;
   final String title;
   final String? explanation;
   final int itemCount;
+  final Map<String, dynamic> apiData;
 
   factory WowOutfit.fromApi(Map<String, dynamic> json) {
     final products = json['products'];
@@ -20,18 +24,14 @@ class WowOutfit {
     if (count == 0 && items is Map) count = items.length;
 
     final dir = (json['style_direction'] ?? '').toString();
-    final reason = (json['reason'] ?? '').toString();
-    final title = dir.isNotEmpty
-        ? dir
-        : reason.isNotEmpty
-            ? reason
-            : 'Персональный образ';
+    final title = outfitScenarioLabel(dir);
 
     return WowOutfit(
       id: '${json['id'] ?? ''}',
       title: title,
       explanation: json['explanation'] as String?,
       itemCount: count,
+      apiData: json,
     );
   }
 }
