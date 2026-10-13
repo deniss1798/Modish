@@ -1,0 +1,94 @@
+{
+  "scope": "public_primary_read_only_size_contract_research",
+  "client_date": "2026-10-12",
+  "production_modified": false,
+  "feed_requests": false,
+  "supplier_messages_sent": false,
+  "backend_mapping_enabled": false,
+  "evidence": [
+    {
+      "url": "https://support.admitad.ru/article/ru/206.html",
+      "title": "Admitad advertiser product-feed specification",
+      "facts": {
+        "offer_available_scope": "product available or on order",
+        "variant_merging_permitted_without_ReTag": true,
+        "size_system_required_or_default_documented": false,
+        "csv_parameter_names_can_vary": true
+      },
+      "inference": "Generic format does not establish RU/EU semantics of Shopping Live size tokens or ensure every merged variant is in stock."
+    },
+    {
+      "url": "https://www.shoppinglive.ru/p/krossovki-iz-oleney-kozhi-na-podkladke-iz-iskusstvennogo-meh-195449",
+      "merchant_article": "195449",
+      "brand": "Caprice",
+      "size_labels": [
+        "36",
+        "37",
+        "38",
+        "39",
+        "40",
+        "41",
+        "42"
+      ],
+      "size_system_label": null,
+      "public_json_ld_scripts": 0,
+      "chosen_size": "39",
+      "chosen_color": "Черный",
+      "chosen_variant_availability_text": "Нет в наличии",
+      "size_buttons_have_disabled_class": true,
+      "html_disabled_attribute": false,
+      "insole_lengths_cm": {
+        "36": 23.5,
+        "37": 24.1,
+        "38": 24.7,
+        "39": 25.6,
+        "40": 26.0,
+        "41": 26.7,
+        "42": 27.4
+      },
+      "visible_guide_insole_allowance_cm": [
+        0.5,
+        1.0
+      ],
+      "variant_offer_id_in_size_button_dom": null,
+      "inference": "Numerical selection and insole measurement are visible. Size system and export offer binding are not proven; size-button existence is not variant stock."
+    },
+    {
+      "url": "https://www.shoppinglive.ru/p/vysokie-krossovki-s-innovatsionnoy-tehnologiey-high-soft-215501",
+      "merchant_article": "215501",
+      "brand": "Ara",
+      "size_labels": [
+        "36",
+        "37",
+        "38",
+        "39",
+        "40",
+        "41",
+        "42",
+        "43",
+        "44"
+      ],
+      "size_system_label": null,
+      "insole_lengths_cm": {
+        "36": 23.6,
+        "37": 24.2,
+        "38": 24.7,
+        "39": 25.3,
+        "40": 25.8,
+        "41": 26.4,
+        "42": 26.9,
+        "43": 27.5,
+        "44": 28.0
+      },
+      "inference": "Model measurements and customary-size advice do not label a national size system."
+    }
+  ],
+  "conclusion": {
+    "bulk_size_mapping_supported": false,
+    "bounded_model_size_mapping_supported": false,
+    "centimeter_guide_can_be_displayed_as_model_evidence": true,
+    "centimeter_guide_can_be_used_to_assert_eu_or_ru_exact_fit": false,
+    "unknown_size_discovery_can_be_separate_policy": true,
+    "discovery_fulfills_exact_fit_acceptance": false
+  }
+}

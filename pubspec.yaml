@@ -1,5 +1,5 @@
 name: modish
-description: "A new Flutter project."
+description: "Modish — персональный подбор одежды и образов."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+8
+version: 1.0.0+13
 
 environment:
   sdk: ^3.11.1
@@ -59,10 +59,12 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: assets/icon/app_icon.png
-  adaptive_icon_background: "#141414"
+  adaptive_icon_background: "#000000"
   adaptive_icon_foreground: assets/icon/app_icon.png
+  adaptive_icon_foreground_inset: 16
   min_sdk_android: 21
   remove_alpha_ios: true
+  background_color_ios: "#000000"
 
 # Экран при запуске (вместо белого Flutter). Генерация: dart run flutter_native_splash:create
 flutter_native_splash:
@@ -89,6 +91,16 @@ flutter:
   assets:
     - assets/images/
     - assets/icon/
+    - assets/fonts/Inter-OFL.txt
+    - assets/fonts/PlayfairDisplay-OFL.txt
+
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter.ttf
+    - family: PlayfairDisplay
+      fonts:
+        - asset: assets/fonts/PlayfairDisplay.ttf
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

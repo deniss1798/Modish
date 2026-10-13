@@ -111,6 +111,7 @@ def analytics_summary(db: Session, *, days: int = 7) -> dict[str, Any]:
     "clicks": clicks,
     "saves": saves,
     "ctr_percent": round(ctr, 2),
+    "basis": "Raw AffiliateClick URL requests / ProductImpression API deliveries, including prefetch and repeats; not unique views or confirmed browser launches. Use /analytics/first-session for first-20 rates.",
     "top_saved": [
       {"product_id": r[0], "title": r[1], "brand": r[2], "count": int(r[3])} for r in top_saved
     ],

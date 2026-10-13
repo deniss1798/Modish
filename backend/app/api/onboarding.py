@@ -11,8 +11,9 @@ from sqlalchemy.orm import Session
 
 from .. import business
 from ..api.serializers import outfit_to_api
-from ..models import Product, StyleProfile
+from ..models import ActivationSession, FitProfile, Product, StyleProfile
 from ..schemas.api_product import product_to_api
+from ..schemas.fit_sizes import FitSizesInput
 from ..services.onboarding_service import (
   apply_photo_analysis_pending,
   apply_photo_confirm,
@@ -30,6 +31,62 @@ from sqlalchemy import select
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 
 MAX_PHOTO_BYTES = business.MAX_PHOTO_BYTES
+
+
+class ActivationPreferencesRequest(BaseModel):
+  age_group: str
+  clothing_size: str = Field(max_length=16)
+  shoe_size: str = Field(max_length=16)
+  clothing_size_system: str | None = Field(default=None, pattern='^(RU|EU|US|UK|LETTER)$')
+  shoe_size_system: str | None = Field(default=None, pattern='^(EU|RU|US|UK)$')
+  styles: list[str] = Field(min_length=2, max_length=3)
+  price_segment: str
+  height: int = Field(ge=50, le=250)
+  sizes: FitSizesInput | None = None
+
+
+class StyleSwipeRequest(BaseModel):
+  product_id: str = Field(max_length=36)
+  reaction: str = Field(pattern='^(like|dislike|unavailable)$')
+
+
+def _activation(db, user):
+  from ..services.activation_service import lock_user
+  lock_user(db, user)
+  session = db.get(ActivationSession, user.id)
+  if session is None:
+    raise HTTPException(status_code=409, detail='Сначала укажите размеры, бюджет и стили.')
+  return session
+
+
+@router.post('/preferences')
+def activation_preferences(payload: ActivationPreferencesRequest, db: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme)):
+  from ..services.activation_service import configure
+  user = user_from_token(credentials, db)
+  configure(db, user, age_group=payload.age_group, clothing_size=payload.clothing_size,
+      shoe_size=payload.shoe_size, styles=payload.styles, price_segment=payload.price_segment,
+      clothing_size_system=payload.clothing_size_system, shoe_size_system=payload.shoe_size_system,
+      height=payload.height, sizes=payload.sizes.model_dump(exclude_unset=True) if payload.sizes else None)
+  db.commit()
+  return {'status': 'ready_for_swipe', 'activation_version': 1}
+
+
+@router.get('/style-swipe')
+def get_style_swipe(db: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme)):
+  from ..services.activation_service import swipe_deck
+  user = user_from_token(credentials, db)
+  result = swipe_deck(db, user, _activation(db, user))
+  db.commit()
+  return result
+
+
+@router.post('/style-swipe')
+def post_style_swipe(payload: StyleSwipeRequest, db: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme)):
+  from ..services.activation_service import swipe_feedback
+  user = user_from_token(credentials, db)
+  result = swipe_feedback(db, user, _activation(db, user), payload.product_id, payload.reaction)
+  db.commit()
+  return result
 
 
 class OnboardingStep1Request(BaseModel):
@@ -75,7 +132,21 @@ def get_onboarding_status(
 ) -> dict[str, Any]:
   user = user_from_token(credentials, db)
   profile = _profile(db, user.id)
-  return onboarding_status(profile)
+  from ..services.activation_service import legacy_has_taste, rated_count, MIN_SWIPES, SWIPE_TARGET
+  activation = db.get(ActivationSession, user.id)
+  fit = db.scalar(select(FitProfile).where(FitProfile.user_id == user.id))
+  result = onboarding_status(profile)
+  from ..services.fit_size_profile import missing_fit_requirements, size_profile_to_api
+  missing_fit = missing_fit_requirements(fit)
+  result.update(activation_version=1, completed=bool(activation.completed_at) if activation else legacy_has_taste(db, user, profile),
+      recommendation_features=['fit_sizes_v1', 'shopping_intent_v1'] + (['context_v1', 'dna_ranking_v1', 'personalized_search_v1'] if activation else []),
+      preferences_ready=activation is not None and not missing_fit, rated=rated_count(activation) if activation else 0,
+      minimum=MIN_SWIPES, target=SWIPE_TARGET, clothing_size=fit.clothing_size if fit else None,
+      shoe_size=activation.shoe_size if activation else None)
+  result.update(fit_confirmation_required=bool(missing_fit), missing_fit_requirements=missing_fit,
+      size_profile=size_profile_to_api(fit), height=fit.height_cm if fit and not 'height' in missing_fit else None)
+  db.commit()
+  return result
 
 
 @router.patch("/step1")
@@ -178,15 +249,16 @@ def onboarding_complete(
   db: Session = Depends(get_db),
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> dict[str, Any]:
-  """Wow moment: 3–4 готовых образа + завершение онбординга."""
+  """Complete only after durable taste learning; retries return the same Wow."""
   user = user_from_token(credentials, db)
-  profile = _profile(db, user.id)
-  if profile.onboarding_step < 2 and not profile.body_shape:
-    raise HTTPException(status_code=400, detail="Завершите шаг с фото")
+  from ..services.activation_service import complete_wow
   try:
-    result = complete_onboarding_wow(db, user=user, profile=profile, outfit_count=count)
+    result = complete_wow(db, user, _activation(db, user))
     db.commit()
+  except HTTPException:
+    db.rollback()
+    raise
   except Exception as exc:
     db.rollback()
-    raise HTTPException(status_code=500, detail=f"Не удалось собрать образы: {exc!s}") from exc
+    raise HTTPException(status_code=500, detail="Не удалось собрать образы. Повторите попытку — оценки уже сохранены.") from exc
   return result

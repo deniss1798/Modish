@@ -20,6 +20,8 @@ from .catalog_filters import CatalogFilters
 from .catalog.rule_filters import product_gender_compatible
 from .catalog_audience import adult_catalog_conditions, product_is_adult
 from .catalog_scope import fashion_catalog_conditions, product_is_fashion
+from .catalog.stock_freshness import fresh_stock_conditions, stock_observation_problem
+from .product_eligibility import evaluate_eligibility
 
 
 SCENARIO_CATEGORIES: dict[str, set[str]] = {
@@ -51,6 +53,7 @@ def _base_conditions(
   min_price: int,
 ) -> list:
   conds = [
+    *fresh_stock_conditions(),
     *adult_catalog_conditions(),
     *fashion_catalog_conditions(),
     Product.is_active == 1,
@@ -177,18 +180,18 @@ def _fit_budget_condition(fit: FitProfile | None):
   budget_max = int(fit.budget_max or 0)
   if budget_max <= 0:
     return None
-  return Product.price <= int(budget_max * 1.05)
+  return Product.price <= budget_max
 
 
 def _fit_size_condition(fit: FitProfile | None):
-  if fit is None:
-    return None
-  user_size = normalize_size_token((fit.clothing_size or "").strip())
-  user_idx = letter_size_index(user_size)
-  if user_idx is None:
-    return None
-  acceptable = {size for size in LETTER_SIZES if (letter_size_index(size) or -1) >= user_idx - 1}
-  return _json_list_empty_or_contains_any(Product.available_sizes, acceptable)
+  from .fit_size_profile import size_profile_to_api
+  values = set()
+  for choice in size_profile_to_api(fit)['sizes'].values():
+    if choice.get('state') != 'confirmed':
+      continue
+    value, system = choice['value'], choice['system']
+    values.update((value, system+value, system+' '+value, system+':'+value))
+  return _json_list_contains_any(Product.available_sizes, values) if values else Product.id.is_(None)
 
 
 def _add_rows(
@@ -197,22 +200,34 @@ def _add_rows(
   *,
   source_name: str,
   max_candidates: int,
+  fit: FitProfile | None,
+  source_limit: int = 250,
 ) -> None:
   if len(result.products) >= max_candidates:
     return
   seen = {p.id for p in result.products}
+  admitted = 0
   for product in rows:
     if not product or not product.id:
       continue
+    if not evaluate_eligibility(product, fit).eligible:
+      continue
     if not product_is_adult(product) or not product_is_fashion(product):
       continue
+    if stock_observation_problem(product):
+      continue
     result.sources_by_product_id.setdefault(product.id, set()).add(source_name)
+    admitted += 1
     if product.id in seen:
+      if admitted >= source_limit:
+        return
       continue
     if len(result.products) >= max_candidates:
       return
     result.products.append(product)
     seen.add(product.id)
+    if admitted >= source_limit:
+      return
 
 
 def retrieve_candidates(
@@ -233,6 +248,12 @@ def retrieve_candidates(
   base = _base_conditions(source=source, exclude_product_ids=exclude, min_price=min_price)
   max_candidates = max(50, min(1500, int(max_candidates)))
   result = CandidateRetrievalResult(products=[])
+  from .fit_size_profile import size_profile_to_api
+  if not any(s.get('state') == 'confirmed' for s in size_profile_to_api(fit)['sizes'].values()):
+    return result
+  budget_cond = _fit_budget_condition(fit)
+  if budget_cond is not None:
+    base.append(budget_cond)
   gender_cond = _fit_gender_condition(fit)
   if gender_cond is not None:
     base.append(gender_cond)
@@ -245,7 +266,7 @@ def retrieve_candidates(
         continue
       if not filters.matches(product):
         continue
-      _add_rows(result, [product], source_name="filters", max_candidates=max_candidates)
+      _add_rows(result, [product], source_name="filters", max_candidates=max_candidates, fit=fit)
       if len(result.products) >= max_candidates:
         break
     return result
@@ -287,9 +308,9 @@ def retrieve_candidates(
     taste_conds.append(price_cond)
   if taste_conds:
     rows = db.execute(
-      _ordered_recent(select(Product).where(and_(*base), or_(*taste_conds))).limit(300)
-    ).scalars().all()
-    _add_rows(result, rows, source_name="taste", max_candidates=max_candidates)
+      _ordered_recent(select(Product).where(and_(*base), or_(*taste_conds))).execution_options(yield_per=300)
+    ).scalars()
+    _add_rows(result, rows, source_name="taste", max_candidates=max_candidates, fit=fit)
 
   fit_conds = list(base)
   gender_cond = _fit_gender_condition(fit)
@@ -314,8 +335,8 @@ def retrieve_candidates(
         Product.category_name.in_(list(interest_categories)),
       )
     )
-  rows = db.execute(_ordered_recent(select(Product).where(and_(*fit_conds))).limit(250)).scalars().all()
-  _add_rows(result, rows, source_name="fit", max_candidates=max_candidates)
+  rows = db.execute(_ordered_recent(select(Product).where(and_(*fit_conds))).execution_options(yield_per=300)).scalars()
+  _add_rows(result, rows, source_name="fit", max_candidates=max_candidates, fit=fit)
 
   scenario_norm = (scenario or "daily").strip().lower() or "daily"
   scenario_categories = SCENARIO_CATEGORIES.get(scenario_norm, set())
@@ -325,9 +346,9 @@ def retrieve_candidates(
     scenario_conds.append(Product.category_name.in_(list(scenario_categories)))
   scenario_conds.append(func.lower(Product.occasion) == scenario_norm)
   rows = db.execute(
-    _ordered_recent(select(Product).where(and_(*base), or_(*scenario_conds))).limit(200)
-  ).scalars().all()
-  _add_rows(result, rows, source_name="scenario", max_candidates=max_candidates)
+    _ordered_recent(select(Product).where(and_(*base), or_(*scenario_conds))).execution_options(yield_per=300)
+  ).scalars()
+  _add_rows(result, rows, source_name="scenario", max_candidates=max_candidates, fit=fit)
 
   rows = retrieve_embedding_candidates(
     db,
@@ -337,7 +358,7 @@ def retrieve_candidates(
     source=source,
     min_price=min_price,
   )
-  _add_rows(result, rows, source_name="embedding", max_candidates=max_candidates)
+  _add_rows(result, rows, source_name="embedding", max_candidates=max_candidates, fit=fit)
 
   since = datetime.now(timezone.utc) - timedelta(days=60)
   popular_ids = [
@@ -361,7 +382,7 @@ def retrieve_candidates(
     rows = db.execute(
       select(Product).where(and_(*base), Product.id.in_(popular_ids)).limit(120)
     ).scalars().all()
-    _add_rows(result, rows, source_name="popular", max_candidates=max_candidates)
+    _add_rows(result, rows, source_name="popular", max_candidates=max_candidates, fit=fit)
 
   top_categories = set(list(categories)[:6])
   exploration_conds = list(base)
@@ -371,9 +392,9 @@ def retrieve_candidates(
     # TODO(MIE): replace random() with bucket/hash sampling before catalog scale-up.
     select(Product).where(and_(*exploration_conds)).order_by(func.random()).limit(120)
   ).scalars().all()
-  _add_rows(result, rows, source_name="exploration", max_candidates=max_candidates)
+  _add_rows(result, rows, source_name="exploration", max_candidates=max_candidates, fit=fit)
 
-  rows = db.execute(_ordered_recent(select(Product).where(and_(*base))).limit(250)).scalars().all()
-  _add_rows(result, rows, source_name="fallback", max_candidates=max_candidates)
+  rows = db.execute(_ordered_recent(select(Product).where(and_(*base))).execution_options(yield_per=300)).scalars()
+  _add_rows(result, rows, source_name="fallback", max_candidates=max_candidates, fit=fit)
 
   return result

@@ -1,0 +1,265 @@
+{
+  "scope": "offline_synthetic_reproductions_and_checked_in_aggregate_reports",
+  "checked_at": "2026-10-09T05:49:10.913364+00:00",
+  "production_modified": false,
+  "network_requests": false,
+  "db_opened": false,
+  "baseline_evidence": {
+    "shoe_counts": {
+      "unknown_or_unavailable": 9351
+    },
+    "shoe_samples": [
+      {
+        "sizes": [
+          "37"
+        ],
+        "original": "37",
+        "system": null,
+        "raw_size_fields": {
+          "param_размер": "37",
+          "sizes": "37"
+        }
+      },
+      {
+        "sizes": [
+          "36"
+        ],
+        "original": "36",
+        "system": null,
+        "raw_size_fields": {
+          "param_размер": "36",
+          "sizes": "36"
+        }
+      }
+    ],
+    "aggregate_label_merges_system_and_stock_failure": true,
+    "full_raw_field_inventory_available_locally": false,
+    "note": "9351 is a system/stock aggregate, not evidence that 9351 stock signals are missing."
+  },
+  "cases": {
+    "explicit_integer_control": {
+      "parsed_size_fields": {
+        "sizes": "38",
+        "size_system": "EU"
+      },
+      "available_sizes": [
+        "38"
+      ],
+      "availability_status": "in_stock",
+      "size_system": "EU",
+      "details": [
+        {
+          "raw_size": "38",
+          "normalized_size": "38",
+          "size_system": "EU",
+          "category": "обувь",
+          "merchant_id": "synthetic_size_evidence_probe",
+          "availability": "available",
+          "reason": null,
+          "resolver_version": "size_resolver_v1"
+        }
+      ],
+      "matches": {
+        "38": true
+      }
+    },
+    "integer_without_system": {
+      "parsed_size_fields": {
+        "sizes": "38"
+      },
+      "available_sizes": [
+        "38"
+      ],
+      "availability_status": "in_stock",
+      "size_system": null,
+      "details": [
+        {
+          "raw_size": "38",
+          "normalized_size": "38",
+          "size_system": null,
+          "category": "обувь",
+          "merchant_id": "synthetic_size_evidence_probe",
+          "availability": "available",
+          "reason": "size_system_unknown",
+          "resolver_version": "size_resolver_v1"
+        }
+      ],
+      "matches": {
+        "38": false
+      }
+    },
+    "scalar_yml_decimal_comma": {
+      "parsed_size_fields": {
+        "param_размер": "7,5",
+        "param_размер_unit": "UK",
+        "param_размер_units": [
+          "UK"
+        ]
+      },
+      "available_sizes": [
+        "7",
+        "5"
+      ],
+      "availability_status": "in_stock",
+      "size_system": "UK",
+      "details": [
+        {
+          "raw_size": "7",
+          "normalized_size": "7",
+          "size_system": "UK",
+          "category": "обувь",
+          "merchant_id": "synthetic_size_evidence_probe",
+          "availability": "available",
+          "reason": null,
+          "resolver_version": "size_resolver_v1"
+        },
+        {
+          "raw_size": "5",
+          "normalized_size": "5",
+          "size_system": "UK",
+          "category": "обувь",
+          "merchant_id": "synthetic_size_evidence_probe",
+          "availability": "available",
+          "reason": null,
+          "resolver_version": "size_resolver_v1"
+        }
+      ],
+      "matches": {
+        "7.5": false,
+        "7": true,
+        "5": true
+      }
+    },
+    "scalar_csv_decimal_comma": {
+      "parsed_size_fields": {
+        "param_size_unit": "UK",
+        "param_размер": "7",
+        "sizes": "7|5"
+      },
+      "available_sizes": [
+        "7",
+        "5"
+      ],
+      "availability_status": "in_stock",
+      "size_system": "UK",
+      "details": [
+        {
+          "raw_size": "7",
+          "normalized_size": "7",
+          "size_system": "UK",
+          "category": "обувь",
+          "merchant_id": "synthetic_size_evidence_probe",
+          "availability": "available",
+          "reason": null,
+          "resolver_version": "size_resolver_v1"
+        },
+        {
+          "raw_size": "5",
+          "normalized_size": "5",
+          "size_system": "UK",
+          "category": "обувь",
+          "merchant_id": "synthetic_size_evidence_probe",
+          "availability": "available",
+          "reason": null,
+          "resolver_version": "size_resolver_v1"
+        }
+      ],
+      "matches": {
+        "7.5": false,
+        "7": true,
+        "5": true
+      }
+    },
+    "incoming_detail_stock_discarded": {
+      "parsed_size_fields": {
+        "sizes": "38",
+        "size_system": "EU",
+        "available_sizes_detailed": [
+          {
+            "size": "38",
+            "size_system": "EU",
+            "availability": "out_of_stock"
+          }
+        ]
+      },
+      "available_sizes": [
+        "38"
+      ],
+      "availability_status": "in_stock",
+      "size_system": "EU",
+      "details": [
+        {
+          "raw_size": "38",
+          "normalized_size": "38",
+          "size_system": "EU",
+          "category": "обувь",
+          "merchant_id": "synthetic_size_evidence_probe",
+          "availability": "available",
+          "reason": null,
+          "resolver_version": "size_resolver_v1"
+        }
+      ],
+      "matches": {
+        "38": true
+      }
+    },
+    "synonymous_positive_detail_states": {
+      "details_input": [
+        {
+          "size": "38",
+          "availability": "available"
+        },
+        {
+          "size": "38",
+          "availability": "in_stock"
+        }
+      ],
+      "resolved": [
+        {
+          "raw_size": "38",
+          "normalized_size": "38",
+          "size_system": "EU",
+          "category": "обувь",
+          "merchant_id": "synthetic",
+          "availability": "unknown",
+          "reason": null,
+          "resolver_version": "size_resolver_v1"
+        }
+      ],
+      "match_38_EU": false
+    },
+    "csv_param_size_system_unrecognized_alias": {
+      "parsed_size_fields": {
+        "param_size_system": "EU",
+        "param_размер": "38",
+        "sizes": "38"
+      },
+      "available_sizes": [
+        "38"
+      ],
+      "availability_status": "in_stock",
+      "size_system": null,
+      "details": [
+        {
+          "raw_size": "38",
+          "normalized_size": "38",
+          "size_system": null,
+          "category": "обувь",
+          "merchant_id": "synthetic_size_evidence_probe",
+          "availability": "available",
+          "reason": "size_system_unknown",
+          "resolver_version": "size_resolver_v1"
+        }
+      ],
+      "matches": {
+        "38": false
+      }
+    }
+  },
+  "limits": [
+    "Synthetic defects are not evidence that those fields or decimal sizes occur in the Shopping Live snapshot.",
+    "No RU/EU/LETTER conversion or merchant-wide size default was inferred.",
+    "Incoming per-size details require a declared feed contract before supporting a schema/alias.",
+    "Full source inventory must check preserved CSV param alongside expanded size/system fields."
+  ]
+}

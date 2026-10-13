@@ -23,28 +23,6 @@ class WelcomeScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Spacer(),
-                  if (MediaQuery.sizeOf(context).height >= 800)
-                    Text(
-                      'Стиль, который\nчувствует вас',
-                      textAlign: TextAlign.center,
-                      style: AppTextStyles.display.copyWith(
-                        color: AppColors.ink,
-                        fontSize: 28,
-                        height: 1.08,
-                      ),
-                    ),
-                  if (MediaQuery.sizeOf(context).height >= 800)
-                    const SizedBox(height: 14),
-                  Text(
-                    'Открывайте вещи. Собирайте образы.\nНаходите своё.',
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.body.copyWith(
-                      color: AppColors.ink.withValues(alpha: 0.88),
-                      fontSize: 15,
-                      height: 1.45,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
                   PrimaryButton(
                     label: 'Войти',
                     onPressed: () => controller.goToAuth(registerMode: false),

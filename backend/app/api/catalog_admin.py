@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from ..catalog_demo import demo_picsum_image_url
 from ..catalog_normalize import normalize_category, normalize_product_colors
 from ..db import SessionLocal
-from ..models import CatalogSyncRun, Product, ProductSource, SourceRule
+from ..models import CatalogRecord, CatalogSyncRun, Product, ProductSource, SourceRule
 from ..services.catalog.admitad_bootstrap import bootstrap_admitad_csv_sources
 from ..services.catalog.feed_import_service import sync_partner_feed, sync_partner_feed_from_text
 
@@ -400,6 +400,66 @@ def admin_catalog_sync_run_get(
   if r is None:
     raise HTTPException(status_code=404, detail="Sync run not found")
   return _sync_run_to_api(r)
+
+
+@router.get("/quality")
+def admin_catalog_quality(
+  source_id: str | None = None,
+  db: Session = Depends(get_db),
+  authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+  _admin_auth(authorization)
+  from ..services.catalog.catalog_records import quality_summary
+  return quality_summary(db, source_id)
+
+
+@router.get("/quarantine")
+def admin_catalog_quarantine(
+  source_id: str | None = None,
+  after_id: str | None = None,
+  limit: int = 50,
+  db: Session = Depends(get_db),
+  authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+  _admin_auth(authorization)
+  query = select(CatalogRecord).where(CatalogRecord.status == "quarantined")
+  if source_id:
+    query = query.where(CatalogRecord.source_id == source_id)
+  if after_id:
+    query = query.where(CatalogRecord.id > after_id)
+  limit = min(200, max(1, limit))
+  records = list(db.scalars(query.order_by(CatalogRecord.id).limit(limit + 1)))
+  more = len(records) > limit
+  records = records[:limit]
+  return {"items": [{"id": r.id, "source_id": r.source_id, "external_id": r.external_id,
+    "product_id": r.product_id, "title": (r.canonical_json or {}).get("title"),
+    "reasons": r.reasons, "normalization_version": r.normalization_version,
+    "processed_at": r.processed_at.isoformat()} for r in records],
+    "next_after_id": records[-1].id if more else None}
+
+
+class ReprocessCatalogBody(BaseModel):
+  dry_run: bool = True
+  limit: int = Field(default=200, ge=1, le=1000)
+  after_id: str | None = Field(default=None, max_length=36)
+
+
+@router.post("/sources/{source_id}/reprocess")
+def admin_catalog_reprocess(
+  source_id: str,
+  payload: ReprocessCatalogBody,
+  db: Session = Depends(get_db),
+  authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+  _admin_auth(authorization)
+  from ..services.catalog.catalog_records import reprocess_records
+  source = db.get(ProductSource, source_id)
+  if source is None:
+    raise HTTPException(status_code=404, detail="Source not found")
+  result = reprocess_records(db, source, **payload.model_dump())
+  if not payload.dry_run:
+    db.commit()
+  return result
 
 
 @router.get("/products/stats")

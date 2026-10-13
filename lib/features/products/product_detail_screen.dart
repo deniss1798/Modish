@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../app.dart';
 import '../../core/network/api_client.dart';
+import '../../core/network/merchant_link.dart';
+import '../../core/presentation/catalog_labels.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/modish_widgets.dart';
@@ -13,10 +14,12 @@ class ProductDetailScreen extends StatefulWidget {
     super.key,
     required this.controller,
     required this.card,
+    this.eventMeta = const {},
   });
 
   final AppController controller;
   final prod.FeedCard card;
+  final Map<String, dynamic> eventMeta;
 
   @override
   State<ProductDetailScreen> createState() => _ProductDetailScreenState();
@@ -32,7 +35,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _card = widget.card;
+    _card = prod.FeedCard(
+      product: widget.card.product,
+      reason: _isMarketingFallback(widget.card.reason)
+          ? ''
+          : widget.card.reason,
+      reasons: widget.card.reasons
+          .where((reason) => !_isMarketingFallback(reason))
+          .toList(growable: false),
+    );
     widget.controller.addListener(_rebuild);
     widget.controller.loadRelatedProducts(_card.product.id);
     _selectedSize = _card.product.availableSizes.isNotEmpty
@@ -46,6 +57,30 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   void _rebuild() {
     if (mounted) setState(() {});
+  }
+
+  void _openRelatedProduct(prod.FeedCard card) {
+    final metadata = <String, dynamic>{
+      'surface': 'product_detail',
+      'placement': 'complement',
+      'reference_product_id': _card.product.id,
+    };
+    widget.controller.sendProductEvent(
+      context,
+      card.product.id,
+      'open_product',
+      meta: metadata,
+    );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductDetailScreen(
+          controller: widget.controller,
+          card: card,
+          eventMeta: metadata,
+        ),
+      ),
+    );
   }
 
   @override
@@ -62,10 +97,20 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     try {
       final m = await widget.controller.api.productById(_card.product.id);
       if (!mounted) return;
+      final latestProduct = prod.Product.fromApi(m);
+      // The product endpoint cannot rerun the original recommendation. Keep its
+      // explanations only while the facts that supported them are unchanged.
+      final keepExplanations =
+          _card.product.recommendationFacts.isNotEmpty &&
+          _sameRecommendationFacts(
+            _card.product.recommendationFacts,
+            latestProduct.recommendationFacts,
+          );
       setState(() {
         _card = prod.FeedCard(
-          product: prod.Product.fromApi(m),
-          reason: _card.reason,
+          product: latestProduct,
+          reason: keepExplanations ? _card.reason : '',
+          reasons: keepExplanations ? _card.reasons : const [],
         );
         _refreshing = false;
       });
@@ -106,6 +151,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             context,
                             p.id,
                             'like',
+                            meta: widget.eventMeta,
                           ),
                     icon: const Icon(Icons.favorite_border),
                   ),
@@ -183,20 +229,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 ),
                               ),
                           ],
-                          const Spacer(),
-                          const Icon(
-                            Icons.star,
-                            size: 16,
-                            color: Color(0xFFD4A017),
-                          ),
-                          const SizedBox(width: 3),
-                          Text(
-                            '4.8',
-                            style: AppTextStyles.caption.copyWith(
-                              color: AppColors.ink,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
                         ],
                       ),
                       const SizedBox(height: 20),
@@ -224,6 +256,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   setState(() => _selectedSize = s),
                               selectedColor: AppColors.accent,
                               labelStyle: TextStyle(
+                                fontFamily: AppFonts.bodyFamily,
                                 color: on ? AppColors.onAccent : AppColors.ink,
                               ),
                             );
@@ -248,7 +281,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           children: colors.map((c) {
                             final on = _selectedColor == c;
                             return ChoiceChip(
-                              label: Text(c),
+                              label: Text(catalogColorLabel(c)),
                               selected: on,
                               onSelected: (_) =>
                                   setState(() => _selectedColor = c),
@@ -310,26 +343,39 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                       const SizedBox(width: 10),
                                   itemBuilder: (context, i) {
                                     final rp = related[i].product;
-                                    return SizedBox(
-                                      width: 80,
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Expanded(
-                                            child: ProductFillImage(
-                                              imageUrl: rp.imageUrl,
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                            ),
+                                    return Semantics(
+                                      button: true,
+                                      label: 'Открыть ${rp.title}',
+                                      child: InkWell(
+                                        key: ValueKey(
+                                          'related-product-${rp.id}',
+                                        ),
+                                        onTap: () =>
+                                            _openRelatedProduct(related[i]),
+                                        borderRadius: BorderRadius.circular(10),
+                                        child: SizedBox(
+                                          width: 80,
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Expanded(
+                                                child: ProductFillImage(
+                                                  imageUrl: rp.imageUrl,
+                                                  showRetry: false,
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                              ),
+                                              Text(
+                                                rp.brand,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: AppTextStyles.caption,
+                                              ),
+                                            ],
                                           ),
-                                          Text(
-                                            rp.brand,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: AppTextStyles.caption,
-                                          ),
-                                        ],
+                                        ),
                                       ),
                                     );
                                   },
@@ -359,6 +405,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 context,
                                 widget.controller,
                                 p.id,
+                                widget.eventMeta,
                               ),
                       ),
                     ],
@@ -371,6 +418,33 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       ),
     );
   }
+}
+
+bool _isMarketingFallback(String reason) => const {
+  '',
+  'Подходит под ваш профиль',
+  'Подобрано под ваш профиль',
+}.contains(reason.trim());
+
+bool _sameRecommendationFacts(Object? previous, Object? latest) {
+  if (previous is Map && latest is Map) {
+    return previous.length == latest.length &&
+        previous.keys.every(
+          (key) =>
+              latest.containsKey(key) &&
+              _sameRecommendationFacts(previous[key], latest[key]),
+        );
+  }
+  if (previous is List && latest is List) {
+    if (previous.length != latest.length) return false;
+    for (var index = 0; index < previous.length; index++) {
+      if (!_sameRecommendationFacts(previous[index], latest[index])) {
+        return false;
+      }
+    }
+    return true;
+  }
+  return previous == latest;
 }
 
 List<Widget> _descriptionWidgets(String? raw) {
@@ -454,29 +528,16 @@ Future<void> _openAffiliateShop(
   BuildContext context,
   AppController controller,
   String productId,
+  Map<String, dynamic> eventMeta,
 ) async {
   try {
-    final res = await controller.api.affiliateClick(productId);
-    final url = res['url']?.toString();
-    if (url == null || url.isEmpty) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Товар временно недоступен')),
-        );
-      }
-      return;
-    }
-    final uri = Uri.parse(url);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      throw Exception('Не удалось открыть браузер. Попробуйте ещё раз.');
-    }
-    if (context.mounted) {
-      try {
-        await controller.api.recordRecommendationEvent(
-          eventType: 'affiliate_click',
-          productId: productId,
-        );
-      } catch (_) {}
+    if (!await openMerchantLink(
+      controller.api,
+      productId,
+      surface: eventMeta['surface'] as String? ?? 'product_detail',
+      contextMeta: eventMeta,
+    )) {
+      throw Exception('Не удалось открыть магазин. Попробуйте ещё раз.');
     }
   } catch (e) {
     if (context.mounted) {

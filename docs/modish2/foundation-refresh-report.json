@@ -1,0 +1,63 @@
+{
+  "sources": [
+    {
+      "code": "baon",
+      "rows": 8697,
+      "created": 243,
+      "updated": 8339,
+      "quarantined": 115,
+      "reasons": {
+        "unsupported_category": 46,
+        "childrenswear": 68,
+        "unrecognized_size": 70,
+        "unknown_gender": 61
+      },
+      "missing": 9934
+    },
+    {
+      "code": "shoppinglive",
+      "rows": 41208,
+      "created": 3494,
+      "updated": 30764,
+      "quarantined": 6950,
+      "reasons": {
+        "unsupported_category": 6599,
+        "unrecognized_size": 4099,
+        "childrenswear": 19,
+        "missing_size": 1
+      },
+      "missing": 17129
+    },
+    {
+      "code": "serginnetti",
+      "rows": 16975,
+      "created": 480,
+      "updated": 15890,
+      "quarantined": 605,
+      "reasons": {
+        "unsupported_category": 602,
+        "unknown_gender": 233,
+        "missing_size": 247,
+        "unrecognized_size": 36
+      },
+      "missing": 1873
+    },
+    {
+      "code": "postmeridiem",
+      "rows": 366,
+      "created": 4,
+      "updated": 255,
+      "quarantined": 107,
+      "reasons": {
+        "unknown_gender": 103,
+        "unrecognized_size": 10,
+        "unsupported_category": 10,
+        "invalid_image_url": 1
+      },
+      "missing": 411
+    }
+  ],
+  "scope": "fresh_four_sources_isolated_clone",
+  "result": "passed",
+  "stale_excluded_in_clone": 139216
+}

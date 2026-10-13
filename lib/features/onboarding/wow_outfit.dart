@@ -24,7 +24,7 @@ class WowOutfit {
     if (count == 0 && items is Map) count = items.length;
 
     final dir = (json['style_direction'] ?? '').toString();
-    final title = outfitScenarioLabel(dir);
+    final title = '${json['title'] ?? outfitScenarioLabel(dir)}';
 
     return WowOutfit(
       id: '${json['id'] ?? ''}',

@@ -4,6 +4,8 @@ from ...catalog_normalize import normalize_category
 from ...models import Product
 from ..catalog_audience import product_is_adult
 from ..catalog_scope import product_is_fashion
+from .affiliate_link_service import _public_web_url
+from .stock_freshness import stock_observation_problem
 
 
 def product_has_purchasable_link(product: Product) -> bool:
@@ -11,7 +13,7 @@ def product_has_purchasable_link(product: Product) -> bool:
   return bool(resolve_outbound_url(product))
 
 
-def product_is_feed_eligible(product: Product) -> bool:
+def product_is_feed_eligible(product: Product, *, checked_at=None) -> bool:
   """Скрываем товары без фото, цены, ссылки или категории."""
   if not product_is_adult(product) or not product_is_fashion(product):
     return False
@@ -19,10 +21,12 @@ def product_is_feed_eligible(product: Product) -> bool:
     return False
   if product.is_deleted_from_feed:
     return False
+  if stock_observation_problem(product, checked_at=checked_at):
+    return False
   if int(product.price or 0) <= 0:
     return False
   img = (product.image_url or "").strip()
-  if not img:
+  if not _public_web_url(img):
     return False
   if not product_has_purchasable_link(product):
     return False

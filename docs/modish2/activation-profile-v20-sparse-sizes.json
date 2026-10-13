@@ -1,0 +1,1042 @@
+{
+  "synthetic": true,
+  "database": "sqlite_memory",
+  "external_calls": "forbidden",
+  "catalogue_products": 3000,
+  "eligible_every": 10,
+  "note": "cProfile overhead included; SQL execute excludes result-fetch/ORM costs. Synthetic fixture cannot predict production PostgreSQL or CPU-quota latency.",
+  "phases": [
+    {
+      "phase": "cold_deck",
+      "seconds_with_profiler": 1.01599,
+      "sql_execute_seconds": 0.018858,
+      "statements": {
+        "SELECT": 21
+      },
+      "returned": 20,
+      "ids_sha256": "a819b1743eec53a8ba40cec32c55673f1924321a5c89d621349dae1463fb767e",
+      "cumulative_top": [
+        {
+          "file": "scripts\\profile_activation_v20.py",
+          "line": 117,
+          "function": "<lambda>",
+          "primitive_calls": 1,
+          "total_calls": 1,
+          "own_seconds": 0.00054,
+          "cumulative_seconds": 1.015921
+        },
+        {
+          "file": "backend\\app\\services\\activation_service.py",
+          "line": 247,
+          "function": "swipe_deck",
+          "primitive_calls": 1,
+          "total_calls": 1,
+          "own_seconds": 0.000102,
+          "cumulative_seconds": 1.0152
+        },
+        {
+          "file": "backend\\app\\services\\activation_service.py",
+          "line": 66,
+          "function": "candidate_pool",
+          "primitive_calls": 1,
+          "total_calls": 1,
+          "own_seconds": 0.003999,
+          "cumulative_seconds": 1.009339
+        },
+        {
+          "file": "backend\\app\\services\\activation_policy.py",
+          "line": 31,
+          "function": "product_ok",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.014332,
+          "cumulative_seconds": 0.732136
+        },
+        {
+          "file": "backend\\app\\services\\product_eligibility.py",
+          "line": 17,
+          "function": "evaluate_eligibility",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.005861,
+          "cumulative_seconds": 0.564461
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\size_resolver.py",
+          "line": 123,
+          "function": "exact_size_match",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.005288,
+          "cumulative_seconds": 0.287753
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\size_resolver.py",
+          "line": 93,
+          "function": "resolve_product_sizes",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.013172,
+          "cumulative_seconds": 0.21722
+        },
+        {
+          "file": "backend\\.venv\\Lib\\site-packages\\sqlalchemy\\engine\\result.py",
+          "line": 526,
+          "function": "iterrows",
+          "primitive_calls": 3010,
+          "total_calls": 3010,
+          "own_seconds": 0.002162,
+          "cumulative_seconds": 0.152418
+        },
+        {
+          "file": "backend\\.venv\\Lib\\site-packages\\sqlalchemy\\orm\\loading.py",
+          "line": 208,
+          "function": "chunks",
+          "primitive_calls": 50,
+          "total_calls": 50,
+          "own_seconds": 0.004175,
+          "cumulative_seconds": 0.152307
+        },
+        {
+          "file": "backend\\app\\services\\fit_size_profile.py",
+          "line": 45,
+          "function": "requested_size_for_product",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.00388,
+          "cumulative_seconds": 0.124622
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\size_resolver.py",
+          "line": 54,
+          "function": "resolve_size",
+          "primitive_calls": 6000,
+          "total_calls": 6000,
+          "own_seconds": 0.014753,
+          "cumulative_seconds": 0.119565
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\rule_filters.py",
+          "line": 91,
+          "function": "product_gender_compatible",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.006738,
+          "cumulative_seconds": 0.103148
+        },
+        {
+          "file": "backend\\.venv\\Lib\\site-packages\\sqlalchemy\\engine\\result.py",
+          "line": 1346,
+          "function": "fetchmany",
+          "primitive_calls": 28,
+          "total_calls": 28,
+          "own_seconds": 3.8e-05,
+          "cumulative_seconds": 0.096962
+        },
+        {
+          "file": "backend\\.venv\\Lib\\site-packages\\sqlalchemy\\engine\\result.py",
+          "line": 705,
+          "function": "manyrows",
+          "primitive_calls": 28,
+          "total_calls": 28,
+          "own_seconds": 0.001433,
+          "cumulative_seconds": 0.096852
+        },
+        {
+          "file": "backend\\app\\services\\garment_roles.py",
+          "line": 5,
+          "function": "product_role",
+          "primitive_calls": 6020,
+          "total_calls": 6020,
+          "own_seconds": 0.016481,
+          "cumulative_seconds": 0.096557
+        },
+        {
+          "file": "backend\\app\\services\\outfit_quality.py",
+          "line": 69,
+          "function": "is_sports_item",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.009442,
+          "cumulative_seconds": 0.087971
+        },
+        {
+          "file": "backend\\.venv\\Lib\\site-packages\\sqlalchemy\\engine\\_py_row.py",
+          "line": 38,
+          "function": "__init__",
+          "primitive_calls": 3027,
+          "total_calls": 3027,
+          "own_seconds": 0.012612,
+          "cumulative_seconds": 0.084325
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\size_resolver.py",
+          "line": 18,
+          "function": "_system_values",
+          "primitive_calls": 6000,
+          "total_calls": 6000,
+          "own_seconds": 0.048019,
+          "cumulative_seconds": 0.084101
+        }
+      ],
+      "focused_calls": [
+        {
+          "file": "backend\\app\\services\\activation_service.py",
+          "line": 66,
+          "function": "candidate_pool",
+          "primitive_calls": 1,
+          "total_calls": 1,
+          "own_seconds": 0.003999,
+          "cumulative_seconds": 1.009339
+        },
+        {
+          "file": "backend\\app\\services\\activation_policy.py",
+          "line": 31,
+          "function": "product_ok",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.014332,
+          "cumulative_seconds": 0.732136
+        },
+        {
+          "file": "backend\\app\\services\\product_eligibility.py",
+          "line": 17,
+          "function": "evaluate_eligibility",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.005861,
+          "cumulative_seconds": 0.564461
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\size_resolver.py",
+          "line": 123,
+          "function": "exact_size_match",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.005288,
+          "cumulative_seconds": 0.287753
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\size_resolver.py",
+          "line": 93,
+          "function": "resolve_product_sizes",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.013172,
+          "cumulative_seconds": 0.21722
+        },
+        {
+          "file": "backend\\app\\services\\fit_size_profile.py",
+          "line": 45,
+          "function": "requested_size_for_product",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.00388,
+          "cumulative_seconds": 0.124622
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\size_resolver.py",
+          "line": 54,
+          "function": "resolve_size",
+          "primitive_calls": 6000,
+          "total_calls": 6000,
+          "own_seconds": 0.014753,
+          "cumulative_seconds": 0.119565
+        },
+        {
+          "file": "backend\\app\\services\\garment_roles.py",
+          "line": 5,
+          "function": "product_role",
+          "primitive_calls": 6020,
+          "total_calls": 6020,
+          "own_seconds": 0.016481,
+          "cumulative_seconds": 0.096557
+        },
+        {
+          "file": "backend\\app\\services\\outfit_quality.py",
+          "line": 69,
+          "function": "is_sports_item",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.009442,
+          "cumulative_seconds": 0.087971
+        },
+        {
+          "file": "backend\\app\\services\\fit_size_profile.py",
+          "line": 12,
+          "function": "size_profile_to_api",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.007211,
+          "cumulative_seconds": 0.072918
+        },
+        {
+          "file": "backend\\app\\catalog_normalize.py",
+          "line": 494,
+          "function": "normalize_category",
+          "primitive_calls": 25063,
+          "total_calls": 25063,
+          "own_seconds": 0.032432,
+          "cumulative_seconds": 0.068069
+        },
+        {
+          "file": "backend\\app\\services\\personalization_scoring.py",
+          "line": 26,
+          "function": "_base_affinity",
+          "primitive_calls": 306,
+          "total_calls": 306,
+          "own_seconds": 0.002039,
+          "cumulative_seconds": 0.008845
+        }
+      ]
+    },
+    {
+      "phase": "semantic_first_feed",
+      "seconds_with_profiler": 1.442177,
+      "sql_execute_seconds": 0.018035,
+      "statements": {
+        "SELECT": 18
+      },
+      "returned": 20,
+      "ids_sha256": "ded73e811947af914c1834fe33fa2ced732bc09e3a468f4f10b3956c42a27333",
+      "cumulative_top": [
+        {
+          "file": "scripts\\profile_activation_v20.py",
+          "line": 125,
+          "function": "<lambda>",
+          "primitive_calls": 1,
+          "total_calls": 1,
+          "own_seconds": 0.000655,
+          "cumulative_seconds": 1.442126
+        },
+        {
+          "file": "backend\\app\\services\\activation_service.py",
+          "line": 298,
+          "function": "personalized_feed",
+          "primitive_calls": 1,
+          "total_calls": 1,
+          "own_seconds": 0.000134,
+          "cumulative_seconds": 1.441289
+        },
+        {
+          "file": "backend\\app\\services\\activation_service.py",
+          "line": 66,
+          "function": "candidate_pool",
+          "primitive_calls": 1,
+          "total_calls": 1,
+          "own_seconds": 0.004825,
+          "cumulative_seconds": 1.43673
+        },
+        {
+          "file": "backend\\app\\services\\activation_policy.py",
+          "line": 31,
+          "function": "product_ok",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.014751,
+          "cumulative_seconds": 0.752722
+        },
+        {
+          "file": "backend\\app\\services\\product_eligibility.py",
+          "line": 17,
+          "function": "evaluate_eligibility",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.006288,
+          "cumulative_seconds": 0.582611
+        },
+        {
+          "file": "backend\\app\\services\\personalization_scoring.py",
+          "line": 78,
+          "function": "score",
+          "primitive_calls": 612,
+          "total_calls": 612,
+          "own_seconds": 0.00037,
+          "cumulative_seconds": 0.429919
+        },
+        {
+          "file": "backend\\app\\services\\personalization_scoring.py",
+          "line": 57,
+          "function": "evaluate",
+          "primitive_calls": 632,
+          "total_calls": 632,
+          "own_seconds": 0.002476,
+          "cumulative_seconds": 0.429563
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\product_dna.py",
+          "line": 211,
+          "function": "reliable_taste_features",
+          "primitive_calls": 306,
+          "total_calls": 306,
+          "own_seconds": 0.002047,
+          "cumulative_seconds": 0.39235
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\product_dna.py",
+          "line": 119,
+          "function": "_build_product_dna",
+          "primitive_calls": 306,
+          "total_calls": 306,
+          "own_seconds": 0.064147,
+          "cumulative_seconds": 0.390254
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\size_resolver.py",
+          "line": 123,
+          "function": "exact_size_match",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.005663,
+          "cumulative_seconds": 0.298219
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\size_resolver.py",
+          "line": 93,
+          "function": "resolve_product_sizes",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.013921,
+          "cumulative_seconds": 0.224784
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\fashion_taxonomy.py",
+          "line": 136,
+          "function": "normalize_text",
+          "primitive_calls": 98838,
+          "total_calls": 98838,
+          "own_seconds": 0.055519,
+          "cumulative_seconds": 0.188927
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\product_dna.py",
+          "line": 129,
+          "function": "add",
+          "primitive_calls": 7956,
+          "total_calls": 7956,
+          "own_seconds": 0.013015,
+          "cumulative_seconds": 0.171769
+        },
+        {
+          "file": "__init__.py",
+          "line": 183,
+          "function": "sub",
+          "primitive_calls": 139495,
+          "total_calls": 139495,
+          "own_seconds": 0.043495,
+          "cumulative_seconds": 0.153816
+        },
+        {
+          "file": "backend\\.venv\\Lib\\site-packages\\sqlalchemy\\engine\\result.py",
+          "line": 526,
+          "function": "iterrows",
+          "primitive_calls": 3010,
+          "total_calls": 3010,
+          "own_seconds": 0.002241,
+          "cumulative_seconds": 0.145502
+        },
+        {
+          "file": "backend\\.venv\\Lib\\site-packages\\sqlalchemy\\orm\\loading.py",
+          "line": 208,
+          "function": "chunks",
+          "primitive_calls": 44,
+          "total_calls": 44,
+          "own_seconds": 0.004369,
+          "cumulative_seconds": 0.145028
+        },
+        {
+          "file": "backend\\app\\services\\fit_size_profile.py",
+          "line": 45,
+          "function": "requested_size_for_product",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.004072,
+          "cumulative_seconds": 0.127085
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\size_resolver.py",
+          "line": 54,
+          "function": "resolve_size",
+          "primitive_calls": 6000,
+          "total_calls": 6000,
+          "own_seconds": 0.01568,
+          "cumulative_seconds": 0.123684
+        }
+      ],
+      "focused_calls": [
+        {
+          "file": "backend\\app\\services\\activation_service.py",
+          "line": 66,
+          "function": "candidate_pool",
+          "primitive_calls": 1,
+          "total_calls": 1,
+          "own_seconds": 0.004825,
+          "cumulative_seconds": 1.43673
+        },
+        {
+          "file": "backend\\app\\services\\activation_policy.py",
+          "line": 31,
+          "function": "product_ok",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.014751,
+          "cumulative_seconds": 0.752722
+        },
+        {
+          "file": "backend\\app\\services\\product_eligibility.py",
+          "line": 17,
+          "function": "evaluate_eligibility",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.006288,
+          "cumulative_seconds": 0.582611
+        },
+        {
+          "file": "backend\\app\\services\\personalization_scoring.py",
+          "line": 57,
+          "function": "evaluate",
+          "primitive_calls": 632,
+          "total_calls": 632,
+          "own_seconds": 0.002476,
+          "cumulative_seconds": 0.429563
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\product_dna.py",
+          "line": 211,
+          "function": "reliable_taste_features",
+          "primitive_calls": 306,
+          "total_calls": 306,
+          "own_seconds": 0.002047,
+          "cumulative_seconds": 0.39235
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\product_dna.py",
+          "line": 119,
+          "function": "_build_product_dna",
+          "primitive_calls": 306,
+          "total_calls": 306,
+          "own_seconds": 0.064147,
+          "cumulative_seconds": 0.390254
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\size_resolver.py",
+          "line": 123,
+          "function": "exact_size_match",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.005663,
+          "cumulative_seconds": 0.298219
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\size_resolver.py",
+          "line": 93,
+          "function": "resolve_product_sizes",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.013921,
+          "cumulative_seconds": 0.224784
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\fashion_taxonomy.py",
+          "line": 136,
+          "function": "normalize_text",
+          "primitive_calls": 98838,
+          "total_calls": 98838,
+          "own_seconds": 0.055519,
+          "cumulative_seconds": 0.188927
+        },
+        {
+          "file": "backend\\app\\services\\fit_size_profile.py",
+          "line": 45,
+          "function": "requested_size_for_product",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.004072,
+          "cumulative_seconds": 0.127085
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\size_resolver.py",
+          "line": 54,
+          "function": "resolve_size",
+          "primitive_calls": 6000,
+          "total_calls": 6000,
+          "own_seconds": 0.01568,
+          "cumulative_seconds": 0.123684
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\fashion_taxonomy.py",
+          "line": 163,
+          "function": "blocked_evidence",
+          "primitive_calls": 15300,
+          "total_calls": 15300,
+          "own_seconds": 0.010379,
+          "cumulative_seconds": 0.12107
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\fashion_taxonomy.py",
+          "line": 183,
+          "function": "matched_values",
+          "primitive_calls": 7956,
+          "total_calls": 7956,
+          "own_seconds": 0.003612,
+          "cumulative_seconds": 0.097258
+        },
+        {
+          "file": "backend\\app\\services\\garment_roles.py",
+          "line": 5,
+          "function": "product_role",
+          "primitive_calls": 6020,
+          "total_calls": 6020,
+          "own_seconds": 0.017219,
+          "cumulative_seconds": 0.096405
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\fashion_taxonomy.py",
+          "line": 140,
+          "function": "_lexical_matches",
+          "primitive_calls": 23256,
+          "total_calls": 23256,
+          "own_seconds": 0.019761,
+          "cumulative_seconds": 0.091563
+        },
+        {
+          "file": "backend\\app\\services\\outfit_quality.py",
+          "line": 69,
+          "function": "is_sports_item",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.009975,
+          "cumulative_seconds": 0.090512
+        },
+        {
+          "file": "backend\\app\\services\\fit_size_profile.py",
+          "line": 12,
+          "function": "size_profile_to_api",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.007531,
+          "cumulative_seconds": 0.074613
+        },
+        {
+          "file": "backend\\app\\catalog_normalize.py",
+          "line": 494,
+          "function": "normalize_category",
+          "primitive_calls": 26307,
+          "total_calls": 26307,
+          "own_seconds": 0.035747,
+          "cumulative_seconds": 0.073961
+        },
+        {
+          "file": "backend\\app\\services\\mie_scoring.py",
+          "line": 175,
+          "function": "compute_taste_score",
+          "primitive_calls": 306,
+          "total_calls": 306,
+          "own_seconds": 0.006909,
+          "cumulative_seconds": 0.013203
+        },
+        {
+          "file": "backend\\app\\services\\personalization_scoring.py",
+          "line": 26,
+          "function": "_base_affinity",
+          "primitive_calls": 306,
+          "total_calls": 306,
+          "own_seconds": 0.002988,
+          "cumulative_seconds": 0.011061
+        },
+        {
+          "file": "backend\\app\\services\\user_twin_service.py",
+          "line": 85,
+          "function": "product_taste_features",
+          "primitive_calls": 306,
+          "total_calls": 306,
+          "own_seconds": 0.003364,
+          "cumulative_seconds": 0.009953
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\product_dna.py",
+          "line": 76,
+          "function": "_json_value",
+          "primitive_calls": 8874,
+          "total_calls": 9180,
+          "own_seconds": 0.002118,
+          "cumulative_seconds": 0.00341
+        }
+      ]
+    },
+    {
+      "phase": "semantic_office_feed",
+      "seconds_with_profiler": 1.423582,
+      "sql_execute_seconds": 0.017867,
+      "statements": {
+        "SELECT": 18
+      },
+      "returned": 20,
+      "ids_sha256": "27fde5365d5d85924e1dd5dfbd7ef83ae0c14157fbd3fb5fea3328c2d1bcbcbe",
+      "cumulative_top": [
+        {
+          "file": "scripts\\profile_activation_v20.py",
+          "line": 128,
+          "function": "<lambda>",
+          "primitive_calls": 1,
+          "total_calls": 1,
+          "own_seconds": 0.000606,
+          "cumulative_seconds": 1.423529
+        },
+        {
+          "file": "backend\\app\\services\\activation_service.py",
+          "line": 298,
+          "function": "personalized_feed",
+          "primitive_calls": 1,
+          "total_calls": 1,
+          "own_seconds": 0.000135,
+          "cumulative_seconds": 1.422758
+        },
+        {
+          "file": "backend\\app\\services\\activation_service.py",
+          "line": 66,
+          "function": "candidate_pool",
+          "primitive_calls": 1,
+          "total_calls": 1,
+          "own_seconds": 0.004819,
+          "cumulative_seconds": 1.418733
+        },
+        {
+          "file": "backend\\app\\services\\activation_policy.py",
+          "line": 31,
+          "function": "product_ok",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.014733,
+          "cumulative_seconds": 0.741745
+        },
+        {
+          "file": "backend\\app\\services\\product_eligibility.py",
+          "line": 17,
+          "function": "evaluate_eligibility",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.006318,
+          "cumulative_seconds": 0.575294
+        },
+        {
+          "file": "backend\\app\\services\\personalization_scoring.py",
+          "line": 78,
+          "function": "score",
+          "primitive_calls": 544,
+          "total_calls": 544,
+          "own_seconds": 0.00034,
+          "cumulative_seconds": 0.402046
+        },
+        {
+          "file": "backend\\app\\services\\personalization_scoring.py",
+          "line": 57,
+          "function": "evaluate",
+          "primitive_calls": 564,
+          "total_calls": 564,
+          "own_seconds": 0.002296,
+          "cumulative_seconds": 0.401721
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\product_dna.py",
+          "line": 211,
+          "function": "reliable_taste_features",
+          "primitive_calls": 272,
+          "total_calls": 272,
+          "own_seconds": 0.001788,
+          "cumulative_seconds": 0.344608
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\product_dna.py",
+          "line": 119,
+          "function": "_build_product_dna",
+          "primitive_calls": 272,
+          "total_calls": 272,
+          "own_seconds": 0.055412,
+          "cumulative_seconds": 0.342775
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\size_resolver.py",
+          "line": 123,
+          "function": "exact_size_match",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.005665,
+          "cumulative_seconds": 0.2933
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\size_resolver.py",
+          "line": 93,
+          "function": "resolve_product_sizes",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.013873,
+          "cumulative_seconds": 0.220472
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\fashion_taxonomy.py",
+          "line": 136,
+          "function": "normalize_text",
+          "primitive_calls": 87856,
+          "total_calls": 87856,
+          "own_seconds": 0.048909,
+          "cumulative_seconds": 0.16661
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\product_dna.py",
+          "line": 129,
+          "function": "add",
+          "primitive_calls": 7072,
+          "total_calls": 7072,
+          "own_seconds": 0.01158,
+          "cumulative_seconds": 0.151721
+        },
+        {
+          "file": "__init__.py",
+          "line": 183,
+          "function": "sub",
+          "primitive_calls": 133886,
+          "total_calls": 133886,
+          "own_seconds": 0.041664,
+          "cumulative_seconds": 0.146011
+        },
+        {
+          "file": "backend\\.venv\\Lib\\site-packages\\sqlalchemy\\engine\\result.py",
+          "line": 526,
+          "function": "iterrows",
+          "primitive_calls": 3010,
+          "total_calls": 3010,
+          "own_seconds": 0.002292,
+          "cumulative_seconds": 0.141705
+        },
+        {
+          "file": "backend\\.venv\\Lib\\site-packages\\sqlalchemy\\orm\\loading.py",
+          "line": 208,
+          "function": "chunks",
+          "primitive_calls": 44,
+          "total_calls": 44,
+          "own_seconds": 0.004127,
+          "cumulative_seconds": 0.141186
+        },
+        {
+          "file": "backend\\app\\services\\fit_size_profile.py",
+          "line": 45,
+          "function": "requested_size_for_product",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.004047,
+          "cumulative_seconds": 0.126847
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\size_resolver.py",
+          "line": 54,
+          "function": "resolve_size",
+          "primitive_calls": 6000,
+          "total_calls": 6000,
+          "own_seconds": 0.015481,
+          "cumulative_seconds": 0.122421
+        }
+      ],
+      "focused_calls": [
+        {
+          "file": "backend\\app\\services\\activation_service.py",
+          "line": 66,
+          "function": "candidate_pool",
+          "primitive_calls": 1,
+          "total_calls": 1,
+          "own_seconds": 0.004819,
+          "cumulative_seconds": 1.418733
+        },
+        {
+          "file": "backend\\app\\services\\activation_policy.py",
+          "line": 31,
+          "function": "product_ok",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.014733,
+          "cumulative_seconds": 0.741745
+        },
+        {
+          "file": "backend\\app\\services\\product_eligibility.py",
+          "line": 17,
+          "function": "evaluate_eligibility",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.006318,
+          "cumulative_seconds": 0.575294
+        },
+        {
+          "file": "backend\\app\\services\\personalization_scoring.py",
+          "line": 57,
+          "function": "evaluate",
+          "primitive_calls": 564,
+          "total_calls": 564,
+          "own_seconds": 0.002296,
+          "cumulative_seconds": 0.401721
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\product_dna.py",
+          "line": 211,
+          "function": "reliable_taste_features",
+          "primitive_calls": 272,
+          "total_calls": 272,
+          "own_seconds": 0.001788,
+          "cumulative_seconds": 0.344608
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\product_dna.py",
+          "line": 119,
+          "function": "_build_product_dna",
+          "primitive_calls": 272,
+          "total_calls": 272,
+          "own_seconds": 0.055412,
+          "cumulative_seconds": 0.342775
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\size_resolver.py",
+          "line": 123,
+          "function": "exact_size_match",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.005665,
+          "cumulative_seconds": 0.2933
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\size_resolver.py",
+          "line": 93,
+          "function": "resolve_product_sizes",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.013873,
+          "cumulative_seconds": 0.220472
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\fashion_taxonomy.py",
+          "line": 136,
+          "function": "normalize_text",
+          "primitive_calls": 87856,
+          "total_calls": 87856,
+          "own_seconds": 0.048909,
+          "cumulative_seconds": 0.16661
+        },
+        {
+          "file": "backend\\app\\services\\fit_size_profile.py",
+          "line": 45,
+          "function": "requested_size_for_product",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.004047,
+          "cumulative_seconds": 0.126847
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\size_resolver.py",
+          "line": 54,
+          "function": "resolve_size",
+          "primitive_calls": 6000,
+          "total_calls": 6000,
+          "own_seconds": 0.015481,
+          "cumulative_seconds": 0.122421
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\fashion_taxonomy.py",
+          "line": 163,
+          "function": "blocked_evidence",
+          "primitive_calls": 13600,
+          "total_calls": 13600,
+          "own_seconds": 0.009355,
+          "cumulative_seconds": 0.106801
+        },
+        {
+          "file": "backend\\app\\services\\outfit_quality.py",
+          "line": 69,
+          "function": "is_sports_item",
+          "primitive_calls": 3578,
+          "total_calls": 3578,
+          "own_seconds": 0.011816,
+          "cumulative_seconds": 0.105181
+        },
+        {
+          "file": "backend\\app\\services\\garment_roles.py",
+          "line": 5,
+          "function": "product_role",
+          "primitive_calls": 6598,
+          "total_calls": 6598,
+          "own_seconds": 0.018633,
+          "cumulative_seconds": 0.105114
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\fashion_taxonomy.py",
+          "line": 183,
+          "function": "matched_values",
+          "primitive_calls": 7072,
+          "total_calls": 7072,
+          "own_seconds": 0.003243,
+          "cumulative_seconds": 0.085945
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\fashion_taxonomy.py",
+          "line": 140,
+          "function": "_lexical_matches",
+          "primitive_calls": 20672,
+          "total_calls": 20672,
+          "own_seconds": 0.017798,
+          "cumulative_seconds": 0.080782
+        },
+        {
+          "file": "backend\\app\\catalog_normalize.py",
+          "line": 494,
+          "function": "normalize_category",
+          "primitive_calls": 29404,
+          "total_calls": 29404,
+          "own_seconds": 0.038753,
+          "cumulative_seconds": 0.079349
+        },
+        {
+          "file": "backend\\app\\services\\fit_size_profile.py",
+          "line": 12,
+          "function": "size_profile_to_api",
+          "primitive_calls": 3000,
+          "total_calls": 3000,
+          "own_seconds": 0.007579,
+          "cumulative_seconds": 0.074709
+        },
+        {
+          "file": "backend\\app\\services\\mie_scoring.py",
+          "line": 175,
+          "function": "compute_taste_score",
+          "primitive_calls": 272,
+          "total_calls": 272,
+          "own_seconds": 0.006065,
+          "cumulative_seconds": 0.011579
+        },
+        {
+          "file": "backend\\app\\services\\personalization_scoring.py",
+          "line": 26,
+          "function": "_base_affinity",
+          "primitive_calls": 272,
+          "total_calls": 272,
+          "own_seconds": 0.002689,
+          "cumulative_seconds": 0.009893
+        },
+        {
+          "file": "backend\\app\\services\\user_twin_service.py",
+          "line": 85,
+          "function": "product_taste_features",
+          "primitive_calls": 272,
+          "total_calls": 272,
+          "own_seconds": 0.002933,
+          "cumulative_seconds": 0.00873
+        },
+        {
+          "file": "backend\\app\\services\\catalog\\product_dna.py",
+          "line": 76,
+          "function": "_json_value",
+          "primitive_calls": 7888,
+          "total_calls": 8160,
+          "own_seconds": 0.00187,
+          "cumulative_seconds": 0.002979
+        }
+      ]
+    }
+  ]
+}

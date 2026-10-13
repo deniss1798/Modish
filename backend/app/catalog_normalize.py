@@ -543,6 +543,29 @@ def normalize_colors_value(raw: Any) -> list[str]:
 _SIZE_SPLIT_RE = re.compile(r"[,;|/]+")
 
 
+def split_size_values(raw: Any) -> list[str]:
+  """Split declared lists without destroying a scalar decimal-comma size.
+
+  Slash/dash and ambiguous comma sequences remain one token. A half-size such
+  as 7,5 is already understood by the exact resolver; its system still needs
+  independent evidence. Pipe/semicolon can separate multiple decimal sizes.
+  """
+  if raw is None:
+    return []
+  if isinstance(raw, list):
+    return [str(value).strip() for value in raw if str(value).strip()]
+  out: list[str] = []
+  for segment in re.split(r"[;|]", str(raw)):
+    segment = segment.strip()
+    if not segment:
+      continue
+    if re.search(r"\d{1,2},\s*5(?=$|,)", segment):
+      out.append(segment)
+    else:
+      out.extend(value.strip() for value in segment.split(",") if value.strip())
+  return out
+
+
 def _split_listish(s: str) -> list[str]:
   parts = [p.strip() for p in _SIZE_SPLIT_RE.split(s) if p.strip()]
   return parts if parts else ([s.strip()] if s.strip() else [])
@@ -558,6 +581,11 @@ def normalize_size_token(tok: str, *, size_system: str | None = None) -> str:
   if not t:
     return ""
   u = t.upper().replace(" ", "")
+  # Merchant feeds sometimes use visually identical Cyrillic M/X in letter sizes.
+  latin = u.translate(str.maketrans({"М": "M", "Х": "X"}))
+  if re.fullmatch(r"X{0,3}[SML]|[2-6]X[SL]", latin):
+    u = latin
+  u = {"2XS": "XXS", "3XS": "XXXS", "2XL": "XXL", "3XL": "XXXL"}.get(u, u)
   if _WAIST_RE.match(u):
     return u
   if _LETTER_SIZE_RE.match(u):

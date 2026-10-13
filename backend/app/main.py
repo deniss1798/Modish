@@ -24,6 +24,7 @@ from .api.products import router as products_router
 from .api.profile import router as profile_router
 from .api.recommendations import router as recommendations_router
 from .api.taste_profile import router as taste_profile_router
+from .api.shopping_intents import router as shopping_intents_router
 from .middleware import RateLimitMiddleware, RequestLogMiddleware
 from .log_redaction import install_log_redaction
 from .services.recommendation_engine import ensure_style_profile
@@ -57,6 +58,7 @@ app.include_router(profile_router)
 app.include_router(fit_profile_router)
 app.include_router(onboarding_router)
 app.include_router(taste_profile_router)
+app.include_router(shopping_intents_router)
 app.include_router(outfits_router)
 app.include_router(affiliate_router)
 app.include_router(catalog_admin_router)

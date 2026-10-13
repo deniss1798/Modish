@@ -46,6 +46,7 @@ VALID_DISLIKE_REASONS = frozenset(
     "too_expensive",
     "already_have_similar",
     "dont_like_design",
+    "not_for_context",
     "other",
   }
 )
@@ -205,7 +206,7 @@ def feature_targets_for_event(event_type: str, meta: dict[str, Any]) -> set[str]
       return {"brand"}
     if reason in ("not_my_style", "dont_like_design"):
       return {"style", "category"}
-    if reason in ("dont_like_fit", "too_expensive", "already_have_similar"):
+    if reason in ("dont_like_fit", "too_expensive", "already_have_similar", "not_for_context"):
       return set()
     return {"category", "style"}
   return set()

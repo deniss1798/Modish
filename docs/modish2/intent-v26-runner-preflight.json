@@ -1,0 +1,32 @@
+{
+  "scope": "offline_v26_runner_preflight_not_server_validation",
+  "client_date": "2026-10-13",
+  "runner": "scripts/intent_v26_remote.py",
+  "runner_sha256": "ce1a699029f5533ef06f86d8cc288375eeaee292bef9a777e209e6a500c627f5",
+  "compile_passed": true,
+  "ssh_executed": false,
+  "docker_executed": false,
+  "backend_changed_by_reviewer": false,
+  "checks": {
+    "dynamic_test_parser": true,
+    "fresh_import_and_readiness_running_rejected": true,
+    "exact_database_scope_mock_checked": true,
+    "independent_v20_fresh_dependency_rejects_v24_artifact": true,
+    "full_runner_path_mocked": true,
+    "offline_build_and_unit_arguments": true,
+    "three_runs_per_image_one_current_clock": true,
+    "product_ready_false": true,
+    "hash_change_fails_and_preserves_diagnostic_report": true,
+    "expired_stock_fails_before_performance_helpers": true,
+    "same_count_different_hash_never_equated": true,
+    "scoped_timeout_cleanup_mocked": true
+  },
+  "baseline": "v24",
+  "fresh_report_path": "/opt/modish-releases/20261009-intent-v20/refresh-20261013/refresh-report.json",
+  "pure_optimization_gate": "completed_activation_and_same_ordered_deck_and_feed_sha256_across_three_runs",
+  "limitations": [
+    "The 411 unit count in the orchestration fixture tests dynamic parsing only; it is not an actual backend test count.",
+    "Positive Wow item eligibility is checked; the pinned helper does not expose outfit selection hashes.",
+    "Real catalogue, Docker and PostgreSQL validation still require the root-run stage after fresh renewal."
+  ]
+}

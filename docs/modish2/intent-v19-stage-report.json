@@ -1,0 +1,15 @@
+{
+  "checked_at": "2026-10-08T21:36:45.078889+00:00",
+  "scope": "isolated_clone",
+  "production_changed": false,
+  "archive_sha256": "46fb7ba5335db45f563884a6f90a0496abf262b79a6c8c12e7bd7fca2af3e727",
+  "image_id": "sha256:d6223e79d8537c5324a407155a49d3618a1a6e2f5f0969ac3fb51d254df80457",
+  "test_revision": "20261008_0024",
+  "migration_roundtrip": "not_repeated_no_migration_change",
+  "positive_pg_metrics_passed": true,
+  "performance_reference": "/opt/modish-releases/20261009-intent-v18/catalog-report.json",
+  "harness_retry": "Explicit flush at simulated API boundaries and fixtures recreated after each savepoint rollback; no test commits",
+  "production_unchanged": true,
+  "product_ready": false,
+  "result": "latency_and_metrics_checked_catalogue_pending"
+}

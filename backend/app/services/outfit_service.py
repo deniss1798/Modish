@@ -13,6 +13,8 @@ from ..catalog_normalize import normalize_category
 from ..models import FitProfile, MetricEvent, Outfit, Product, RecommendationEventV2, StyleProfile, User
 from ..schemas.photo_analysis import extract_analysis_section
 from .catalog.catalog_quality import product_is_feed_eligible
+from .product_eligibility import evaluate_eligibility
+from .catalog.stock_freshness import fresh_stock_conditions
 from .catalog.rule_filters import load_rules_by_source_id, product_gender_compatible, product_passes_source_rules
 from .recommendation_config import OUTFIT_ENGINE_VERSION
 from .recommendation_engine import ensure_style_profile
@@ -171,6 +173,8 @@ def _bucket_products(
   top_pref = _SCENARIO_TOP_PREF.get(scenario, _SCENARIO_TOP_PREF["daily"])
   bottom_pref = _SCENARIO_BOTTOM_PREF.get(scenario, _SCENARIO_BOTTOM_PREF["daily"])
   for p in products:
+    if not product_is_feed_eligible(p):
+      continue
     if not _scenario_product_ok(p, scenario, budget_max):
       continue
     slot = _product_slot(p)
@@ -225,6 +229,7 @@ def _extend_buckets(
     rows = db.execute(
       select(Product)
       .where(
+        *fresh_stock_conditions(),
         Product.is_active == 1,
         Product.is_available == 1,
         Product.is_deleted_from_feed == 0,
@@ -241,7 +246,7 @@ def _extend_buckets(
         continue
       if not product_passes_source_rules(p, rules):
         continue
-      if fit and not product_gender_compatible(p, fit.gender_target):
+      if not evaluate_eligibility(p, fit).eligible:
         continue
       if not _scenario_product_ok(p, scenario, budget_max):
         continue
@@ -284,6 +289,7 @@ def _catalog_products_for_outfits(
   rows = db.execute(
     select(Product)
     .where(
+      *fresh_stock_conditions(),
       Product.is_active == 1,
       Product.is_available == 1,
       Product.is_deleted_from_feed == 0,
@@ -302,7 +308,7 @@ def _catalog_products_for_outfits(
       continue
     if not product_passes_source_rules(p, rules):
       continue
-    if fit and not product_gender_compatible(p, fit.gender_target):
+    if not evaluate_eligibility(p, fit).eligible:
       continue
     out.append(p)
     if len(out) >= limit:
@@ -378,6 +384,7 @@ def _generate_outfits_fallback(
   if not any(buckets[s] for s in ("top", "bottom", "shoes")):
     fallback = db.execute(
       select(Product).where(
+        *fresh_stock_conditions(),
         Product.is_active == 1,
         Product.is_deleted_from_feed == 0,
         Product.source != "demo",

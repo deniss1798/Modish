@@ -8,11 +8,12 @@ from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..models import Product, User, UserProductState, FitProfile
+from ..models import Product, User, UserProductState, FitProfile, RecommendationEventV2
 from ..schemas.api_product import product_to_api
 from ..services.recommendation_config import recommendation_algorithm_metadata
 from ..services.recommendation_engine import generate_feed
 from ..services.catalog_filters import CatalogFilters, CATEGORY_GROUPS
+from ..services.catalog.stock_freshness import fresh_stock_conditions
 from .deps import auth_scheme, get_db, user_from_token
 
 router = APIRouter(tags=["products"])
@@ -28,11 +29,14 @@ def _feed_scored_items(
   filters: CatalogFilters | None = None,
   exclude_ids: list[str] | None = None,
 ) -> list[dict[str, Any]]:
-  from datetime import datetime, timezone
+  from datetime import datetime, timezone, timedelta
 
   from fastapi import HTTPException
 
   now = datetime.now(timezone.utc)
+
+  from ..services.activation_service import require_warm_feed
+  require_warm_feed(db, user)
   hidden_ids = set(
     db.execute(
       select(UserProductState.product_id).where(
@@ -43,6 +47,13 @@ def _feed_scored_items(
   ).scalars()
   )
   hidden_ids.update(exclude_ids or [])
+  # Covers old short cooldowns too, including feedback from another device.
+  hidden_ids.update(db.scalars(select(RecommendationEventV2.product_id).where(
+    RecommendationEventV2.user_id == user.id,
+    RecommendationEventV2.product_id.is_not(None),
+    RecommendationEventV2.event_type.in_(['like', 'dislike', 'skip', 'save']),
+    RecommendationEventV2.created_at >= now - timedelta(days=30),
+  ).distinct()))
   try:
     scored = generate_feed(
       db,
@@ -66,6 +77,7 @@ def _feed_scored_items(
   for rank, s in enumerate(scored, start=1):
     ranking_metadata[s.product.id] = {
       **recommendation_algorithm_metadata(ranking_algorithm=s.ranking_algorithm, scenario=scenario),
+      "algorithm_version": s.algorithm_version,
       "rank": rank,
       "candidate_source": ",".join(s.candidate_sources),
       "candidate_sources": list(s.candidate_sources),
@@ -104,38 +116,56 @@ def _feed_scored_items(
 @router.get("/products")
 def products_list(
   limit: int = 50,
-  offset: int = 0,
+  offset: int = Query(default=0, ge=0, le=5000),
   category: str | None = None,
   source: str | None = None,
   brand: str | None = None,
+  q: str | None = Query(default=None, max_length=160),
   db: Session = Depends(get_db),
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> list[dict[str, Any]]:
   from ..services.candidate_retrieval_service import _fit_gender_condition
   from ..services.catalog.rule_filters import product_gender_compatible
   from ..services.catalog.catalog_quality import product_is_feed_eligible
+  from ..services.product_eligibility import evaluate_eligibility
   fit = None
+  user = None
   if credentials:
     user = user_from_token(credentials, db)
     fit = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
-  q = select(Product).where(Product.is_active == 1)
+  from ..services.product_search import search_conditions
+  search_query = q
+  query = select(Product).where(Product.is_active == 1, *fresh_stock_conditions())
   gender_condition = _fit_gender_condition(fit)
   if gender_condition is not None:
-    q = q.where(gender_condition)
+    query = query.where(gender_condition)
   if category:
-    q = q.where(Product.category == category)
+    query = query.where(Product.category == category)
   if source and source.strip().lower() == "demo":
-    q = q.where(Product.source == "demo")
+    query = query.where(Product.source == "demo")
   else:
-    q = q.where(Product.source != "demo")
+    query = query.where(Product.source != "demo")
     if source and source.strip():
-      q = q.where(Product.source == source.strip())
+      query = query.where(Product.source == source.strip())
   if brand and brand.strip():
-    q = q.where(Product.brand.ilike(f"%{brand.strip()}%"))
-  q = q.order_by(Product.created_at.desc(), Product.id)
+    query = query.where(Product.brand.ilike(f"%{brand.strip()}%"))
+  if isinstance(search_query, str) and search_query.strip():
+    query = query.where(*search_conditions(search_query))
+  query = query.order_by(Product.created_at.desc(), Product.id)
+  from ..models import ActivationSession
+  if user and isinstance(search_query, str) and search_query.strip():
+    activation = db.get(ActivationSession, user.id)
+    if activation and activation.completed_at:
+      from ..services.product_search import personalized_search
+      # Current query is explicit intent. It does not train or overwrite taste.
+      return [product_to_api(p) for p in personalized_search(db, user, activation, query,
+        limit=limit, offset=offset if isinstance(offset, int) else 0)]
   rows = []
   skipped = 0
-  for p in db.execute(q.execution_options(yield_per=200)).scalars():
+  offset = offset if isinstance(offset, int) else 0
+  for p in db.execute(query.execution_options(yield_per=200)).scalars():
+    if user and not evaluate_eligibility(p, fit).eligible:
+      continue
     if not product_is_feed_eligible(p) or not product_gender_compatible(p, fit.gender_target if fit else None):
       continue
     if skipped < max(0, offset):
@@ -157,7 +187,9 @@ def products_brands(
   rows = db.execute(
     select(Product.brand, func.count(Product.id))
     .where(
+      *fresh_stock_conditions(),
       Product.is_active == 1,
+      Product.is_available == 1,
       Product.is_deleted_from_feed == 0,
       Product.source != "demo",
       Product.brand.is_not(None),

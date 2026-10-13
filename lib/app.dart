@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'core/network/api_client.dart';
 import 'core/storage/token_storage.dart';
+import 'core/storage/feed_history.dart';
 import 'core/theme/app_colors.dart';
+import 'core/theme/app_theme.dart';
 import 'core/widgets/modish_widgets.dart';
 import 'features/auth/auth_screen.dart';
 import 'features/onboarding/analysis_screen.dart';
@@ -14,8 +16,11 @@ import 'features/onboarding/upload_screen.dart';
 import 'features/onboarding/welcome_screen.dart';
 import 'features/onboarding/wow_outfit.dart';
 import 'features/profile/profile_screen.dart';
+import 'features/profile/edit_profile_screen.dart';
+import 'features/shopping/shopping_task_controller.dart';
 import 'features/recommendations/detail_screen.dart';
 import 'features/recommendations/feed_screen.dart';
+import 'features/recommendations/feed_query.dart';
 import 'features/recommendations/models.dart';
 import 'features/recommendations/saved_screen.dart';
 import 'features/visual/visual_analysis_screen.dart';
@@ -65,84 +70,13 @@ class ModishApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final controller = ModishApp.of(context);
     return MaterialApp(
+      // A new account boundary must also discard pushed routes from the old
+      // account. Access-token rotation deliberately leaves this key unchanged.
+      key: ValueKey(controller.navigationSessionEpoch),
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: AppColors.bg,
-        fontFamily: 'Arial',
-        colorScheme: const ColorScheme.dark(
-          surface: AppColors.card,
-          primary: AppColors.accent,
-          onPrimary: AppColors.onAccent,
-          secondary: AppColors.accentSoft,
-          onSurface: AppColors.ink,
-          outline: AppColors.line,
-        ),
-        dividerColor: AppColors.line,
-        iconTheme: const IconThemeData(color: AppColors.ink),
-        appBarTheme: const AppBarTheme(
-          centerTitle: true,
-          backgroundColor: AppColors.bg,
-          surfaceTintColor: Colors.transparent,
-          foregroundColor: AppColors.ink,
-          elevation: 0,
-        ),
-        chipTheme: ChipThemeData(
-          backgroundColor: AppColors.chipBg,
-          selectedColor: AppColors.accent,
-          side: const BorderSide(color: AppColors.line),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-          labelStyle: const TextStyle(fontSize: 12, color: AppColors.ink),
-          secondaryLabelStyle: const TextStyle(
-            fontSize: 12,
-            color: AppColors.onAccent,
-          ),
-        ),
-        sliderTheme: const SliderThemeData(
-          activeTrackColor: AppColors.accent,
-          inactiveTrackColor: AppColors.line,
-          thumbColor: AppColors.accent,
-          overlayColor: Color(0x33C4A574),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: AppColors.card,
-          hintStyle: const TextStyle(color: AppColors.muted),
-          labelStyle: const TextStyle(color: AppColors.muted),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: AppColors.line),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: AppColors.line),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: AppColors.accent, width: 1.2),
-          ),
-        ),
-        textTheme: const TextTheme(
-          bodyMedium: TextStyle(color: AppColors.ink),
-          bodySmall: TextStyle(color: AppColors.muted),
-          titleMedium: TextStyle(
-            color: AppColors.ink,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        snackBarTheme: SnackBarThemeData(
-          backgroundColor: AppColors.surface,
-          contentTextStyle: const TextStyle(color: AppColors.ink),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
-      ),
+      theme: AppTheme.dark,
       home: const RootScreen(),
     );
   }
@@ -159,6 +93,10 @@ class RootScreen extends StatelessWidget {
       AppStage.welcome => WelcomeScreen(controller: app),
       AppStage.onboarding => IntroOnboardingScreen(controller: app),
       AppStage.fitQuiz => FitQuizScreen(controller: app),
+      AppStage.fitConfirmation => EditProfileScreen(
+        controller: app,
+        setupMode: true,
+      ),
       AppStage.auth => AuthScreen(controller: app),
       AppStage.upload => UploadScreen(controller: app),
       AppStage.analysis => AnalysisScreen(controller: app),
@@ -173,6 +111,7 @@ enum AppStage {
   welcome,
   onboarding,
   fitQuiz,
+  fitConfirmation,
   auth,
   upload,
   analysis,
@@ -181,29 +120,121 @@ enum AppStage {
 }
 
 class AppController extends ChangeNotifier {
-  AppController({ApiClient? apiClient}) {
+  AppController({ApiClient? apiClient, FeedHistory? feedHistory})
+    : _ownsApi = apiClient == null {
+    _feedHistory = feedHistory ?? FeedHistory();
     api = apiClient ?? ApiClient();
-    api.onUnauthorized = _handleUnauthorized;
-    api.onSessionChanged = (access, refresh) async {
+    _unauthorizedHandler = _handleUnauthorized;
+    _sessionChangedHandler = (access, refresh) async {
+      if (_disposed) return;
       token = access;
-      await TokenStorage.write(access, refreshToken: refresh);
+      await _persistSession(access, refresh);
     };
+    api.onUnauthorized = _unauthorizedHandler;
+    api.onSessionChanged = _sessionChangedHandler;
   }
 
   late final ApiClient api;
+  final bool _ownsApi;
+  late final VoidCallback _unauthorizedHandler;
+  late final Future<void> Function(String, String?) _sessionChangedHandler;
+  int _sessionGeneration = 0;
+
+  /// Changes when an account is entered or left, never on access-token rotation.
+  int get navigationSessionEpoch => _sessionGeneration;
+  bool _isCurrentSession(int generation) =>
+      !_disposed && generation == _sessionGeneration;
+  final _busyOperations = <Object>{};
+  Future<void> _sessionStorageWork = Future.value();
+  Future<bool> _persistSession(String access, String? refresh) {
+    final generation = _sessionGeneration;
+    final write = _sessionStorageWork.then<bool>((_) async {
+      if (!_isCurrentSession(generation)) return false;
+      return await TokenStorage.write(access, refreshToken: refresh);
+    });
+    _sessionStorageWork = write.then<void>((_) {});
+    return write;
+  }
+
+  Future<void> _clearPersistedSession() {
+    // Token rotation may already be writing when logout begins. Serialize the
+    // deletion after that write and before any subsequent login's persistence.
+    return _sessionStorageWork = _sessionStorageWork.then(
+      (_) => TokenStorage.clear(),
+    );
+  }
+
+  int _secondaryGeneration = 0;
+  Future<void>? _secondaryRefresh;
+  late final ShoppingTaskController shoppingTask = ShoppingTaskController(api);
+  late final FeedHistory _feedHistory;
+  String? _historyAccount;
+  Future<void>? _historyLoading;
+  Future<void> _historyWrite = Future.value();
+  final _historyRows = <Map<String, dynamic>>[];
+
+  Future<void> _restoreFeedHistory() async {
+    final generation = _sessionGeneration;
+    final account = email.toLowerCase().trim();
+    if (_historyAccount == account) {
+      await _historyLoading;
+      return;
+    }
+    _historyAccount = account;
+    _historyRows.clear();
+    _dismissedProductIds.clear();
+    _dismissedProductKeys.clear();
+    _historyLoading = (() async {
+      final rows = await _feedHistory.read(account);
+      if (_historyAccount != account || !_isCurrentSession(generation)) return;
+      _historyRows.addAll(rows);
+      for (final row in rows) {
+        _dismissedProductIds.add('${row['id']}');
+        _dismissedProductKeys.addAll(
+          (row['keys'] as List? ?? []).whereType<String>(),
+        );
+      }
+    })();
+    await _historyLoading;
+  }
+
+  void _rememberDismissedProduct(String id, Set<String> keys) {
+    _historyRows.removeWhere((row) => row['id'] == id);
+    _historyRows.add({
+      'id': id,
+      'keys': keys.toList(),
+      'at': DateTime.now().millisecondsSinceEpoch,
+    });
+    if (_historyRows.length > 2000) {
+      _historyRows.removeRange(0, _historyRows.length - 2000);
+    }
+    final account = email.toLowerCase().trim();
+    final snapshot = List<Map<String, dynamic>>.from(_historyRows);
+    _historyWrite = _historyWrite.then(
+      (_) => _feedHistory.write(account, snapshot),
+    );
+  }
 
   AppStage stage = AppStage.splash;
 
   /// 0 Подборка (товары), 1 Образы, 2 Сохранённое, 3 Профиль
   int tab = 0;
   bool authRegisterMode = true;
-  List<String> feedFilterCategories = [];
-  int? feedMinPrice;
-  int? feedMaxPrice;
-  List<String> feedFilterSizes = const [];
-  List<String> feedFilterColors = const [];
+  FeedQuery _feedQuery = FeedQuery();
+  List<String> get feedFilterCategories => _feedQuery.categories;
+  String get feedScenario => _feedQuery.scenario;
+  bool get supportsShoppingContext =>
+      (activationStatus['recommendation_features'] as List? ?? const [])
+          .contains('context_v1');
+  bool get supportsShoppingIntent =>
+      (activationStatus['recommendation_features'] as List? ?? const [])
+          .contains('shopping_intent_v1');
+  int? get feedMinPrice => _feedQuery.minPrice;
+  int? get feedMaxPrice => _feedQuery.maxPrice;
+  List<String> get feedFilterSizes => _feedQuery.sizes;
+  List<String> get feedFilterColors => _feedQuery.colors;
   String email = '';
-  String styleTarget = 'menswear';
+  String styleTarget = 'womenswear';
   String? token;
   String? selectedPhotoPath;
   final photoPaths = <String>[];
@@ -242,6 +273,14 @@ class AppController extends ChangeNotifier {
   int onboardingV2SubStep = 0;
   Map<String, dynamic>? photoConfirmPending;
   List<WowOutfit> wowOutfits = const [];
+  Map<String, dynamic> activationStatus = {};
+  List<prod.Product> styleSwipeCards = [];
+  int styleSwipeRated = 0;
+  int styleSwipeMinimum = 15;
+  int styleSwipeTarget = 20;
+  bool styleSwipeCanContinue = false;
+  bool _activationCompleted = false;
+  int _feedReactions = 0;
 
   Outfit? get currentOutfit => feed.isEmpty ? null : feed.first;
   prod.FeedCard? get currentProduct =>
@@ -259,7 +298,9 @@ class AppController extends ChangeNotifier {
   String relatedProductsHint(String productId) => 'Дополнения к этой вещи';
 
   Future<void> loadRelatedProducts(String productId) async {
-    if (_related.containsKey(productId) || !_relatedLoading.add(productId)) {
+    if (_disposed ||
+        _related.containsKey(productId) ||
+        !_relatedLoading.add(productId)) {
       return;
     }
     final generation = _relatedGeneration;
@@ -299,38 +340,52 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> boot() async {
+    final generation = _sessionGeneration;
     await Future<void>.delayed(const Duration(milliseconds: 200));
+    if (!_isCurrentSession(generation)) return;
     try {
       final stored = await TokenStorage.read().timeout(
         const Duration(seconds: 3),
         onTimeout: () => null,
       );
+      if (!_isCurrentSession(generation)) return;
       if (stored != null && stored.isNotEmpty) {
         api.applyToken(stored);
-        api.refreshToken = await TokenStorage.readRefresh();
+        final refresh = await TokenStorage.readRefresh();
+        if (!_isCurrentSession(generation)) return;
+        api.refreshToken = refresh;
         token = stored;
         final me = await api.usersMe().timeout(
           const Duration(seconds: 10),
           onTimeout: () => throw TimeoutException('usersMe'),
         );
+        if (!_isCurrentSession(generation)) return;
         email = '${me['email'] ?? email}';
         await api.upgradeSession();
+        if (!_isCurrentSession(generation)) return;
         try {
-          fitProfile = await api.fitProfileMe().timeout(
+          final profile = await api.fitProfileMe().timeout(
             const Duration(seconds: 10),
             onTimeout: () => throw TimeoutException('fitProfileMe'),
           );
+          if (!_isCurrentSession(generation)) return;
+          fitProfile = profile;
         } catch (_) {
+          if (!_isCurrentSession(generation)) return;
           fitProfile = {};
         }
-        Map<String, dynamic> obStatus = {};
-        try {
-          obStatus = await api.onboardingStatus().timeout(
-            const Duration(seconds: 8),
-            onTimeout: () => throw TimeoutException('onboardingStatus'),
-          );
-        } catch (_) {
-          obStatus = {};
+        final obStatus = await api.onboardingStatus().timeout(
+          const Duration(seconds: 8),
+          onTimeout: () => throw TimeoutException('onboardingStatus'),
+        );
+        if (!_isCurrentSession(generation)) return;
+        activationStatus = obStatus;
+        _activationCompleted = obStatus['completed'] == true;
+        if (_activationCompleted &&
+            obStatus['fit_confirmation_required'] == true) {
+          stage = AppStage.fitConfirmation;
+          notifyListeners();
+          return;
         }
         if (obStatus['completed'] != true) {
           onboardingV2SubStep = _onboardingV2SubFromStatus(obStatus);
@@ -343,16 +398,19 @@ class AppController extends ChangeNotifier {
           const Duration(seconds: 25),
           onTimeout: () => throw TimeoutException('refresh'),
         );
+        if (!_isCurrentSession(generation)) return;
         stage = AppStage.home;
         tab = 0;
         notifyListeners();
         return;
       }
     } on TimeoutException catch (e) {
+      if (!_isCurrentSession(generation)) return;
       error =
           'Медленное соединение (${e.message ?? 'timeout'}). '
           'Проверьте интернет и войдите снова.';
     } catch (e) {
+      if (!_isCurrentSession(generation)) return;
       if (token == null) {
         error = 'Сессия истекла. Войдите снова, чтобы продолжить.';
         authRegisterMode = false;
@@ -367,53 +425,143 @@ class AppController extends ChangeNotifier {
   }
 
   void _handleUnauthorized() {
+    if (_disposed) return;
+    _resetAccountState();
     token = null;
     api.clearToken();
-    unawaited(TokenStorage.clear());
-    _feedRequestGeneration++;
-    productFeed = [];
-    _clearRelated();
+    unawaited(_clearPersistedSession());
     stage = AppStage.auth;
     authRegisterMode = false;
     error = 'Сессия истекла — войдите снова.';
     notifyListeners();
   }
 
-  Future<void> _routeAfterAuth() async {
+  Future<void> _routeAfterAuth({bool resetAccount = true}) async {
+    if (resetAccount) {
+      final pending = pendingFitPrefs;
+      _resetAccountState();
+      pendingFitPrefs = pending;
+    }
+    // Routing belongs to the newly accepted session. The login operation's
+    // earlier generation intentionally cannot handle this session's errors.
+    await _run(_loadAuthenticatedRoute);
+  }
+
+  Future<void> _loadAuthenticatedRoute() async {
+    final generation = _sessionGeneration;
+    _feedReactions = 0;
+    styleSwipeCards = [];
     await applyPendingFitPrefsIfAny();
+    if (!_isCurrentSession(generation)) return;
     try {
-      fitProfile = await api.fitProfileMe();
+      final profile = await api.fitProfileMe();
+      if (!_isCurrentSession(generation)) return;
+      fitProfile = profile;
     } catch (_) {
+      if (!_isCurrentSession(generation)) return;
       fitProfile = {};
     }
-    try {
-      final obStatus = await api.onboardingStatus();
-      if (obStatus['completed'] != true) {
-        onboardingV2SubStep = _onboardingV2SubFromStatus(obStatus);
-        photoConfirmPending = null;
-        wowOutfits = const [];
-        stage = AppStage.onboardingV2;
-        notifyListeners();
-        return;
-      }
-    } catch (_) {
-      /* старый бэкенд без /onboarding — fallback ниже */
+    styleTarget = '${fitProfile['gender_target'] ?? 'womenswear'}';
+    final obStatus = await api.onboardingStatus();
+    if (!_isCurrentSession(generation)) return;
+    activationStatus = obStatus;
+    _activationCompleted = obStatus['completed'] == true;
+    if (_activationCompleted && obStatus['fit_confirmation_required'] == true) {
+      stage = AppStage.fitConfirmation;
+      notifyListeners();
+      return;
+    }
+    if (obStatus['completed'] != true) {
+      onboardingV2SubStep = _onboardingV2SubFromStatus(obStatus);
+      photoConfirmPending = null;
+      wowOutfits = const [];
+      stage = AppStage.onboardingV2;
+      notifyListeners();
+      return;
     }
     await refreshRemoteData();
+    if (!_isCurrentSession(generation)) return;
     stage = AppStage.home;
     tab = 0;
     notifyListeners();
   }
 
   int _onboardingV2SubFromStatus(Map<String, dynamic> status) {
-    final step = (status['onboarding_step'] as num?)?.toInt() ?? 0;
-    if (step < 1) return 0;
-    if (step < 3) {
-      final shape = '${status['body_shape'] ?? ''}'.trim();
-      if (shape.isNotEmpty && step >= 2) return 2;
-      return 1;
-    }
-    return 3;
+    styleSwipeRated = (status['rated'] as num?)?.toInt() ?? 0;
+    styleSwipeCanContinue =
+        false; // Reload the durable server verdict with the deck.
+    return status['preferences_ready'] == true ? 1 : 0;
+  }
+
+  Future<void> startStyleSwipe({
+    required String ageGroup,
+    required String clothingSize,
+    required String shoeSize,
+    required List<String> styles,
+    required String priceSegment,
+    required int height,
+  }) async {
+    final generation = _sessionGeneration;
+    await _run(() async {
+      await api.activationPreferences(
+        ageGroup: ageGroup,
+        clothingSize: clothingSize,
+        shoeSize: shoeSize,
+        styles: styles,
+        priceSegment: priceSegment,
+        height: height,
+      );
+      if (!_isCurrentSession(generation)) return;
+      styleTarget = 'womenswear';
+      activationStatus = {
+        'age_group': ageGroup,
+        'clothing_size': clothingSize,
+        'shoe_size': shoeSize,
+        'style_preferences': styles,
+        'price_segment': priceSegment,
+        'height': height,
+        'preferences_ready': true,
+      };
+      _goOnboardingV2Sub(1);
+      await _loadStyleSwipe();
+    });
+  }
+
+  Future<void> _loadStyleSwipe() async {
+    final generation = _sessionGeneration;
+    final data = await api.styleSwipeDeck();
+    if (!_isCurrentSession(generation)) return;
+    styleSwipeCards = (data['products'] as List? ?? [])
+        .whereType<Map>()
+        .map((row) => prod.Product.fromApi(Map<String, dynamic>.from(row)))
+        .toList();
+    styleSwipeRated = (data['rated'] as num?)?.toInt() ?? 0;
+    styleSwipeMinimum = (data['minimum'] as num?)?.toInt() ?? 15;
+    styleSwipeTarget = (data['target'] as num?)?.toInt() ?? 20;
+    styleSwipeCanContinue = data['can_continue'] == true;
+  }
+
+  Future<void> loadStyleSwipe() => _run(_loadStyleSwipe);
+
+  void editActivationPreferences() {
+    error = null;
+    _goOnboardingV2Sub(0);
+  }
+
+  Future<void> rateStyleSwipe(String reaction) async {
+    if (isLoading || styleSwipeCards.isEmpty) return;
+    final id = styleSwipeCards.first.id;
+    final generation = _sessionGeneration;
+    await _run(() async {
+      final result = await api.styleSwipeFeedback(id, reaction);
+      if (!_isCurrentSession(generation)) return;
+      styleSwipeRated = (result['rated'] as num?)?.toInt() ?? styleSwipeRated;
+      styleSwipeCanContinue = result['can_continue'] == true;
+      styleSwipeCards.removeWhere((p) => p.id == id);
+      if (styleSwipeCards.isEmpty && !styleSwipeCanContinue) {
+        await _loadStyleSwipe();
+      }
+    });
   }
 
   void _goOnboardingV2Sub(int sub) {
@@ -425,26 +573,33 @@ class AppController extends ChangeNotifier {
     required String gender,
     String? ageGroup,
   }) async {
+    final generation = _sessionGeneration;
     await _run(() async {
       await api.onboardingStep1(gender: gender, ageGroup: ageGroup);
+      if (!_isCurrentSession(generation)) return;
       styleTarget = gender == 'female' ? 'womenswear' : 'menswear';
       _goOnboardingV2Sub(1);
     });
   }
 
   Future<void> onboardingV2AnalyzePhoto(String path) async {
+    final generation = _sessionGeneration;
     isLoading = true;
     error = null;
     notifyListeners();
     try {
       final res = await api.onboardingPhoto(path);
+      if (!_isCurrentSession(generation)) return;
       photoConfirmPending = res;
       _goOnboardingV2Sub(2);
     } catch (e) {
+      if (!_isCurrentSession(generation)) return;
       error = ApiClient.formatError(e);
     } finally {
-      isLoading = false;
-      notifyListeners();
+      if (_isCurrentSession(generation)) {
+        isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -458,12 +613,14 @@ class AppController extends ChangeNotifier {
     String? colorType,
     String? heightCategory,
   }) async {
+    final generation = _sessionGeneration;
     await _run(() async {
       await api.onboardingPhotoConfirm(
         bodyShape: bodyShape,
         colorType: colorType,
         heightCategory: heightCategory,
       );
+      if (!_isCurrentSession(generation)) return;
       photoConfirmPending = null;
       _goOnboardingV2Sub(3);
     });
@@ -482,12 +639,26 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> onboardingV2CompleteWow() async {
+    if (!styleSwipeCanContinue ||
+        styleSwipeRated < styleSwipeMinimum ||
+        isLoading) {
+      return;
+    }
+    final generation = _sessionGeneration;
     _goOnboardingV2Sub(4);
     isLoading = true;
     error = null;
     notifyListeners();
     try {
-      final res = await api.onboardingComplete(count: 4);
+      final res = await api.onboardingComplete(count: 3);
+      if (!_isCurrentSession(generation)) return;
+      if (res['recommendation_features'] is List) {
+        activationStatus = {
+          ...activationStatus,
+          'recommendation_features': res['recommendation_features'],
+        };
+      }
+      _activationCompleted = res['completed'] == true;
       final rows = res['outfits'];
       wowOutfits = rows is List
           ? rows
@@ -496,27 +667,34 @@ class AppController extends ChangeNotifier {
                 .toList()
           : const [];
       try {
-        fitProfile = await api.fitProfileMe();
+        final profile = await api.fitProfileMe();
+        if (!_isCurrentSession(generation)) return;
+        fitProfile = profile;
       } catch (_) {}
-      await refreshRemoteData();
+      if (!_isCurrentSession(generation)) return;
       _goOnboardingV2Sub(5);
       try {
         await api.metricsEvent('onboarding_v2_completed');
       } catch (_) {}
     } catch (e) {
+      if (!_isCurrentSession(generation)) return;
       error = ApiClient.formatError(e);
-      _goOnboardingV2Sub(3);
+      _goOnboardingV2Sub(1);
     } finally {
-      isLoading = false;
-      notifyListeners();
+      if (_isCurrentSession(generation)) {
+        isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
   Future<void> finishOnboardingV2ToHome() async {
+    if (!_activationCompleted) return;
     stage = AppStage.home;
     tab = 0;
     onboardingV2SubStep = 0;
     notifyListeners();
+    await refreshRemoteData();
   }
 
   void goToWelcome() {
@@ -539,7 +717,7 @@ class AppController extends ChangeNotifier {
     required String clothingSize,
     required int budgetMin,
     required int budgetMax,
-    int height = 170,
+    required int height,
     int? weight,
     List<String> interestCategories = const [],
     List<String> styleScenarios = const [],
@@ -559,24 +737,38 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> applyPendingFitPrefsIfAny() async {
+    final generation = _sessionGeneration;
     final p = pendingFitPrefs;
     if (p == null || token == null) return;
+    final height = (p['height'] as num?)?.toInt();
+    final size = '${p['clothing_size'] ?? ''}'.trim();
+    final budget = (p['budget_max'] as num?)?.toInt();
+    if (height == null ||
+        height < 50 ||
+        height > 250 ||
+        size.isEmpty ||
+        budget == null ||
+        budget <= 0) {
+      return;
+    }
     try {
-      fitProfile = await api.fitProfilePatch(
-        height: (p['height'] as num?)?.toInt() ?? 170,
+      final profile = await api.fitProfilePatch(
+        height: height,
         weight: (p['weight'] as num?)?.toInt(),
         genderTarget: '${p['gender_target'] ?? 'menswear'}',
-        clothingSize: '${p['clothing_size'] ?? 'M'}',
+        clothingSize: size,
         budgetMin: (p['budget_min'] as num?)?.toInt() ?? 0,
-        budgetMax: (p['budget_max'] as num?)?.toInt() ?? 10000,
+        budgetMax: budget,
         interestCategories: List<String>.from(
           p['interest_categories'] as List? ?? [],
         ),
         styleScenarios: List<String>.from(p['style_scenarios'] as List? ?? []),
       );
+      if (!_isCurrentSession(generation)) return;
+      fitProfile = profile;
       pendingFitPrefs = null;
     } catch (e) {
-      error = ApiClient.formatError(e);
+      if (_isCurrentSession(generation)) error = ApiClient.formatError(e);
     }
   }
 
@@ -588,55 +780,72 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> applyFeedFilters({
+    String scenario = 'daily',
     int? minPrice,
     int? maxPrice,
     List<String> sizes = const [],
     List<String> colors = const [],
     List<String> categories = const [],
   }) async {
-    feedMinPrice = minPrice;
-    feedMaxPrice = maxPrice;
-    feedFilterSizes = sizes;
-    feedFilterColors = colors;
-    feedFilterCategories = categories;
+    _feedQuery = FeedQuery(
+      scenario: supportsShoppingContext ? scenario : 'daily',
+      minPrice: minPrice,
+      maxPrice: maxPrice,
+      sizes: sizes,
+      colors: colors,
+      categories: categories,
+    );
     _feedRequestGeneration++;
     productFeed = [];
     await refreshFeedFromUser();
   }
 
   Future<void> register(String password) async {
+    final generation = _sessionGeneration;
     await _run(() async {
-      if (!await api.pingHealth()) {
+      final healthy = await api.pingHealth();
+      if (!_isCurrentSession(generation)) return;
+      if (!healthy) {
         throw Exception(
           'Сервер не отвечает на ${ApiClient.resolvedBaseUrl()}/health. '
           'Откройте этот адрес в браузере телефона.',
         );
       }
       final t = await api.register(email, password);
+      if (!_isCurrentSession(generation)) return;
       token = t;
-      if (!await TokenStorage.write(t, refreshToken: api.refreshToken)) {
+      if (!await _persistSession(t, api.refreshToken)) {
+        if (!_isCurrentSession(generation)) return;
         throw Exception('Не удалось сохранить сессию на устройстве');
       }
+      if (!_isCurrentSession(generation)) return;
       try {
         await api.metricsEvent('user_registered');
       } catch (_) {}
+      if (!_isCurrentSession(generation)) return;
       await _routeAfterAuth();
     });
   }
 
   Future<void> login(String password) async {
+    final generation = _sessionGeneration;
     await _run(() async {
-      if (!await api.pingHealth()) {
+      final healthy = await api.pingHealth();
+      if (!_isCurrentSession(generation)) return;
+      if (!healthy) {
         throw Exception(
           'Сервер не отвечает на ${ApiClient.resolvedBaseUrl()}/health. '
           'Откройте этот адрес в браузере телефона.',
         );
       }
       final t = await api.login(email, password);
+      if (!_isCurrentSession(generation)) return;
       token = t;
-      if (!await TokenStorage.write(t, refreshToken: api.refreshToken)) {
+      if (!await _persistSession(t, api.refreshToken)) {
+        if (!_isCurrentSession(generation)) return;
         throw Exception('Не удалось сохранить сессию на устройстве');
       }
+      if (!_isCurrentSession(generation)) return;
       await _routeAfterAuth();
     });
   }
@@ -684,7 +893,9 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> refreshRemoteData() async {
+    final generation = _sessionGeneration;
     await _refreshProductFeed();
+    if (!_isCurrentSession(generation)) return;
     notifyListeners();
     unawaited(_refreshSecondaryRemoteData());
   }
@@ -692,8 +903,10 @@ class AppController extends ChangeNotifier {
   /// Обновление ленты по кнопке «Обновить» — со спиннером и понятным результатом.
   /// Возвращает текст для SnackBar или null, если всё ок и есть товары.
   Future<String?> refreshFeedFromUser() async {
+    final generation = _sessionGeneration;
     productFeedError = null;
     await _refreshProductFeed();
+    if (!_isCurrentSession(generation)) return null;
     unawaited(_refreshSecondaryRemoteData());
 
     if (productFeedError != null) {
@@ -706,6 +919,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> _refreshProductFeed() {
+    if (_disposed) return Future.value();
     if (_feedLoad != null && _feedLoadGeneration == _feedRequestGeneration) {
       return _feedLoad!;
     }
@@ -724,31 +938,20 @@ class AppController extends ChangeNotifier {
 
   Future<void> _fetchFeed(int generation) async {
     try {
+      await _restoreFeedHistory();
+      if (generation != _feedRequestGeneration) return;
       final excluded = <String>{
         ..._dismissedProductIds.toList().reversed.take(90),
         ...productFeed.map((card) => card.product.id).take(30),
       };
-      final rows = await api.productFeed(
-        limit: 30,
-        minPrice: feedMinPrice,
-        maxPrice: feedMaxPrice,
-        categories: feedFilterCategories,
-        sizes: feedFilterSizes,
-        colors: feedFilterColors,
-        excludeIds: excluded.toList(),
-      );
+      final rows = await _feedQuery.fetch(api, excludeIds: excluded);
       if (generation != _feedRequestGeneration) return;
-      final seen = {..._dismissedProductKeys};
       // Merge at response time: swipes during a slow request stay dismissed,
       // while the current card and the remaining queue retain their position.
-      productFeed = [...productFeed, ...rows.map(prod.FeedCard.fromApi)].where((
-        card,
-      ) {
-        final keys = card.product.identityKeys;
-        if (keys.any(seen.contains)) return false;
-        seen.addAll(keys);
-        return true;
-      }).toList();
+      productFeed = mergeFeedCards([
+        ...productFeed,
+        ...rows,
+      ], dismissedKeys: _dismissedProductKeys);
       productFeedError = null;
     } catch (e) {
       if (generation != _feedRequestGeneration) return;
@@ -756,65 +959,169 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  Future<void> _refreshSecondaryRemoteData() async {
-    try {
-      summary = await api.summary();
-    } catch (_) {
-      summary = {};
-    }
-    try {
-      fitProfile = await api.fitProfileMe();
-    } catch (_) {
-      // A temporary network failure must not erase the selected profile.
-    }
-    try {
-      tasteProfile = await api.tasteProfileMe();
-    } catch (_) {
-      tasteProfile = {};
-    }
-    try {
-      savedRows = await api.savedRecommendations();
-    } catch (_) {
-      savedRows = [];
-    }
-    try {
-      savedProductRows = await api.savedProducts();
-    } catch (_) {
-      savedProductRows = [];
-    }
-    try {
-      billing = await api.billingStatus();
-    } catch (_) {
-      billing = {};
-    }
-    try {
-      outfits = await api.outfitsList();
-      savedOutfits = await api.outfitsList(savedOnly: true);
-    } catch (_) {
-      outfits = [];
-      savedOutfits = [];
-    }
-    if (productFeed.isNotEmpty) {
-      try {
-        await api.metricsEvent('feed_opened');
-      } catch (_) {}
-    }
-    savedIds
-      ..clear()
-      ..addAll(savedRows.map((r) => '${r['recommendation_id']}'));
+  Future<void> _rerankRemainingFeed() {
+    final generation = ++_feedRequestGeneration;
+    _feedLoadGeneration = generation;
+    feedRefreshing = true;
     notifyListeners();
+    return _feedLoad = (() async {
+      try {
+        final rows = await _feedQuery.fetch(
+          api,
+          excludeIds: [
+            ..._dismissedProductIds.toList().reversed.take(90),
+            if (currentProduct != null) currentProduct!.product.id,
+          ],
+        );
+        if (generation != _feedRequestGeneration) return;
+        productFeed = mergeFeedCards([
+          ...productFeed.take(1),
+          ...rows,
+        ], dismissedKeys: _dismissedProductKeys);
+      } catch (_) {
+        // Keep the usable queue when a background rerank cannot reach the API.
+      } finally {
+        if (generation == _feedRequestGeneration) {
+          _feedLoad = null;
+          feedRefreshing = false;
+          notifyListeners();
+        }
+      }
+    })();
+  }
+
+  Future<void> _refreshSecondaryRemoteData() async {
+    if (_disposed) return;
+    if (_secondaryRefresh != null) return _secondaryRefresh;
+    final session = _sessionGeneration;
+    final request = _secondaryGeneration;
+    bool isCurrent() =>
+        _isCurrentSession(session) && request == _secondaryGeneration;
+    Future<void> load<T>(Future<T> read, void Function(T) apply) async {
+      try {
+        final value = await read;
+        if (isCurrent()) apply(value);
+      } catch (_) {
+        // A failed read cannot erase an already confirmed profile/collection.
+      }
+    }
+
+    late final Future<void> refresh;
+    refresh =
+        Future.wait([
+              load(api.summary(), (value) => summary = value),
+              load(api.fitProfileMe(), (value) => fitProfile = value),
+              load(api.tasteProfileMe(), (value) => tasteProfile = value),
+              load(api.savedRecommendations(), (value) {
+                savedRows = value;
+                savedIds
+                  ..clear()
+                  ..addAll(value.map((row) => '${row['recommendation_id']}'));
+              }),
+              load(api.savedProducts(), (value) => savedProductRows = value),
+              load(api.billingStatus(), (value) => billing = value),
+              load(api.outfitsList(), (value) => outfits = value),
+              load(
+                api.outfitsList(savedOnly: true),
+                (value) => savedOutfits = value,
+              ),
+            ])
+            .then((_) async {
+              if (!isCurrent()) return;
+              notifyListeners();
+              if (productFeed.isNotEmpty) {
+                try {
+                  await api.metricsEvent('feed_opened');
+                } catch (_) {}
+              }
+            })
+            .whenComplete(() {
+              if (identical(_secondaryRefresh, refresh)) {
+                _secondaryRefresh = null;
+              }
+            });
+    _secondaryRefresh = refresh;
+    return refresh;
+  }
+
+  Future<void> refreshSavedItems() async {
+    final generation = _sessionGeneration;
+    try {
+      final products = await api.savedProducts();
+      if (!_isCurrentSession(generation)) return;
+      final looks = await api.outfitsList(savedOnly: true);
+      if (_isCurrentSession(generation)) {
+        savedProductRows = products;
+        savedOutfits = looks;
+        notifyListeners();
+      }
+    } catch (_) {
+      // Preserve the last confirmed saved collection during a network failure.
+    }
   }
 
   Future<void> generateOutfits({String scenario = 'daily'}) async {
+    final generation = _sessionGeneration;
     await _run(() async {
       await api.generateOutfits(scenario: scenario);
+      if (!_isCurrentSession(generation)) return;
+      _invalidateSecondaryReads();
       await refreshRemoteData();
     });
   }
 
   void setTab(int value) {
     tab = value;
+    if (value == 3) unawaited(refreshTasteSummary());
     notifyListeners();
+  }
+
+  bool _disposed = false;
+  bool _tasteRefreshing = false;
+
+  Future<void> refreshTasteSummary() async {
+    if (_tasteRefreshing || _disposed) return;
+    _tasteRefreshing = true;
+    final generation = _sessionGeneration;
+    final request = _secondaryGeneration;
+    try {
+      final data = await api.tasteProfileMe();
+      if (_isCurrentSession(generation) &&
+          request == _secondaryGeneration &&
+          stage == AppStage.home) {
+        tasteProfile = data;
+        notifyListeners();
+      }
+    } catch (_) {
+      // Retain the last confirmed summary when the network is unavailable.
+    } finally {
+      if (_isCurrentSession(generation) && request == _secondaryGeneration) {
+        _tasteRefreshing = false;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _sessionGeneration++;
+    _feedRequestGeneration++;
+    _analysisRun++;
+    _clearRelated();
+    if (identical(api.onUnauthorized, _unauthorizedHandler)) {
+      api.onUnauthorized = null;
+    }
+    if (identical(api.onSessionChanged, _sessionChangedHandler)) {
+      api.onSessionChanged = null;
+    }
+    if (_ownsApi) api.dispose();
+    shoppingTask.dispose();
+    super.dispose();
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_disposed) super.notifyListeners();
   }
 
   void setStyleTarget(String value) {
@@ -871,10 +1178,37 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    if (_disposed) return;
+    _resetAccountState();
     unawaited(api.logoutSession());
-    await TokenStorage.clear();
-    api.clearToken();
     token = null;
+    stage = AppStage.welcome;
+    notifyListeners();
+    await _clearPersistedSession();
+  }
+
+  /// One boundary for all account-owned state and in-flight read generations.
+  void _resetAccountState() {
+    _sessionGeneration++;
+    _invalidateSecondaryReads();
+    _busyOperations.clear();
+    error = null;
+    isLoading = false;
+    feedRefreshing = false;
+    _feedLoad = null;
+    _feedLoadGeneration = -1;
+    _tasteRefreshing = false;
+    _analysisRun++;
+    analysisProgress = 0;
+    tab = 0;
+    styleTarget = 'womenswear';
+    pendingFitPrefs = null;
+    selectedPhotoPath = null;
+    photoPaths.clear();
+    photoConfirmPending = null;
+    wowOutfits = const [];
+    onboardingV2SubStep = 0;
+    shoppingTask.clear();
     feed = [];
     savedRows = [];
     productFeed = [];
@@ -893,26 +1227,40 @@ class AppController extends ChangeNotifier {
     _productViewSent.clear();
     _dismissedProductKeys.clear();
     _dismissedProductIds.clear();
-    feedMinPrice = null;
-    feedMaxPrice = null;
-    feedFilterCategories = [];
-    feedFilterSizes = [];
-    feedFilterColors = [];
+    _historyAccount = null;
+    _historyLoading = null;
+    _historyRows.clear();
+    _feedQuery = FeedQuery();
     _pendingProductActions.clear();
+    _activationCompleted = false;
+    activationStatus = {};
+    styleSwipeCards = [];
+    styleSwipeRated = 0;
+    styleSwipeMinimum = 15;
+    styleSwipeTarget = 20;
+    styleSwipeCanContinue = false;
+    _feedReactions = 0;
     _feedRequestGeneration++;
-    stage = AppStage.welcome;
-    notifyListeners();
+  }
+
+  void _invalidateSecondaryReads() {
+    _secondaryGeneration++;
+    _secondaryRefresh = null;
+    _tasteRefreshing = false;
   }
 
   /// Показ карточки в ленте: `view` один раз на товар за сессию, без блокирующего loading.
   Future<void> recordProductViewIfNeeded(String productId) async {
+    final generation = _sessionGeneration;
     if (_productViewSent.contains(productId)) return;
     _productViewSent.add(productId);
     try {
       await api.recordRecommendationEvent(
         eventType: 'view',
         productId: productId,
+        meta: {'surface': 'feed', 'scenario': feedScenario},
       );
+      if (!_isCurrentSession(generation)) return;
       try {
         await api.metricsEvent(
           'product_viewed',
@@ -920,7 +1268,7 @@ class AppController extends ChangeNotifier {
         );
       } catch (_) {}
     } catch (_) {
-      _productViewSent.remove(productId);
+      if (_isCurrentSession(generation)) _productViewSent.remove(productId);
     }
   }
 
@@ -930,7 +1278,16 @@ class AppController extends ChangeNotifier {
     String eventType, {
     Map<String, dynamic>? meta,
   }) async {
+    if (_disposed) return;
+    final generation = _sessionGeneration;
     final advances = {'like', 'dislike', 'skip', 'save'}.contains(eventType);
+    final eventMeta = <String, dynamic>{
+      if (currentProduct?.product.id == productId && tab == 0) ...{
+        'surface': 'feed',
+        'scenario': feedScenario,
+      },
+      ...?meta,
+    };
     if (_pendingProductActions.contains(productId)) return;
     _pendingProductActions.add(productId);
     if (advances) {
@@ -942,6 +1299,7 @@ class AppController extends ChangeNotifier {
       }
       _dismissedProductKeys.addAll(keys);
       _dismissedProductIds.add(productId);
+      _rememberDismissedProduct(productId, keys);
       productFeed.removeWhere((c) => c.product.identityKeys.any(keys.contains));
       if (productFeed.length <= 8) unawaited(_refreshProductFeed());
       notifyListeners();
@@ -951,8 +1309,9 @@ class AppController extends ChangeNotifier {
         final res = await api.recordRecommendationEvent(
           eventType: eventType,
           productId: productId,
-          meta: meta,
+          meta: eventMeta,
         );
+        if (!_isCurrentSession(generation)) return;
         try {
           final name = switch (eventType) {
             'like' => 'product_liked',
@@ -965,16 +1324,31 @@ class AppController extends ChangeNotifier {
             await api.metricsEvent(name);
           }
         } catch (_) {}
+        if (!_isCurrentSession(generation)) return;
         if (res['milestone_reached'] == true && context.mounted) {
           Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => ResultScreen(controller: this)),
           );
         }
-        if (eventType == 'save') savedProductRows = await api.savedProducts();
-        if (advances && productFeed.length < 5) await _refreshProductFeed();
+        if (eventType == 'save') {
+          _invalidateSecondaryReads();
+          final rows = await api.savedProducts();
+          if (!_isCurrentSession(generation)) return;
+          savedProductRows = rows;
+        }
+        if (advances) {
+          _feedReactions++;
+          if (_feedReactions % 10 == 0) {
+            unawaited(_rerankRemainingFeed());
+          } else if (productFeed.length < 5) {
+            await _refreshProductFeed();
+          }
+        }
       });
     } finally {
-      _pendingProductActions.remove(productId);
+      if (_isCurrentSession(generation)) {
+        _pendingProductActions.remove(productId);
+      }
     }
   }
 
@@ -983,39 +1357,56 @@ class AppController extends ChangeNotifier {
     int? weight,
     required String genderTarget,
     required String clothingSize,
+    String? shoeSize,
+    Map<String, dynamic>? sizes,
     required int budgetMin,
     required int budgetMax,
     List<String> interestCategories = const [],
     List<String> styleScenarios = const [],
   }) async {
+    final generation = _sessionGeneration;
     await _run(() async {
-      fitProfile = await api.fitProfilePatch(
+      final profile = await api.fitProfilePatch(
         height: height,
         weight: weight,
         genderTarget: genderTarget,
         clothingSize: clothingSize,
+        shoeSize: shoeSize,
+        sizes: sizes,
         budgetMin: budgetMin,
         budgetMax: budgetMax,
         interestCategories: interestCategories,
         styleScenarios: styleScenarios,
       );
+      if (!_isCurrentSession(generation)) return;
+      fitProfile = profile;
+      _invalidateSecondaryReads();
       styleTarget = genderTarget;
       _clearRelated();
+      shoppingTask.clear();
+      _feedRequestGeneration++;
+      productFeed = [];
       await refreshRemoteData();
     });
   }
+
+  Future<void> finishFitConfirmation() => _routeAfterAuth(resetAccount: false);
 
   Future<void> updateTasteProfile({
     required int priceMin,
     required int priceMax,
     required String preferredFit,
   }) async {
+    final generation = _sessionGeneration;
     await _run(() async {
-      tasteProfile = await api.tasteProfilePatch(
+      final profile = await api.tasteProfilePatch(
         priceMin: priceMin,
         priceMax: priceMax,
         preferredFit: preferredFit,
       );
+      if (!_isCurrentSession(generation)) return;
+      tasteProfile = profile;
+      _invalidateSecondaryReads();
       await refreshRemoteData();
     });
   }
@@ -1024,6 +1415,7 @@ class AppController extends ChangeNotifier {
     int count = 3,
     String scenario = 'daily',
   }) async {
+    final generation = _sessionGeneration;
     var createdCount = 0;
     await _run(() async {
       final scenarios = scenario == 'all'
@@ -1031,10 +1423,12 @@ class AppController extends ChangeNotifier {
           : [scenario];
       for (final key in scenarios) {
         final created = await api.outfitsGenerate(count: count, scenario: key);
+        if (!_isCurrentSession(generation)) return;
         createdCount += created.length;
       }
-      outfits = await api.outfitsList();
-      savedOutfits = await api.outfitsList(savedOnly: true);
+      _invalidateSecondaryReads();
+      await _reloadOutfitLists(generation);
+      if (!_isCurrentSession(generation)) return;
       try {
         await api.metricsEvent(
           'outfit_generated',
@@ -1046,27 +1440,34 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> saveOutfit(String outfitId) async {
+    final generation = _sessionGeneration;
     await _run(() async {
       await api.outfitsSave(outfitId);
-      outfits = await api.outfitsList();
-      savedOutfits = await api.outfitsList(savedOnly: true);
+      if (!_isCurrentSession(generation)) return;
+      _invalidateSecondaryReads();
+      await _reloadOutfitLists(generation);
     });
   }
 
   Future<void> unsaveOutfit(String outfitId) async {
+    final generation = _sessionGeneration;
     await _run(() async {
       await api.outfitsUnsave(outfitId);
-      outfits = await api.outfitsList();
-      savedOutfits = await api.outfitsList(savedOnly: true);
+      if (!_isCurrentSession(generation)) return;
+      _invalidateSecondaryReads();
+      await _reloadOutfitLists(generation);
     });
   }
 
   Future<void> unsaveProduct(String productId) async {
+    final generation = _sessionGeneration;
     await _run(() async {
       await api.recordRecommendationEvent(
         eventType: 'unsave',
         productId: productId,
       );
+      if (!_isCurrentSession(generation)) return;
+      _invalidateSecondaryReads();
       savedProductRows = savedProductRows
           .where(
             (row) => (row['product'] as Map?)?['id']?.toString() != productId,
@@ -1076,8 +1477,10 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> openVisualAnalysis(BuildContext context) async {
+    final generation = _sessionGeneration;
     await _run(() async {
       final res = await api.visualAnalysis();
+      if (!_isCurrentSession(generation)) return;
       final url = res['image_url'];
       if (url is String && url.isNotEmpty) {
         visualImageUrl = url;
@@ -1093,10 +1496,12 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> recordViewDetails(String recommendationId) async {
+    final generation = _sessionGeneration;
     if (_detailViewSent.contains(recommendationId)) return;
     _detailViewSent.add(recommendationId);
     try {
       await api.feedback(recommendationId, 'view_details');
+      if (!_isCurrentSession(generation)) return;
       await refreshRemoteData();
     } catch (_) {
       /* не блокируем экран деталей */
@@ -1104,8 +1509,11 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> sendFeedback(String recommendationId, String eventType) async {
+    final generation = _sessionGeneration;
     await _run(() async {
       await api.feedback(recommendationId, eventType);
+      if (!_isCurrentSession(generation)) return;
+      _invalidateSecondaryReads();
       if (eventType == 'save') savedIds.add(recommendationId);
       if (eventType == 'unsave') savedIds.remove(recommendationId);
       if (eventType == 'like' || eventType == 'dislike') {
@@ -1115,17 +1523,34 @@ class AppController extends ChangeNotifier {
     });
   }
 
+  Future<void> _reloadOutfitLists(int generation) async {
+    final rows = await Future.wait([
+      api.outfitsList(),
+      api.outfitsList(savedOnly: true),
+    ]);
+    if (!_isCurrentSession(generation)) return;
+    outfits = rows[0];
+    savedOutfits = rows[1];
+  }
+
   Future<void> _run(Future<void> Function() block) async {
+    if (_disposed) return;
+    final generation = _sessionGeneration;
+    final operation = Object();
+    _busyOperations.add(operation);
     isLoading = true;
     error = null;
     notifyListeners();
     try {
       await block();
     } catch (e) {
-      error = ApiClient.formatError(e);
+      if (_isCurrentSession(generation)) error = ApiClient.formatError(e);
     } finally {
-      isLoading = false;
-      notifyListeners();
+      if (_isCurrentSession(generation)) {
+        _busyOperations.remove(operation);
+        isLoading = _busyOperations.isNotEmpty;
+        notifyListeners();
+      }
     }
   }
 }

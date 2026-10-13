@@ -39,7 +39,7 @@ def _product(
     colors=[color],
     gender_target="womenswear",
     style_tags=[style],
-    is_available=1,
+    is_available=1, availability_status='in_stock',
     is_active=1,
     is_deleted_from_feed=0,
   )

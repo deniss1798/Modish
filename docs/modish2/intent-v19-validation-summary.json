@@ -1,0 +1,19 @@
+{
+  "checked_date_moscow": "2026-10-09",
+  "package": "Foundation v19",
+  "archive_sha256": "46fb7ba5335db45f563884a6f90a0496abf262b79a6c8c12e7bd7fca2af3e727",
+  "verified_files": 184,
+  "local_exact_package_tests": 284,
+  "docker_exact_package_tests": 284,
+  "flutter_functional_tests": 60,
+  "flutter_analyze": "no_issues",
+  "positive_postgresql_contract_passed": true,
+  "rejected_sku_not_reintroduced_by_replacement": true,
+  "task_only_dislikes_measured_without_taste_writes": true,
+  "production_updated": false,
+  "apk_rebuilt": false,
+  "catalogue_ready": false,
+  "migration": "unchanged_20261008_0024; v16 roundtrip not repeated",
+  "performance_reference": "intent-v18-catalog-report.json",
+  "production_image_unchanged": "build13"
+}

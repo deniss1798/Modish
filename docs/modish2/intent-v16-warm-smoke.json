@@ -1,0 +1,172 @@
+{
+  "scope": "isolated_clone_after_style_swipe",
+  "image_id": "sha256:c3a1e0501448a592e303750fb0ba9341cb6e7ba841c4123a434c033d0a2ff55e",
+  "archive_sha256": "6726baf5e159a4407628fba0a84cc35d42b2c97294fae1afa355dcd053828d20",
+  "profiles": [
+    {
+      "index": 1,
+      "clothing_system": "RU",
+      "clothing_size": "42",
+      "shoe_size": "36",
+      "segment": "mid",
+      "bootstrap_cards": 0,
+      "activation_completed": false,
+      "feed_cards": null,
+      "filters": {},
+      "reason": "not_enough_eligible_bootstrap_cards",
+      "seconds": 27.051
+    },
+    {
+      "index": 2,
+      "clothing_system": "RU",
+      "clothing_size": "44",
+      "shoe_size": "37",
+      "segment": "mid",
+      "bootstrap_cards": 0,
+      "activation_completed": false,
+      "feed_cards": null,
+      "filters": {},
+      "reason": "not_enough_eligible_bootstrap_cards",
+      "seconds": 27.799
+    },
+    {
+      "index": 3,
+      "clothing_system": "RU",
+      "clothing_size": "46",
+      "shoe_size": "38",
+      "segment": "mid",
+      "bootstrap_cards": 0,
+      "activation_completed": false,
+      "feed_cards": null,
+      "filters": {},
+      "reason": "not_enough_eligible_bootstrap_cards",
+      "seconds": 27.586
+    },
+    {
+      "index": 4,
+      "clothing_system": "RU",
+      "clothing_size": "48",
+      "shoe_size": "39",
+      "segment": "mid",
+      "bootstrap_cards": 0,
+      "activation_completed": false,
+      "feed_cards": null,
+      "filters": {},
+      "reason": "not_enough_eligible_bootstrap_cards",
+      "seconds": 29.31
+    },
+    {
+      "index": 5,
+      "clothing_system": "RU",
+      "clothing_size": "50",
+      "shoe_size": "40",
+      "segment": "mid",
+      "bootstrap_cards": 0,
+      "activation_completed": false,
+      "feed_cards": null,
+      "filters": {},
+      "reason": "not_enough_eligible_bootstrap_cards",
+      "seconds": 27.299
+    },
+    {
+      "index": 6,
+      "clothing_system": "LETTER",
+      "clothing_size": "XS",
+      "shoe_size": "36",
+      "segment": "mass",
+      "bootstrap_cards": 20,
+      "activation_completed": true,
+      "feed_cards": 20,
+      "filters": {
+        "shoes": 0,
+        "outerwear": 16
+      },
+      "style_swipe_rated": 15,
+      "wow_outfits": 0,
+      "feed_seconds": 11.671,
+      "intent_trousers": 10,
+      "seconds": 97.211
+    },
+    {
+      "index": 7,
+      "clothing_system": "LETTER",
+      "clothing_size": "S",
+      "shoe_size": "37",
+      "segment": "mass",
+      "bootstrap_cards": 20,
+      "activation_completed": true,
+      "feed_cards": 20,
+      "filters": {
+        "shoes": 0,
+        "outerwear": 20
+      },
+      "style_swipe_rated": 15,
+      "wow_outfits": 0,
+      "feed_seconds": 11.457,
+      "intent_trousers": 10,
+      "seconds": 95.217
+    },
+    {
+      "index": 8,
+      "clothing_system": "LETTER",
+      "clothing_size": "M",
+      "shoe_size": "38",
+      "segment": "mass",
+      "bootstrap_cards": 20,
+      "activation_completed": true,
+      "feed_cards": 20,
+      "filters": {
+        "shoes": 0,
+        "outerwear": 20
+      },
+      "style_swipe_rated": 15,
+      "wow_outfits": 0,
+      "feed_seconds": 12.741,
+      "intent_trousers": 10,
+      "seconds": 98.296
+    },
+    {
+      "index": 9,
+      "clothing_system": "LETTER",
+      "clothing_size": "L",
+      "shoe_size": "39",
+      "segment": "mass",
+      "bootstrap_cards": 20,
+      "activation_completed": true,
+      "feed_cards": 20,
+      "filters": {
+        "shoes": 0,
+        "outerwear": 20
+      },
+      "style_swipe_rated": 15,
+      "wow_outfits": 0,
+      "feed_seconds": 11.848,
+      "intent_trousers": 10,
+      "seconds": 97.305
+    },
+    {
+      "index": 10,
+      "clothing_system": "LETTER",
+      "clothing_size": "XL",
+      "shoe_size": "40",
+      "segment": "mass",
+      "bootstrap_cards": 20,
+      "activation_completed": true,
+      "feed_cards": 20,
+      "filters": {
+        "shoes": 0,
+        "outerwear": 20
+      },
+      "style_swipe_rated": 15,
+      "wow_outfits": 0,
+      "feed_seconds": 11.559,
+      "intent_trousers": 10,
+      "seconds": 96.236
+    }
+  ],
+  "test_data_rolled_back": true,
+  "postgresql_metrics_query_passed": true,
+  "synthetic_metrics_cohort": 5,
+  "result": "passed",
+  "after_swipe_feed_profiles": 5
+}

@@ -1,0 +1,2111 @@
+{
+  "scope": "isolated_postgresql_real_catalogue_current_clock_readiness",
+  "started_at": "2026-10-12T21:32:27.312376+00:00",
+  "clock_basis": "current_wall_clock",
+  "clock_is_fixed_for_read_gates": false,
+  "historical_replay": false,
+  "image_id": "sha256:cfc4376eed5398c2167527779eb0586eb567dad6d7600251abfdaab32ff69fdc",
+  "archive_sha256": "099dafc5f037b8afb6912bf20ed8380c748438e5949bde3d1bb62b347f035644",
+  "catalogue_is_synthetic": false,
+  "profile_and_reactions_are_controlled": true,
+  "reaction_protocol": {
+    "real_style_swipes": 15,
+    "like": 10,
+    "dislike": 5
+  },
+  "catalogue_fingerprint_algorithm": "sha256_of_ordered_postgresql_md5_row_aggregate",
+  "catalogue_before": {
+    "products": {
+      "rows": 205524,
+      "state_sha256": "303636c630ea94890d4e763fe62b809dbd709bfc9395670ccd408760f4d8d9f4"
+    },
+    "catalog_records": {
+      "rows": 75653,
+      "state_sha256": "d4a6a13b64362816432565b66d91c9e202af1ef535619867203ca26e5806f2b9"
+    },
+    "product_sources": {
+      "rows": 11,
+      "state_sha256": "6185c977c0b6345f6f44b299e43600ec81e810f2fcfa2de078a0fd3fc956a421"
+    },
+    "catalog_sync_runs": {
+      "rows": 52,
+      "state_sha256": "578887199bd871023904eddfb9ce7c63b589e58dc939fa75f7de6c8d15da575a"
+    }
+  },
+  "checked_at": "2026-10-12T21:32:27.788019+00:00",
+  "sources": {
+    "other_sources": {
+      "stored": 109869,
+      "active": 0,
+      "oldest_observation": "2026-05-17T21:51:27.908119+00:00",
+      "newest_observation": "2026-05-27T19:04:38.043908+00:00"
+    },
+    "baon": {
+      "stored": 18791,
+      "active": 6924,
+      "oldest_observation": "2026-05-24T17:32:07.056237+00:00",
+      "newest_observation": "2026-10-12T21:23:01.581921+00:00"
+    },
+    "postmeridiem": {
+      "stored": 748,
+      "active": 239,
+      "oldest_observation": "2026-05-24T17:31:47.726455+00:00",
+      "newest_observation": "2026-10-12T21:23:33.731761+00:00"
+    },
+    "serginnetti": {
+      "stored": 18674,
+      "active": 12457,
+      "oldest_observation": "2026-05-24T17:32:51.568498+00:00",
+      "newest_observation": "2026-10-12T21:23:27.246280+00:00"
+    },
+    "shoppinglive": {
+      "stored": 57442,
+      "active": 34623,
+      "oldest_observation": "2026-05-24T17:30:50.294571+00:00",
+      "newest_observation": "2026-10-12T21:23:11.989083+00:00"
+    }
+  },
+  "fresh_available_skus": 54243,
+  "size_evidence_scope": "fresh_available_products_resolved_size_tokens",
+  "source_size_evidence": {
+    "baon": {
+      "products": {
+        "total": 6924,
+        "no_resolved_size_tokens": 0,
+        "has_known_size": 6752,
+        "has_known_available_size": 6752
+      },
+      "size_failure_reasons_by_token": {
+        "known": 6752,
+        "size_system_unknown": 7096
+      },
+      "availability_by_size_token": {
+        "available": 13848
+      }
+    },
+    "postmeridiem": {
+      "products": {
+        "total": 239,
+        "no_resolved_size_tokens": 0,
+        "has_known_size": 239,
+        "has_known_available_size": 239
+      },
+      "size_failure_reasons_by_token": {
+        "known": 990
+      },
+      "availability_by_size_token": {
+        "available": 990
+      }
+    },
+    "serginnetti": {
+      "products": {
+        "total": 12457,
+        "no_resolved_size_tokens": 0,
+        "has_known_size": 0,
+        "has_known_available_size": 0
+      },
+      "size_failure_reasons_by_token": {
+        "size_system_unknown": 12457
+      },
+      "availability_by_size_token": {
+        "available": 12457
+      }
+    },
+    "shoppinglive": {
+      "products": {
+        "total": 34623,
+        "no_resolved_size_tokens": 0,
+        "has_known_size": 1805,
+        "has_known_available_size": 1805
+      },
+      "size_failure_reasons_by_token": {
+        "size_system_unknown": 32818,
+        "known": 1805
+      },
+      "availability_by_size_token": {
+        "available": 34623
+      }
+    }
+  },
+  "category_size_evidence": {
+    "other_categories": {
+      "products": {
+        "total": 2450,
+        "no_resolved_size_tokens": 0,
+        "has_known_size": 615,
+        "has_known_available_size": 615
+      },
+      "size_failure_reasons_by_token": {
+        "known": 615,
+        "size_system_unknown": 2425
+      },
+      "availability_by_size_token": {
+        "available": 3040
+      }
+    },
+    "брюки": {
+      "products": {
+        "total": 7015,
+        "no_resolved_size_tokens": 0,
+        "has_known_size": 860,
+        "has_known_available_size": 860
+      },
+      "size_failure_reasons_by_token": {
+        "known": 860,
+        "size_system_unknown": 6860
+      },
+      "availability_by_size_token": {
+        "available": 7720
+      }
+    },
+    "верхний_слой": {
+      "products": {
+        "total": 8246,
+        "no_resolved_size_tokens": 0,
+        "has_known_size": 1788,
+        "has_known_available_size": 1788
+      },
+      "size_failure_reasons_by_token": {
+        "known": 1788,
+        "size_system_unknown": 7936
+      },
+      "availability_by_size_token": {
+        "available": 9724
+      }
+    },
+    "джемперы": {
+      "products": {
+        "total": 5550,
+        "no_resolved_size_tokens": 0,
+        "has_known_size": 1168,
+        "has_known_available_size": 1168
+      },
+      "size_failure_reasons_by_token": {
+        "known": 1168,
+        "size_system_unknown": 5350
+      },
+      "availability_by_size_token": {
+        "available": 6518
+      }
+    },
+    "джинсы": {
+      "products": {
+        "total": 1484,
+        "no_resolved_size_tokens": 0,
+        "has_known_size": 5,
+        "has_known_available_size": 5
+      },
+      "size_failure_reasons_by_token": {
+        "size_system_unknown": 1615,
+        "known": 5
+      },
+      "availability_by_size_token": {
+        "available": 1620
+      }
+    },
+    "обувь": {
+      "products": {
+        "total": 9555,
+        "no_resolved_size_tokens": 0,
+        "has_known_size": 0,
+        "has_known_available_size": 0
+      },
+      "size_failure_reasons_by_token": {
+        "size_system_unknown": 9555
+      },
+      "availability_by_size_token": {
+        "available": 9555
+      }
+    },
+    "платья": {
+      "products": {
+        "total": 4795,
+        "no_resolved_size_tokens": 0,
+        "has_known_size": 1284,
+        "has_known_available_size": 1284
+      },
+      "size_failure_reasons_by_token": {
+        "known": 1905,
+        "size_system_unknown": 4384
+      },
+      "availability_by_size_token": {
+        "available": 6289
+      }
+    },
+    "рубашки": {
+      "products": {
+        "total": 5984,
+        "no_resolved_size_tokens": 0,
+        "has_known_size": 951,
+        "has_known_available_size": 951
+      },
+      "size_failure_reasons_by_token": {
+        "known": 951,
+        "size_system_unknown": 5432
+      },
+      "availability_by_size_token": {
+        "available": 6383
+      }
+    },
+    "футболки": {
+      "products": {
+        "total": 6543,
+        "no_resolved_size_tokens": 0,
+        "has_known_size": 1766,
+        "has_known_available_size": 1766
+      },
+      "size_failure_reasons_by_token": {
+        "known": 1766,
+        "size_system_unknown": 6353
+      },
+      "availability_by_size_token": {
+        "available": 8119
+      }
+    },
+    "юбки": {
+      "products": {
+        "total": 2621,
+        "no_resolved_size_tokens": 0,
+        "has_known_size": 359,
+        "has_known_available_size": 359
+      },
+      "size_failure_reasons_by_token": {
+        "known": 489,
+        "size_system_unknown": 2461
+      },
+      "availability_by_size_token": {
+        "available": 2950
+      }
+    }
+  },
+  "profiles": [
+    {
+      "index": 1,
+      "clothing_size": "42",
+      "clothing_system": "RU",
+      "shoe_size": "36",
+      "shoe_system": "EU",
+      "segment": "mid",
+      "activation_completed": false,
+      "style_swipe_rated": 0,
+      "wow_outfits": 0,
+      "feed_cards": 0,
+      "filters": {
+        "shoes": 0,
+        "outerwear": 0
+      },
+      "tasks": [
+        {
+          "query_kind": "trousers",
+          "intent_type": "single_item",
+          "occasion": null,
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 0.873
+        },
+        {
+          "query_kind": "dress",
+          "intent_type": "single_item",
+          "occasion": null,
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 0.795
+        },
+        {
+          "query_kind": "office",
+          "intent_type": "outfit",
+          "occasion": "office",
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 4.518
+        },
+        {
+          "query_kind": "wedding_no_dress_no_heel",
+          "intent_type": "outfit",
+          "occasion": "wedding",
+          "no_heel": true,
+          "no_dress": true,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 3.895
+        }
+      ],
+      "invalid_returned": 0,
+      "test_writes_rolled_back": true,
+      "budget": 25000,
+      "size_diagnostics": {
+        "scope": "four_sources_stored_active_products_by_role",
+        "checked_at": "2026-10-12T21:33:19.404922+00:00",
+        "roles": {
+          "bottom": {
+            "requested_size_states": {
+              "requested_size_not_present": 1632,
+              "size_system_or_token_unconfirmed": 10365
+            },
+            "size_failure_reasons_by_token": {
+              "known": 1762,
+              "size_system_unknown": 11817
+            },
+            "product_stock_states": {
+              "available": 11997
+            }
+          },
+          "one_piece": {
+            "requested_size_states": {
+              "requested_size_not_present": 1303,
+              "size_system_or_token_unconfirmed": 3617
+            },
+            "size_failure_reasons_by_token": {
+              "known": 1891,
+              "size_system_unknown": 4490
+            },
+            "product_stock_states": {
+              "available": 4920
+            }
+          },
+          "other": {
+            "requested_size_states": {
+              "missing_confirmed_profile_size": 2312
+            },
+            "size_failure_reasons_by_token": {
+              "known": 255,
+              "size_system_unknown": 2273
+            },
+            "product_stock_states": {
+              "available": 2312
+            }
+          },
+          "outerwear": {
+            "requested_size_states": {
+              "requested_size_not_present": 1615,
+              "size_system_or_token_unconfirmed": 4405
+            },
+            "size_failure_reasons_by_token": {
+              "known": 1615,
+              "size_system_unknown": 5733
+            },
+            "product_stock_states": {
+              "available": 6020
+            }
+          },
+          "shoes": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 9555
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 9555
+            },
+            "product_stock_states": {
+              "available": 9555
+            }
+          },
+          "top": {
+            "requested_size_states": {
+              "requested_size_not_present": 4024,
+              "size_system_or_token_unconfirmed": 15415
+            },
+            "size_failure_reasons_by_token": {
+              "known": 4024,
+              "size_system_unknown": 18503
+            },
+            "product_stock_states": {
+              "available": 19439
+            }
+          }
+        }
+      },
+      "bootstrap_cards": 0,
+      "bootstrap_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "eligible_deck_cards_checked": 0,
+      "activation_status": "insufficient_real_catalogue_bootstrap",
+      "activation_reason": "fewer_than_15_eligible_bootstrap_cards",
+      "results_basis": "configured_profile_service_diagnostic",
+      "shopping_intent_api_available": false,
+      "eligible_feed_cards_checked": 0,
+      "feed_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "intent_permanent_taste_and_fit_unchanged": true,
+      "stock_timestamps_modified": false,
+      "seconds": 51.903
+    },
+    {
+      "index": 2,
+      "clothing_size": "44",
+      "clothing_system": "RU",
+      "shoe_size": "37",
+      "shoe_system": "EU",
+      "segment": "mid",
+      "activation_completed": false,
+      "style_swipe_rated": 0,
+      "wow_outfits": 0,
+      "feed_cards": 0,
+      "filters": {
+        "shoes": 0,
+        "outerwear": 0
+      },
+      "tasks": [
+        {
+          "query_kind": "trousers",
+          "intent_type": "single_item",
+          "occasion": null,
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 0.713
+        },
+        {
+          "query_kind": "dress",
+          "intent_type": "single_item",
+          "occasion": null,
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 0.762
+        },
+        {
+          "query_kind": "office",
+          "intent_type": "outfit",
+          "occasion": "office",
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 4.15
+        },
+        {
+          "query_kind": "wedding_no_dress_no_heel",
+          "intent_type": "outfit",
+          "occasion": "wedding",
+          "no_heel": true,
+          "no_dress": true,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 4.432
+        }
+      ],
+      "invalid_returned": 0,
+      "test_writes_rolled_back": true,
+      "budget": 25000,
+      "size_diagnostics": {
+        "scope": "four_sources_stored_active_products_by_role",
+        "checked_at": "2026-10-12T21:34:11.213559+00:00",
+        "roles": {
+          "bottom": {
+            "requested_size_states": {
+              "requested_size_not_present": 1632,
+              "size_system_or_token_unconfirmed": 10365
+            },
+            "size_failure_reasons_by_token": {
+              "known": 1762,
+              "size_system_unknown": 11817
+            },
+            "product_stock_states": {
+              "available": 11997
+            }
+          },
+          "one_piece": {
+            "requested_size_states": {
+              "requested_size_not_present": 1303,
+              "size_system_or_token_unconfirmed": 3617
+            },
+            "size_failure_reasons_by_token": {
+              "known": 1891,
+              "size_system_unknown": 4490
+            },
+            "product_stock_states": {
+              "available": 4920
+            }
+          },
+          "other": {
+            "requested_size_states": {
+              "missing_confirmed_profile_size": 2312
+            },
+            "size_failure_reasons_by_token": {
+              "known": 255,
+              "size_system_unknown": 2273
+            },
+            "product_stock_states": {
+              "available": 2312
+            }
+          },
+          "outerwear": {
+            "requested_size_states": {
+              "requested_size_not_present": 1615,
+              "size_system_or_token_unconfirmed": 4405
+            },
+            "size_failure_reasons_by_token": {
+              "known": 1615,
+              "size_system_unknown": 5733
+            },
+            "product_stock_states": {
+              "available": 6020
+            }
+          },
+          "shoes": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 9555
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 9555
+            },
+            "product_stock_states": {
+              "available": 9555
+            }
+          },
+          "top": {
+            "requested_size_states": {
+              "requested_size_not_present": 4024,
+              "size_system_or_token_unconfirmed": 15415
+            },
+            "size_failure_reasons_by_token": {
+              "known": 4024,
+              "size_system_unknown": 18503
+            },
+            "product_stock_states": {
+              "available": 19439
+            }
+          }
+        }
+      },
+      "bootstrap_cards": 0,
+      "bootstrap_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "eligible_deck_cards_checked": 0,
+      "activation_status": "insufficient_real_catalogue_bootstrap",
+      "activation_reason": "fewer_than_15_eligible_bootstrap_cards",
+      "results_basis": "configured_profile_service_diagnostic",
+      "shopping_intent_api_available": false,
+      "eligible_feed_cards_checked": 0,
+      "feed_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "intent_permanent_taste_and_fit_unchanged": true,
+      "stock_timestamps_modified": false,
+      "seconds": 51.598
+    },
+    {
+      "index": 3,
+      "clothing_size": "46",
+      "clothing_system": "RU",
+      "shoe_size": "38",
+      "shoe_system": "EU",
+      "segment": "mid",
+      "activation_completed": false,
+      "style_swipe_rated": 0,
+      "wow_outfits": 0,
+      "feed_cards": 0,
+      "filters": {
+        "shoes": 0,
+        "outerwear": 0
+      },
+      "tasks": [
+        {
+          "query_kind": "trousers",
+          "intent_type": "single_item",
+          "occasion": null,
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 0.801
+        },
+        {
+          "query_kind": "dress",
+          "intent_type": "single_item",
+          "occasion": null,
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 0.757
+        },
+        {
+          "query_kind": "office",
+          "intent_type": "outfit",
+          "occasion": "office",
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 4.356
+        },
+        {
+          "query_kind": "wedding_no_dress_no_heel",
+          "intent_type": "outfit",
+          "occasion": "wedding",
+          "no_heel": true,
+          "no_dress": true,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 4.129
+        }
+      ],
+      "invalid_returned": 0,
+      "test_writes_rolled_back": true,
+      "budget": 25000,
+      "size_diagnostics": {
+        "scope": "four_sources_stored_active_products_by_role",
+        "checked_at": "2026-10-12T21:35:02.828653+00:00",
+        "roles": {
+          "bottom": {
+            "requested_size_states": {
+              "requested_size_not_present": 1632,
+              "size_system_or_token_unconfirmed": 10365
+            },
+            "size_failure_reasons_by_token": {
+              "known": 1762,
+              "size_system_unknown": 11817
+            },
+            "product_stock_states": {
+              "available": 11997
+            }
+          },
+          "one_piece": {
+            "requested_size_states": {
+              "requested_size_not_present": 1303,
+              "size_system_or_token_unconfirmed": 3617
+            },
+            "size_failure_reasons_by_token": {
+              "known": 1891,
+              "size_system_unknown": 4490
+            },
+            "product_stock_states": {
+              "available": 4920
+            }
+          },
+          "other": {
+            "requested_size_states": {
+              "missing_confirmed_profile_size": 2312
+            },
+            "size_failure_reasons_by_token": {
+              "known": 255,
+              "size_system_unknown": 2273
+            },
+            "product_stock_states": {
+              "available": 2312
+            }
+          },
+          "outerwear": {
+            "requested_size_states": {
+              "requested_size_not_present": 1615,
+              "size_system_or_token_unconfirmed": 4405
+            },
+            "size_failure_reasons_by_token": {
+              "known": 1615,
+              "size_system_unknown": 5733
+            },
+            "product_stock_states": {
+              "available": 6020
+            }
+          },
+          "shoes": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 9555
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 9555
+            },
+            "product_stock_states": {
+              "available": 9555
+            }
+          },
+          "top": {
+            "requested_size_states": {
+              "requested_size_not_present": 4024,
+              "size_system_or_token_unconfirmed": 15415
+            },
+            "size_failure_reasons_by_token": {
+              "known": 4024,
+              "size_system_unknown": 18503
+            },
+            "product_stock_states": {
+              "available": 19439
+            }
+          }
+        }
+      },
+      "bootstrap_cards": 0,
+      "bootstrap_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "eligible_deck_cards_checked": 0,
+      "activation_status": "insufficient_real_catalogue_bootstrap",
+      "activation_reason": "fewer_than_15_eligible_bootstrap_cards",
+      "results_basis": "configured_profile_service_diagnostic",
+      "shopping_intent_api_available": false,
+      "eligible_feed_cards_checked": 0,
+      "feed_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "intent_permanent_taste_and_fit_unchanged": true,
+      "stock_timestamps_modified": false,
+      "seconds": 52.701
+    },
+    {
+      "index": 4,
+      "clothing_size": "48",
+      "clothing_system": "RU",
+      "shoe_size": "39",
+      "shoe_system": "EU",
+      "segment": "mid",
+      "activation_completed": false,
+      "style_swipe_rated": 0,
+      "wow_outfits": 0,
+      "feed_cards": 0,
+      "filters": {
+        "shoes": 0,
+        "outerwear": 0
+      },
+      "tasks": [
+        {
+          "query_kind": "trousers",
+          "intent_type": "single_item",
+          "occasion": null,
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 0.687
+        },
+        {
+          "query_kind": "dress",
+          "intent_type": "single_item",
+          "occasion": null,
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 0.716
+        },
+        {
+          "query_kind": "office",
+          "intent_type": "outfit",
+          "occasion": "office",
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 4.164
+        },
+        {
+          "query_kind": "wedding_no_dress_no_heel",
+          "intent_type": "outfit",
+          "occasion": "wedding",
+          "no_heel": true,
+          "no_dress": true,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 3.997
+        }
+      ],
+      "invalid_returned": 0,
+      "test_writes_rolled_back": true,
+      "budget": 25000,
+      "size_diagnostics": {
+        "scope": "four_sources_stored_active_products_by_role",
+        "checked_at": "2026-10-12T21:35:55.502804+00:00",
+        "roles": {
+          "bottom": {
+            "requested_size_states": {
+              "requested_size_not_present": 1632,
+              "size_system_or_token_unconfirmed": 10365
+            },
+            "size_failure_reasons_by_token": {
+              "known": 1762,
+              "size_system_unknown": 11817
+            },
+            "product_stock_states": {
+              "available": 11997
+            }
+          },
+          "one_piece": {
+            "requested_size_states": {
+              "requested_size_not_present": 1303,
+              "size_system_or_token_unconfirmed": 3617
+            },
+            "size_failure_reasons_by_token": {
+              "known": 1891,
+              "size_system_unknown": 4490
+            },
+            "product_stock_states": {
+              "available": 4920
+            }
+          },
+          "other": {
+            "requested_size_states": {
+              "missing_confirmed_profile_size": 2312
+            },
+            "size_failure_reasons_by_token": {
+              "known": 255,
+              "size_system_unknown": 2273
+            },
+            "product_stock_states": {
+              "available": 2312
+            }
+          },
+          "outerwear": {
+            "requested_size_states": {
+              "requested_size_not_present": 1615,
+              "size_system_or_token_unconfirmed": 4405
+            },
+            "size_failure_reasons_by_token": {
+              "known": 1615,
+              "size_system_unknown": 5733
+            },
+            "product_stock_states": {
+              "available": 6020
+            }
+          },
+          "shoes": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 9555
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 9555
+            },
+            "product_stock_states": {
+              "available": 9555
+            }
+          },
+          "top": {
+            "requested_size_states": {
+              "requested_size_not_present": 4024,
+              "size_system_or_token_unconfirmed": 15415
+            },
+            "size_failure_reasons_by_token": {
+              "known": 4024,
+              "size_system_unknown": 18503
+            },
+            "product_stock_states": {
+              "available": 19439
+            }
+          }
+        }
+      },
+      "bootstrap_cards": 0,
+      "bootstrap_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "eligible_deck_cards_checked": 0,
+      "activation_status": "insufficient_real_catalogue_bootstrap",
+      "activation_reason": "fewer_than_15_eligible_bootstrap_cards",
+      "results_basis": "configured_profile_service_diagnostic",
+      "shopping_intent_api_available": false,
+      "eligible_feed_cards_checked": 0,
+      "feed_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "intent_permanent_taste_and_fit_unchanged": true,
+      "stock_timestamps_modified": false,
+      "seconds": 50.356
+    },
+    {
+      "index": 5,
+      "clothing_size": "50",
+      "clothing_system": "RU",
+      "shoe_size": "40",
+      "shoe_system": "EU",
+      "segment": "mid",
+      "activation_completed": false,
+      "style_swipe_rated": 0,
+      "wow_outfits": 0,
+      "feed_cards": 0,
+      "filters": {
+        "shoes": 0,
+        "outerwear": 0
+      },
+      "tasks": [
+        {
+          "query_kind": "trousers",
+          "intent_type": "single_item",
+          "occasion": null,
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 0.728
+        },
+        {
+          "query_kind": "dress",
+          "intent_type": "single_item",
+          "occasion": null,
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 0.719
+        },
+        {
+          "query_kind": "office",
+          "intent_type": "outfit",
+          "occasion": "office",
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 3.942
+        },
+        {
+          "query_kind": "wedding_no_dress_no_heel",
+          "intent_type": "outfit",
+          "occasion": "wedding",
+          "no_heel": true,
+          "no_dress": true,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 4.272
+        }
+      ],
+      "invalid_returned": 0,
+      "test_writes_rolled_back": true,
+      "budget": 25000,
+      "size_diagnostics": {
+        "scope": "four_sources_stored_active_products_by_role",
+        "checked_at": "2026-10-12T21:36:45.856256+00:00",
+        "roles": {
+          "bottom": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 10365,
+              "requested_size_not_present": 1632
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 11817,
+              "known": 1762
+            },
+            "product_stock_states": {
+              "available": 11997
+            }
+          },
+          "one_piece": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 3617,
+              "requested_size_not_present": 1303
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 4490,
+              "known": 1891
+            },
+            "product_stock_states": {
+              "available": 4920
+            }
+          },
+          "other": {
+            "requested_size_states": {
+              "missing_confirmed_profile_size": 2312
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 2273,
+              "known": 255
+            },
+            "product_stock_states": {
+              "available": 2312
+            }
+          },
+          "outerwear": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 4405,
+              "requested_size_not_present": 1615
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 5733,
+              "known": 1615
+            },
+            "product_stock_states": {
+              "available": 6020
+            }
+          },
+          "shoes": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 9555
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 9555
+            },
+            "product_stock_states": {
+              "available": 9555
+            }
+          },
+          "top": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 15415,
+              "requested_size_not_present": 4024
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 18503,
+              "known": 4024
+            },
+            "product_stock_states": {
+              "available": 19439
+            }
+          }
+        }
+      },
+      "bootstrap_cards": 0,
+      "bootstrap_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "eligible_deck_cards_checked": 0,
+      "activation_status": "insufficient_real_catalogue_bootstrap",
+      "activation_reason": "fewer_than_15_eligible_bootstrap_cards",
+      "results_basis": "configured_profile_service_diagnostic",
+      "shopping_intent_api_available": false,
+      "eligible_feed_cards_checked": 0,
+      "feed_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "intent_permanent_taste_and_fit_unchanged": true,
+      "stock_timestamps_modified": false,
+      "seconds": 51.132
+    },
+    {
+      "index": 6,
+      "clothing_size": "XS",
+      "clothing_system": "LETTER",
+      "shoe_size": "36",
+      "shoe_system": "EU",
+      "segment": "mass",
+      "activation_completed": true,
+      "style_swipe_rated": 15,
+      "wow_outfits": 0,
+      "feed_cards": 20,
+      "filters": {
+        "shoes": 0,
+        "outerwear": 14
+      },
+      "tasks": [
+        {
+          "query_kind": "trousers",
+          "intent_type": "single_item",
+          "occasion": null,
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 10,
+          "outfits": 0,
+          "empty": false,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "7136473f3bdeafa2dd4a84f94104a3b74f715ac2399a84666c948d40cee733f8",
+          "seconds": 0.8
+        },
+        {
+          "query_kind": "dress",
+          "intent_type": "single_item",
+          "occasion": null,
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 10,
+          "outfits": 0,
+          "empty": false,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "cc01517fdc3a2229f66d3346f5b988eb38384086a9ea3d0aba912ed962e5a40a",
+          "seconds": 0.998
+        },
+        {
+          "query_kind": "office",
+          "intent_type": "outfit",
+          "occasion": "office",
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 3.262
+        },
+        {
+          "query_kind": "wedding_no_dress_no_heel",
+          "intent_type": "outfit",
+          "occasion": "wedding",
+          "no_heel": true,
+          "no_dress": true,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 3.545
+        }
+      ],
+      "invalid_returned": 0,
+      "test_writes_rolled_back": true,
+      "budget": 10000,
+      "size_diagnostics": {
+        "scope": "four_sources_stored_active_products_by_role",
+        "checked_at": "2026-10-12T21:37:37.001565+00:00",
+        "roles": {
+          "bottom": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 10365,
+              "requested_size_not_present": 1410,
+              "exact_known_size_available": 222
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 11817,
+              "known": 1762
+            },
+            "product_stock_states": {
+              "available": 11997
+            }
+          },
+          "one_piece": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 3617,
+              "requested_size_not_present": 939,
+              "exact_known_size_available": 364
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 4490,
+              "known": 1891
+            },
+            "product_stock_states": {
+              "available": 4920
+            }
+          },
+          "other": {
+            "requested_size_states": {
+              "missing_confirmed_profile_size": 2312
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 2273,
+              "known": 255
+            },
+            "product_stock_states": {
+              "available": 2312
+            }
+          },
+          "outerwear": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 4405,
+              "requested_size_not_present": 1489,
+              "exact_known_size_available": 126
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 5733,
+              "known": 1615
+            },
+            "product_stock_states": {
+              "available": 6020
+            }
+          },
+          "shoes": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 9555
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 9555
+            },
+            "product_stock_states": {
+              "available": 9555
+            }
+          },
+          "top": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 15415,
+              "requested_size_not_present": 3683,
+              "exact_known_size_available": 341
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 18503,
+              "known": 4024
+            },
+            "product_stock_states": {
+              "available": 19439
+            }
+          }
+        }
+      },
+      "bootstrap_cards": 20,
+      "bootstrap_ids_sha256": "153f1464945683e4029ca6612cc6fbf9d501de8ce4069fca182d9eb0c1b3a898",
+      "eligible_deck_cards_checked": 20,
+      "activation_status": "completed_real_activation",
+      "reactions": {
+        "like": 10,
+        "dislike": 5
+      },
+      "wow_items_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "learned_taste_from_real_swipes": true,
+      "results_basis": "completed_real_activation",
+      "shopping_intent_api_available": true,
+      "eligible_feed_cards_checked": 20,
+      "feed_ids_sha256": "c24f5bd7ce83aa06f96451e7c5a0fbf501d9cc06da69a0da095a78905c98f156",
+      "intent_permanent_taste_and_fit_unchanged": true,
+      "stock_timestamps_modified": false,
+      "seconds": 84.332
+    },
+    {
+      "index": 7,
+      "clothing_size": "S",
+      "clothing_system": "LETTER",
+      "shoe_size": "37",
+      "shoe_system": "EU",
+      "segment": "mass",
+      "activation_completed": true,
+      "style_swipe_rated": 15,
+      "wow_outfits": 0,
+      "feed_cards": 20,
+      "filters": {
+        "shoes": 0,
+        "outerwear": 20
+      },
+      "tasks": [
+        {
+          "query_kind": "trousers",
+          "intent_type": "single_item",
+          "occasion": null,
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 10,
+          "outfits": 0,
+          "empty": false,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "7b190d341a889f6c421907f6b8c26d914432a24e6d110bb3fa906fee344801a9",
+          "seconds": 1.14
+        },
+        {
+          "query_kind": "dress",
+          "intent_type": "single_item",
+          "occasion": null,
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 10,
+          "outfits": 0,
+          "empty": false,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "1cde2fec505a9442f75ed5b12c1915641ebd9986ab8b63a5af1ea0f4fd56fc6b",
+          "seconds": 1.61
+        },
+        {
+          "query_kind": "office",
+          "intent_type": "outfit",
+          "occasion": "office",
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 3.434
+        },
+        {
+          "query_kind": "wedding_no_dress_no_heel",
+          "intent_type": "outfit",
+          "occasion": "wedding",
+          "no_heel": true,
+          "no_dress": true,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 3.349
+        }
+      ],
+      "invalid_returned": 0,
+      "test_writes_rolled_back": true,
+      "budget": 10000,
+      "size_diagnostics": {
+        "scope": "four_sources_stored_active_products_by_role",
+        "checked_at": "2026-10-12T21:39:01.346903+00:00",
+        "roles": {
+          "bottom": {
+            "requested_size_states": {
+              "exact_known_size_available": 367,
+              "size_system_or_token_unconfirmed": 10365,
+              "requested_size_not_present": 1265
+            },
+            "size_failure_reasons_by_token": {
+              "known": 1762,
+              "size_system_unknown": 11817
+            },
+            "product_stock_states": {
+              "available": 11997
+            }
+          },
+          "one_piece": {
+            "requested_size_states": {
+              "exact_known_size_available": 421,
+              "size_system_or_token_unconfirmed": 3617,
+              "requested_size_not_present": 882
+            },
+            "size_failure_reasons_by_token": {
+              "known": 1891,
+              "size_system_unknown": 4490
+            },
+            "product_stock_states": {
+              "available": 4920
+            }
+          },
+          "other": {
+            "requested_size_states": {
+              "missing_confirmed_profile_size": 2312
+            },
+            "size_failure_reasons_by_token": {
+              "known": 255,
+              "size_system_unknown": 2273
+            },
+            "product_stock_states": {
+              "available": 2312
+            }
+          },
+          "outerwear": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 4405,
+              "exact_known_size_available": 295,
+              "requested_size_not_present": 1320
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 5733,
+              "known": 1615
+            },
+            "product_stock_states": {
+              "available": 6020
+            }
+          },
+          "shoes": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 9555
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 9555
+            },
+            "product_stock_states": {
+              "available": 9555
+            }
+          },
+          "top": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 15415,
+              "requested_size_not_present": 3209,
+              "exact_known_size_available": 815
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 18503,
+              "known": 4024
+            },
+            "product_stock_states": {
+              "available": 19439
+            }
+          }
+        }
+      },
+      "bootstrap_cards": 20,
+      "bootstrap_ids_sha256": "058edc51c9f37a9b20e705a42cc65742d338afc76b857092074cf551d320b5b8",
+      "eligible_deck_cards_checked": 20,
+      "activation_status": "completed_real_activation",
+      "reactions": {
+        "like": 10,
+        "dislike": 5
+      },
+      "wow_items_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "learned_taste_from_real_swipes": true,
+      "results_basis": "completed_real_activation",
+      "shopping_intent_api_available": true,
+      "eligible_feed_cards_checked": 20,
+      "feed_ids_sha256": "e96b3a4575faf44e68a3e928a6aaabcc8fe72337bf92e79485863640ba73d1c0",
+      "intent_permanent_taste_and_fit_unchanged": true,
+      "stock_timestamps_modified": false,
+      "seconds": 89.666
+    },
+    {
+      "index": 8,
+      "clothing_size": "M",
+      "clothing_system": "LETTER",
+      "shoe_size": "38",
+      "shoe_system": "EU",
+      "segment": "mass",
+      "activation_completed": true,
+      "style_swipe_rated": 15,
+      "wow_outfits": 0,
+      "feed_cards": 20,
+      "filters": {
+        "shoes": 0,
+        "outerwear": 20
+      },
+      "tasks": [
+        {
+          "query_kind": "trousers",
+          "intent_type": "single_item",
+          "occasion": null,
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 10,
+          "outfits": 0,
+          "empty": false,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "168d3b99130a797890c2edaa33be653ce19df741e66ce60c0bc525b212749a1c",
+          "seconds": 0.851
+        },
+        {
+          "query_kind": "dress",
+          "intent_type": "single_item",
+          "occasion": null,
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 10,
+          "outfits": 0,
+          "empty": false,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "72d6db2be8e4f2cc047b38a7e141ed1f15d5141ea2ee1d0be08b63168d63662e",
+          "seconds": 1.148
+        },
+        {
+          "query_kind": "office",
+          "intent_type": "outfit",
+          "occasion": "office",
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 3.408
+        },
+        {
+          "query_kind": "wedding_no_dress_no_heel",
+          "intent_type": "outfit",
+          "occasion": "wedding",
+          "no_heel": true,
+          "no_dress": true,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 3.274
+        }
+      ],
+      "invalid_returned": 0,
+      "test_writes_rolled_back": true,
+      "budget": 10000,
+      "size_diagnostics": {
+        "scope": "four_sources_stored_active_products_by_role",
+        "checked_at": "2026-10-12T21:40:30.996728+00:00",
+        "roles": {
+          "bottom": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 10365,
+              "exact_known_size_available": 325,
+              "requested_size_not_present": 1307
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 11817,
+              "known": 1762
+            },
+            "product_stock_states": {
+              "available": 11997
+            }
+          },
+          "one_piece": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 3617,
+              "exact_known_size_available": 402,
+              "requested_size_not_present": 901
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 4490,
+              "known": 1891
+            },
+            "product_stock_states": {
+              "available": 4920
+            }
+          },
+          "other": {
+            "requested_size_states": {
+              "missing_confirmed_profile_size": 2312
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 2273,
+              "known": 255
+            },
+            "product_stock_states": {
+              "available": 2312
+            }
+          },
+          "outerwear": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 4405,
+              "requested_size_not_present": 1354,
+              "exact_known_size_available": 261
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 5733,
+              "known": 1615
+            },
+            "product_stock_states": {
+              "available": 6020
+            }
+          },
+          "shoes": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 9555
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 9555
+            },
+            "product_stock_states": {
+              "available": 9555
+            }
+          },
+          "top": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 15415,
+              "requested_size_not_present": 3300,
+              "exact_known_size_available": 724
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 18503,
+              "known": 4024
+            },
+            "product_stock_states": {
+              "available": 19439
+            }
+          }
+        }
+      },
+      "bootstrap_cards": 20,
+      "bootstrap_ids_sha256": "525278916c6ba74cd2c5377c3475203cef1300f9ddd6cbc47ad66ab75f7de0d2",
+      "eligible_deck_cards_checked": 20,
+      "activation_status": "completed_real_activation",
+      "reactions": {
+        "like": 10,
+        "dislike": 5
+      },
+      "wow_items_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "learned_taste_from_real_swipes": true,
+      "results_basis": "completed_real_activation",
+      "shopping_intent_api_available": true,
+      "eligible_feed_cards_checked": 20,
+      "feed_ids_sha256": "5796ec716a2c5841281327e3b26004ca010dbe5ca6d09e90bc4f9ff648e157aa",
+      "intent_permanent_taste_and_fit_unchanged": true,
+      "stock_timestamps_modified": false,
+      "seconds": 86.613
+    },
+    {
+      "index": 9,
+      "clothing_size": "L",
+      "clothing_system": "LETTER",
+      "shoe_size": "39",
+      "shoe_system": "EU",
+      "segment": "mass",
+      "activation_completed": true,
+      "style_swipe_rated": 15,
+      "wow_outfits": 0,
+      "feed_cards": 20,
+      "filters": {
+        "shoes": 0,
+        "outerwear": 20
+      },
+      "tasks": [
+        {
+          "query_kind": "trousers",
+          "intent_type": "single_item",
+          "occasion": null,
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 10,
+          "outfits": 0,
+          "empty": false,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "9d0bdc113c25e8f6b19a68ebb51e2edbe59d4b5c2462cfb9efd0ddf4d0584d81",
+          "seconds": 0.931
+        },
+        {
+          "query_kind": "dress",
+          "intent_type": "single_item",
+          "occasion": null,
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 10,
+          "outfits": 0,
+          "empty": false,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "376177866f841d0ee24e66e10a08c5cef17e63e7ead0c4d20ed7906d705d94b6",
+          "seconds": 1.04
+        },
+        {
+          "query_kind": "office",
+          "intent_type": "outfit",
+          "occasion": "office",
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 3.459
+        },
+        {
+          "query_kind": "wedding_no_dress_no_heel",
+          "intent_type": "outfit",
+          "occasion": "wedding",
+          "no_heel": true,
+          "no_dress": true,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 3.149
+        }
+      ],
+      "invalid_returned": 0,
+      "test_writes_rolled_back": true,
+      "budget": 10000,
+      "size_diagnostics": {
+        "scope": "four_sources_stored_active_products_by_role",
+        "checked_at": "2026-10-12T21:41:57.603836+00:00",
+        "roles": {
+          "bottom": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 10365,
+              "exact_known_size_available": 306,
+              "requested_size_not_present": 1326
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 11817,
+              "known": 1762
+            },
+            "product_stock_states": {
+              "available": 11997
+            }
+          },
+          "one_piece": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 3617,
+              "exact_known_size_available": 369,
+              "requested_size_not_present": 934
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 4490,
+              "known": 1891
+            },
+            "product_stock_states": {
+              "available": 4920
+            }
+          },
+          "other": {
+            "requested_size_states": {
+              "missing_confirmed_profile_size": 2312
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 2273,
+              "known": 255
+            },
+            "product_stock_states": {
+              "available": 2312
+            }
+          },
+          "outerwear": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 4405,
+              "requested_size_not_present": 1332,
+              "exact_known_size_available": 283
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 5733,
+              "known": 1615
+            },
+            "product_stock_states": {
+              "available": 6020
+            }
+          },
+          "shoes": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 9555
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 9555
+            },
+            "product_stock_states": {
+              "available": 9555
+            }
+          },
+          "top": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 15415,
+              "requested_size_not_present": 3338,
+              "exact_known_size_available": 686
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 18503,
+              "known": 4024
+            },
+            "product_stock_states": {
+              "available": 19439
+            }
+          }
+        }
+      },
+      "bootstrap_cards": 20,
+      "bootstrap_ids_sha256": "d34eb46d3612ff79e1cea849db1ffe9ed5ff876eb40c309907eafca8def18eab",
+      "eligible_deck_cards_checked": 20,
+      "activation_status": "completed_real_activation",
+      "reactions": {
+        "like": 10,
+        "dislike": 5
+      },
+      "wow_items_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "learned_taste_from_real_swipes": true,
+      "results_basis": "completed_real_activation",
+      "shopping_intent_api_available": true,
+      "eligible_feed_cards_checked": 20,
+      "feed_ids_sha256": "080d63c7871a205586ca06caf375d8e9673a1919bd07b02eb9c44b973d46fea7",
+      "intent_permanent_taste_and_fit_unchanged": true,
+      "stock_timestamps_modified": false,
+      "seconds": 84.995
+    },
+    {
+      "index": 10,
+      "clothing_size": "XL",
+      "clothing_system": "LETTER",
+      "shoe_size": "40",
+      "shoe_system": "EU",
+      "segment": "mass",
+      "activation_completed": true,
+      "style_swipe_rated": 15,
+      "wow_outfits": 0,
+      "feed_cards": 20,
+      "filters": {
+        "shoes": 0,
+        "outerwear": 20
+      },
+      "tasks": [
+        {
+          "query_kind": "trousers",
+          "intent_type": "single_item",
+          "occasion": null,
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 10,
+          "outfits": 0,
+          "empty": false,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "b7f7654fc3268b239ff22124af8050b4512c62cca501404a0d12413489a5776d",
+          "seconds": 0.862
+        },
+        {
+          "query_kind": "dress",
+          "intent_type": "single_item",
+          "occasion": null,
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 10,
+          "outfits": 0,
+          "empty": false,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "7cb1a25ce89a634c0af5c77b7c7160136ae59d2504ee6464d023ca23ebd251a4",
+          "seconds": 1.171
+        },
+        {
+          "query_kind": "office",
+          "intent_type": "outfit",
+          "occasion": "office",
+          "no_heel": false,
+          "no_dress": false,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 3.585
+        },
+        {
+          "query_kind": "wedding_no_dress_no_heel",
+          "intent_type": "outfit",
+          "occasion": "wedding",
+          "no_heel": true,
+          "no_dress": true,
+          "supported": true,
+          "needs_clarification": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "invalid_returned": 0,
+          "returned_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "seconds": 3.3
+        }
+      ],
+      "invalid_returned": 0,
+      "test_writes_rolled_back": true,
+      "budget": 10000,
+      "size_diagnostics": {
+        "scope": "four_sources_stored_active_products_by_role",
+        "checked_at": "2026-10-12T21:43:22.606670+00:00",
+        "roles": {
+          "bottom": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 10365,
+              "exact_known_size_available": 286,
+              "requested_size_not_present": 1346
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 11817,
+              "known": 1762
+            },
+            "product_stock_states": {
+              "available": 11997
+            }
+          },
+          "one_piece": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 3617,
+              "requested_size_not_present": 1089,
+              "exact_known_size_available": 214
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 4490,
+              "known": 1891
+            },
+            "product_stock_states": {
+              "available": 4920
+            }
+          },
+          "other": {
+            "requested_size_states": {
+              "missing_confirmed_profile_size": 2312
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 2273,
+              "known": 255
+            },
+            "product_stock_states": {
+              "available": 2312
+            }
+          },
+          "outerwear": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 4405,
+              "requested_size_not_present": 1326,
+              "exact_known_size_available": 289
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 5733,
+              "known": 1615
+            },
+            "product_stock_states": {
+              "available": 6020
+            }
+          },
+          "shoes": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 9555
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 9555
+            },
+            "product_stock_states": {
+              "available": 9555
+            }
+          },
+          "top": {
+            "requested_size_states": {
+              "size_system_or_token_unconfirmed": 15415,
+              "requested_size_not_present": 3352,
+              "exact_known_size_available": 672
+            },
+            "size_failure_reasons_by_token": {
+              "size_system_unknown": 18503,
+              "known": 4024
+            },
+            "product_stock_states": {
+              "available": 19439
+            }
+          }
+        }
+      },
+      "bootstrap_cards": 20,
+      "bootstrap_ids_sha256": "1afa96ac3fd8849a28a666fbca68bf50e000f264cdf8aaf05899e737fda9fe11",
+      "eligible_deck_cards_checked": 20,
+      "activation_status": "completed_real_activation",
+      "reactions": {
+        "like": 10,
+        "dislike": 5
+      },
+      "wow_items_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "learned_taste_from_real_swipes": true,
+      "results_basis": "completed_real_activation",
+      "shopping_intent_api_available": true,
+      "eligible_feed_cards_checked": 20,
+      "feed_ids_sha256": "b2e36a984219b6f05a52e3338888aa9a7df7e1e1c221831617b33473a8203e4e",
+      "intent_permanent_taste_and_fit_unchanged": true,
+      "stock_timestamps_modified": false,
+      "seconds": 84.635
+    }
+  ],
+  "catalogue_after": {
+    "products": {
+      "rows": 205524,
+      "state_sha256": "303636c630ea94890d4e763fe62b809dbd709bfc9395670ccd408760f4d8d9f4"
+    },
+    "catalog_records": {
+      "rows": 75653,
+      "state_sha256": "d4a6a13b64362816432565b66d91c9e202af1ef535619867203ca26e5806f2b9"
+    },
+    "product_sources": {
+      "rows": 11,
+      "state_sha256": "6185c977c0b6345f6f44b299e43600ec81e810f2fcfa2de078a0fd3fc956a421"
+    },
+    "catalog_sync_runs": {
+      "rows": 52,
+      "state_sha256": "578887199bd871023904eddfb9ce7c63b589e58dc939fa75f7de6c8d15da575a"
+    }
+  },
+  "catalogue_unchanged": true,
+  "stock_timestamps_modified": false,
+  "test_writes_rolled_back": true,
+  "synthetic_users_rolled_back": true,
+  "checks_passed": true,
+  "finished_at": "2026-10-12T21:45:37.463341+00:00",
+  "release_gate": {
+    "all_profiles_activation_completed": false,
+    "all_profiles_wow_at_least_3": false,
+    "all_profiles_feed_at_least_10": false,
+    "all_profiles_shoes_and_outerwear": false,
+    "all_profiles_have_office_outfit": false,
+    "all_profiles_wedding_no_heel": false,
+    "all_intent_queries_supported": true,
+    "no_invalid_returned": true,
+    "all_test_writes_rolled_back": true
+  },
+  "product_ready": false,
+  "result": "real_catalogue_coverage_failed",
+  "limits": [
+    "Ten controlled profiles and reactions measure exact-size coverage, not human taste quality.",
+    "Incomplete activation intent results are internal configured-profile diagnostics; the API remains gated.",
+    "Current clocks remain live; stock may age out while the audit runs.",
+    "This is isolated service validation, not production request latency or provider availability verification."
+  ]
+}

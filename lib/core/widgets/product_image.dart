@@ -72,12 +72,18 @@ class ProductFillImage extends StatefulWidget {
     this.borderRadius = BorderRadius.zero,
     this.fit = BoxFit.contain,
     this.fallbackImageUrls = const [],
+    this.onUnavailable,
+    this.showRetry = true,
   });
 
   final String imageUrl;
   final BorderRadius borderRadius;
   final BoxFit fit;
   final List<String> fallbackImageUrls;
+  final VoidCallback? onUnavailable;
+
+  /// Thumbnails inside an actionable card open its detail instead of retrying.
+  final bool showRetry;
 
   @override
   State<ProductFillImage> createState() => _ProductFillImageState();
@@ -103,6 +109,7 @@ class _ProductFillImageState extends State<ProductFillImage> {
   Uint8List? _bytes;
   bool _loading = false;
   bool _decodeAdvanceScheduled = false;
+  bool _unavailableNotified = false;
   Timer? _stallTimer;
 
   @override
@@ -126,6 +133,7 @@ class _ProductFillImageState extends State<ProductFillImage> {
     if (next != prev ||
         !listEquals(widget.fallbackImageUrls, oldWidget.fallbackImageUrls)) {
       _stallTimer?.cancel();
+      _unavailableNotified = false;
       _requestGen++;
       setState(() {
         _candidates = _buildCandidates(next);
@@ -170,7 +178,10 @@ class _ProductFillImageState extends State<ProductFillImage> {
   }
 
   void _kickLoad() {
-    if (_candidates.isEmpty || _index >= _candidates.length) return;
+    if (_candidates.isEmpty || _index >= _candidates.length) {
+      _notifyUnavailable();
+      return;
+    }
     final url = _candidates[_index];
     final gen = ++_requestGen;
     final cached = _cache[url];
@@ -263,7 +274,18 @@ class _ProductFillImageState extends State<ProductFillImage> {
     });
     if (_index < _candidates.length) {
       _kickLoad();
+    } else {
+      _notifyUnavailable();
     }
+  }
+
+  void _notifyUnavailable() {
+    if (_unavailableNotified) return;
+    _unavailableNotified = true;
+    final generation = _requestGen;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && generation == _requestGen) widget.onUnavailable?.call();
+    });
   }
 
   void _onDecodeError(Object error, StackTrace? stack) {
@@ -416,21 +438,22 @@ class _ProductFillImageState extends State<ProductFillImage> {
               ],
             ),
           ),
-          Positioned(
-            bottom: 0,
-            right: 0,
-            child: TextButton(
-              onPressed: () {
-                setState(() {
-                  _index = 0;
-                  _bytes = null;
-                  _decodeAdvanceScheduled = false;
-                });
-                _kickLoad();
-              },
-              child: const Text('Повторить', style: TextStyle(fontSize: 10)),
+          if (widget.showRetry)
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: TextButton(
+                onPressed: () {
+                  setState(() {
+                    _index = 0;
+                    _bytes = null;
+                    _decodeAdvanceScheduled = false;
+                  });
+                  _kickLoad();
+                },
+                child: const Text('Повторить', style: TextStyle(fontSize: 10)),
+              ),
             ),
-          ),
         ],
       ),
     );

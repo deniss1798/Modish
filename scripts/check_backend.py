@@ -20,6 +20,11 @@ def main() -> int:
     for name in ("SYSTEMROOT", "WINDIR", "TEMP", "TMP", "PATH"):
         if name in os.environ:
             environment[name] = os.environ[name]
+    # Windows sandbox TEMP can be readable but not writable by child Python.
+    # Keep disposable test fixtures in the explicitly writable workspace.
+    test_temp = backend.parent / '.tmp' / 'backend-check-temp'
+    test_temp.mkdir(parents=True, exist_ok=True)
+    environment.update(TEMP=str(test_temp), TMP=str(test_temp))
     with patch.dict(os.environ, environment, clear=True), patch("dotenv.load_dotenv"):
         suite = unittest.defaultTestLoader.discover(str(backend / "tests"))
         result = unittest.TextTestRunner(verbosity=2).run(suite)

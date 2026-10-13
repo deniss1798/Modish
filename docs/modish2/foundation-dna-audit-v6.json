@@ -1,0 +1,830 @@
+{
+  "scope": "isolated_clone_read_only",
+  "rules_version": "product_dna_rules_v2",
+  "checked_at": "2026-10-06T06:27:40.933135+00:00",
+  "sampling": "first 25 IDs per source/category; descriptive sample, not representative coverage or eligibility",
+  "sources": [
+    {
+      "source": "baon",
+      "active_snapshot_skus": 6297,
+      "sampled_skus": 277,
+      "category_population": {
+        "брюки": 590,
+        "верхний_слой": 1490,
+        "джемперы": 982,
+        "джинсы": 93,
+        "комбинезоны": 7,
+        "костюмы": 20,
+        "платья": 665,
+        "рубашки": 291,
+        "футболки": 1443,
+        "худи": 168,
+        "шорты": 358,
+        "юбки": 190
+      },
+      "supported_dimensions": {
+        "style": 226,
+        "material": 261,
+        "silhouette": 101,
+        "color": 204,
+        "fit": 124
+      },
+      "conflict_dimensions": {},
+      "stock_state_in_sample": {
+        "stale_availability": 277
+      },
+      "examples": [
+        {
+          "product_id": "014fe2a9-07f0-4a29-a6d2-06f7ce3355e6",
+          "title": "Брюки BAON",
+          "category": "брюки",
+          "values": {
+            "style": [
+              "casual"
+            ],
+            "material": [
+              "cotton",
+              "linen"
+            ],
+            "silhouette": [
+              "straight"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "01529e00-e5f5-4bf7-a1e0-8b994c66c307",
+          "title": "Брюки BAON",
+          "category": "брюки",
+          "values": {
+            "style": [
+              "casual"
+            ],
+            "color": [
+              "black"
+            ],
+            "silhouette": [
+              "straight"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "01a696fe-2d03-4cb2-8383-86bcd7233378",
+          "title": "Брюки BAON",
+          "category": "брюки",
+          "values": {
+            "style": [
+              "casual"
+            ],
+            "color": [
+              "cream"
+            ],
+            "material": [
+              "polyester",
+              "viscose"
+            ],
+            "silhouette": [
+              "tapered"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "01b6b4b9-4eb7-4f5c-ae20-30ff6e9a5440",
+          "title": "Брюки BAON",
+          "category": "брюки",
+          "values": {
+            "style": [
+              "sporty"
+            ],
+            "color": [
+              "blue"
+            ],
+            "fit": [
+              "slim"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "01b72220-4ce9-440c-8f4f-df91b8ffe640",
+          "title": "Брюки BAON",
+          "category": "брюки",
+          "values": {
+            "style": [
+              "casual"
+            ],
+            "color": [
+              "pink"
+            ],
+            "material": [
+              "cotton",
+              "linen"
+            ],
+            "fit": [
+              "relaxed"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "0273b6ac-9720-4de7-9f93-a0b6dff4a651",
+          "title": "Брюки BAON",
+          "category": "брюки",
+          "values": {
+            "style": [
+              "casual"
+            ],
+            "color": [
+              "brown"
+            ],
+            "material": [
+              "cotton"
+            ],
+            "fit": [
+              "relaxed"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "029bf473-b92a-4550-9226-aef55cb8663b",
+          "title": "Брюки BAON",
+          "category": "брюки",
+          "values": {
+            "style": [
+              "sporty"
+            ],
+            "color": [
+              "grey"
+            ],
+            "fit": [
+              "slim"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "0335771c-0a39-4137-9f42-392bbe4f4d91",
+          "title": "Брюки BAON",
+          "category": "брюки",
+          "values": {
+            "style": [
+              "casual"
+            ],
+            "color": [
+              "black"
+            ],
+            "fit": [
+              "relaxed"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "035e2bc7-f1e3-46a6-acd4-5b4bc7c55d98",
+          "title": "Брюки BAON",
+          "category": "брюки",
+          "values": {
+            "style": [
+              "casual"
+            ],
+            "color": [
+              "cream"
+            ],
+            "material": [
+              "polyester",
+              "viscose"
+            ],
+            "fit": [
+              "relaxed"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "037d9e0d-fcd0-46e7-a3e3-49bd48107b58",
+          "title": "Брюки BAON",
+          "category": "брюки",
+          "values": {
+            "style": [
+              "casual"
+            ],
+            "color": [
+              "grey"
+            ],
+            "material": [
+              "polyester",
+              "viscose"
+            ],
+            "silhouette": [
+              "straight"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "04186d4c-0c20-48f9-a288-80a0fb9ca9a9",
+          "title": "Брюки BAON",
+          "category": "брюки",
+          "values": {
+            "style": [
+              "casual"
+            ],
+            "color": [
+              "blue"
+            ],
+            "material": [
+              "linen",
+              "viscose"
+            ],
+            "fit": [
+              "relaxed"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "04b1989d-6475-4611-987b-92885320ee68",
+          "title": "Брюки BAON",
+          "category": "брюки",
+          "values": {
+            "style": [
+              "casual"
+            ],
+            "material": [
+              "cotton"
+            ],
+            "fit": [
+              "relaxed"
+            ]
+          },
+          "blocked_dimensions": []
+        }
+      ]
+    },
+    {
+      "source": "shoppinglive",
+      "active_snapshot_skus": 32978,
+      "sampled_skus": 275,
+      "category_population": {
+        "верхний_слой": 4344,
+        "джемперы": 3259,
+        "джинсы": 1070,
+        "футболки": 3043,
+        "рубашки": 3789,
+        "платья": 1500,
+        "обувь": 9121,
+        "брюки": 4290,
+        "юбки": 1108,
+        "худи": 1269,
+        "шорты": 185
+      },
+      "supported_dimensions": {
+        "color": 214,
+        "material": 250,
+        "silhouette": 38,
+        "fit": 16
+      },
+      "conflict_dimensions": {
+        "material": 3
+      },
+      "stock_state_in_sample": {
+        "stale_availability": 275
+      },
+      "examples": [
+        {
+          "product_id": "00040642-9ff0-47b3-b21d-863524f4337e",
+          "title": "Брюки из костюмной ткани с вплетением люрекса",
+          "category": "брюки",
+          "values": {
+            "color": [
+              "black"
+            ],
+            "material": [
+              "polyester",
+              "viscose"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "000f8399-d9f0-4fb0-a5c1-7df976aefde9",
+          "title": "Широкие брюки из велюра с люрексом",
+          "category": "брюки",
+          "values": {
+            "color": [
+              "navy"
+            ],
+            "material": [
+              "cotton",
+              "polyester"
+            ],
+            "silhouette": [
+              "wide"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "001278fb-03ca-45bd-8b79-a89f29de205f",
+          "title": "Велюровые брюки прямого кроя с акцентным поясом",
+          "category": "брюки",
+          "values": {
+            "material": [
+              "polyester"
+            ],
+            "silhouette": [
+              "straight"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "00196204-78a1-483b-885d-169a067903bc",
+          "title": "Брюки прямого силуэта с резинкой на поясе",
+          "category": "брюки",
+          "values": {
+            "color": [
+              "black"
+            ],
+            "material": [
+              "polyester"
+            ],
+            "silhouette": [
+              "straight"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "002fed3b-5c4c-4ab0-8c02-a55fd6ad1e06",
+          "title": "Брюки с  боковыми лампасами и эластичным поясом",
+          "category": "брюки",
+          "values": {
+            "color": [
+              "navy"
+            ],
+            "material": [
+              "polyester",
+              "viscose"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "003555af-3327-49e5-ab75-0e9833b7cb84",
+          "title": "Брюки широкого кроя с контрастными лампасами по бокам",
+          "category": "брюки",
+          "values": {
+            "color": [
+              "green"
+            ],
+            "material": [
+              "linen",
+              "viscose"
+            ],
+            "silhouette": [
+              "wide"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "004451d5-4c9a-45dc-acdf-3774968ba7fc",
+          "title": "Утепленные брюки зауженного кроя из эластичного трикотажа",
+          "category": "брюки",
+          "values": {
+            "color": [
+              "green"
+            ],
+            "material": [
+              "polyester"
+            ],
+            "silhouette": [
+              "tapered"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "0048380e-1556-4cfc-b2f3-ebec795aa16e",
+          "title": "Джоггеры с эластичным поясом-кулиской",
+          "category": "брюки",
+          "values": {
+            "material": [
+              "linen"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "004ed420-3c99-4ed3-9590-f52dbe3fa453",
+          "title": "Брюки с вискозой в составе",
+          "category": "брюки",
+          "values": {
+            "color": [
+              "navy"
+            ],
+            "material": [
+              "viscose"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "006280ed-f6a0-4876-99fb-9d0f2b7e53bf",
+          "title": "Трикотажные брюки с тропическим принтом",
+          "category": "брюки",
+          "values": {
+            "color": [
+              "green"
+            ],
+            "material": [
+              "viscose"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "00754a27-ba1f-4d99-bba1-cfc623add113",
+          "title": "Велюровые брюки прямого кроя",
+          "category": "брюки",
+          "values": {
+            "material": [
+              "polyester"
+            ],
+            "silhouette": [
+              "straight"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "007eb5e1-26d4-4bc4-84c3-05886fc27da3",
+          "title": "Вельветовые брюки стретч прямого кроя",
+          "category": "брюки",
+          "values": {
+            "color": [
+              "grey"
+            ],
+            "material": [
+              "cotton"
+            ],
+            "silhouette": [
+              "straight"
+            ]
+          },
+          "blocked_dimensions": []
+        }
+      ]
+    },
+    {
+      "source": "serginnetti",
+      "active_snapshot_skus": 12013,
+      "sampled_skus": 250,
+      "category_population": {
+        "брюки": 1892,
+        "верхний_слой": 1792,
+        "джемперы": 1237,
+        "джинсы": 196,
+        "платья": 2070,
+        "рубашки": 1693,
+        "футболки": 1664,
+        "худи": 35,
+        "шорты": 240,
+        "юбки": 1194
+      },
+      "supported_dimensions": {
+        "color": 138,
+        "material": 95,
+        "silhouette": 26,
+        "fit": 29,
+        "style": 4
+      },
+      "conflict_dimensions": {
+        "color": 2
+      },
+      "stock_state_in_sample": {
+        "stale_availability": 250
+      },
+      "examples": [
+        {
+          "product_id": "00793b83-62fe-44e2-a871-657f08125a3c",
+          "title": "Брюки со стрелками в зеленом цвете",
+          "category": "брюки",
+          "values": {
+            "color": [
+              "green"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "007eb767-f090-4132-8d5c-f01d3deb46b8",
+          "title": "Брюки со стрелками трендового красного цвета",
+          "category": "брюки",
+          "values": {
+            "material": [
+              "cotton",
+              "linen"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "0085f531-6c14-4d71-803b-0e0f44a4c2e8",
+          "title": "Брюки прямого силуэта в клетку",
+          "category": "брюки",
+          "values": {
+            "color": [
+              "brown"
+            ],
+            "silhouette": [
+              "straight"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "008e3b89-e788-4aa2-8422-480385b76478",
+          "title": "Брюки свободного силуэта в желтом цвете",
+          "category": "брюки",
+          "values": {
+            "color": [
+              "yellow"
+            ],
+            "fit": [
+              "relaxed"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "00bceb5e-b20f-45ac-97be-9cb22242cee2",
+          "title": "Льняные брюки с эффектом деним",
+          "category": "брюки",
+          "values": {
+            "material": [
+              "linen"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "010dbcb8-dc31-40ff-95d4-f99967918f7e",
+          "title": "Брюки из бархатистой ткани",
+          "category": "брюки",
+          "values": {
+            "material": [
+              "cotton",
+              "viscose"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "014a7d07-38ed-4a3a-8464-c2904498b94c",
+          "title": "Зауженные брюки в песочном цвете",
+          "category": "брюки",
+          "values": {
+            "silhouette": [
+              "tapered"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "0154574e-6442-43ff-b3a4-e898e3bccae3",
+          "title": "Полуприлегающие брюки черного цвета",
+          "category": "брюки",
+          "values": {
+            "color": [
+              "black"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "016d40c7-1d96-49a7-b680-7782063fdc1a",
+          "title": "Брюки прямого силуэта в лимонном цвете",
+          "category": "брюки",
+          "values": {
+            "color": [
+              "green"
+            ],
+            "silhouette": [
+              "straight"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "017c53d2-a085-49e0-97dd-ea684483d98b",
+          "title": "Брюки свободного силуэта с принтом",
+          "category": "брюки",
+          "values": {
+            "color": [
+              "black"
+            ],
+            "fit": [
+              "relaxed"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "0188c41d-8a93-4f10-9362-091f355f9758",
+          "title": "Брюки карго с накладными карманами",
+          "category": "брюки",
+          "values": {
+            "color": [
+              "grey"
+            ],
+            "material": [
+              "wool"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "019badbd-ba51-49c0-9243-bbeecf5abe7b",
+          "title": "Хлопковые брюки в спортивном стиле",
+          "category": "брюки",
+          "values": {
+            "style": [
+              "sporty"
+            ],
+            "color": [
+              "black"
+            ],
+            "material": [
+              "cotton"
+            ]
+          },
+          "blocked_dimensions": []
+        }
+      ]
+    },
+    {
+      "source": "postmeridiem",
+      "active_snapshot_skus": 240,
+      "sampled_skus": 50,
+      "category_population": {
+        "платья": 201,
+        "юбки": 39
+      },
+      "supported_dimensions": {
+        "color": 47,
+        "fit": 2,
+        "silhouette": 8,
+        "material": 8
+      },
+      "conflict_dimensions": {},
+      "stock_state_in_sample": {
+        "stale_availability": 50
+      },
+      "examples": [
+        {
+          "product_id": "011ca19f-a038-476c-9325-007ee5138b8a",
+          "title": "Платье-мини на пуговицах с кружевной отделкой и ремнем",
+          "category": "платья",
+          "values": {
+            "color": [
+              "cream"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "029a0615-68c0-44b6-a92c-ff719d3e0d7e",
+          "title": "Платье - мини со складками на лифе и поясом",
+          "category": "платья",
+          "values": {
+            "color": [
+              "brown"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "0379cfc6-040e-440f-aca5-b02b07d091c5",
+          "title": "Платьe-миди с пышной юбкой",
+          "category": "платья",
+          "values": {
+            "color": [
+              "cream"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "0409c52a-2ab3-4f14-81bd-6a96b476d52b",
+          "title": "Платье-бюстье на фигурном корсете из жаккарда",
+          "category": "платья",
+          "values": {
+            "color": [
+              "black"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "06357bc6-9f01-46bc-87cf-ae1d6fc82333",
+          "title": "Платье в длине миди с акцентными пуговицами",
+          "category": "платья",
+          "values": {
+            "color": [
+              "white"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "075ea98e-9f95-4611-a1b7-d633b66ace02",
+          "title": "Платье-миди с плиссированной юбкой и коротким рукавом",
+          "category": "платья",
+          "values": {
+            "color": [
+              "blue"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "0810db3b-b330-403b-9731-90cb14b4e15e",
+          "title": "Платье-мини со сборкой \"Безе\"",
+          "category": "платья",
+          "values": {
+            "color": [
+              "black"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "095ae8be-bc76-41f6-8ca4-bee4829b6614",
+          "title": "Платье - макси с бантом и открытой спиной",
+          "category": "платья",
+          "values": {
+            "color": [
+              "blue"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "09d00784-ab35-43c0-95bb-eba988e6c8d5",
+          "title": "Платье миди с длинным рукавом и юбкой «годе»",
+          "category": "платья",
+          "values": {
+            "color": [
+              "blue"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "09de84d0-23c9-4c80-b8ac-f64fce7277fd",
+          "title": "Платье - мини с баской и рукавами- воланами",
+          "category": "платья",
+          "values": {
+            "color": [
+              "pink"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "0ada51d2-922b-48be-ba27-5b6fc298145b",
+          "title": "Платье макси с драпировкой на лифе и рукавах",
+          "category": "платья",
+          "values": {
+            "color": [
+              "black"
+            ]
+          },
+          "blocked_dimensions": []
+        },
+        {
+          "product_id": "0fa2bdb1-b7f3-456b-95ee-45034c49a1f6",
+          "title": "Платье-миди по фигуре с бантами на плечах",
+          "category": "платья",
+          "values": {
+            "color": [
+              "brown"
+            ],
+            "fit": [
+              "slim"
+            ]
+          },
+          "blocked_dimensions": []
+        }
+      ]
+    }
+  ],
+  "image_id": "sha256:e743ba8688186f58e9712445f49f29ec3ce7f66655386ef0a0bf8f1b80a29bdb",
+  "production_unchanged": true,
+  "archive_sha256": "d2f248947285b9c7a27445e4a56f0e1a30cf2df587db57074aa2722b46a92c91"
+}

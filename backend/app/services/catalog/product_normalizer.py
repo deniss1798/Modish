@@ -9,9 +9,12 @@ from ...catalog_normalize import (
   normalize_category,
   normalize_product_colors,
   normalize_sizes,
+  normalize_size_system,
   product_gender_from_model,
 )
 from .normalized_product import NormalizedProduct
+from .size_evidence import explicit_size_system
+from .size_resolver import resolve_product_sizes
 
 
 def normalized_to_dict(n: NormalizedProduct) -> dict[str, Any]:
@@ -19,10 +22,13 @@ def normalized_to_dict(n: NormalizedProduct) -> dict[str, Any]:
   cat = normalize_category(n.category)
   sizes = normalize_sizes(n.sizes)
   size_system = infer_size_system(sizes)
+  # A number such as 42 does not establish whether a merchant means RU or EU.
+  explicit_system = explicit_size_system(n.raw_data, n.raw_params)
+  size_system = explicit_system or (size_system if size_system != "EU" else None)
   gender = product_gender_from_model(SimpleNamespace(
     **vars(n), raw_params_json=n.raw_params, feed_raw_json=n.raw_data,
   ))
-  return {
+  payload = {
     "external_id": n.external_id,
     "source": n.source_code,
     "title": n.title[:255],
@@ -32,7 +38,7 @@ def normalized_to_dict(n: NormalizedProduct) -> dict[str, Any]:
     "price": int(n.price),
     "old_price": n.old_price,
     "discount_percent": n.discount_percent,
-    "currency": (n.currency or "RUB")[:8],
+    "currency": (n.currency or "")[:8],
     "availability_status": n.availability_status,
     "image_url": n.image_url,
     "product_url": n.original_url or n.affiliate_url or "",
@@ -59,6 +65,12 @@ def normalized_to_dict(n: NormalizedProduct) -> dict[str, Any]:
     "merchant_subcategory": n.merchant_subcategory,
     "feed_raw_json": n.raw_data or {},
   }
+  size_availability = {'in_stock': 'available', 'out_of_stock': 'unavailable'}.get(n.availability_status, 'unknown')
+  payload['available_sizes_detailed'] = [
+    {**size.to_dict(), 'availability': size_availability}
+    for size in resolve_product_sizes(SimpleNamespace(**payload))
+  ]
+  return payload
 
 
 def orm_kwargs_from_normalized(
@@ -72,10 +84,7 @@ def orm_kwargs_from_normalized(
   raw_json = dict(payload.get("feed_raw_json") or {})
   raw_json.pop("_modish_available_hint", None)
   payload["feed_raw_json"] = raw_json
-  hint = True
-  if isinstance(n.raw_data, dict) and "_modish_available_hint" in n.raw_data:
-    hint = bool(n.raw_data.get("_modish_available_hint", True))
-  avail_ok = hint and (n.availability_status != "out_of_stock")
+  avail_ok = n.availability_status == "in_stock"
   payload["is_available"] = 1 if avail_ok else 0
   payload["is_deleted_from_feed"] = 0
   payload["is_active"] = 1

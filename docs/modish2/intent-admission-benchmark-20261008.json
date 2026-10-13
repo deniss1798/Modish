@@ -1,0 +1,31 @@
+{
+  "environment": "local_windows_sqlite_synthetic_candidates",
+  "production_changed": false,
+  "before": {
+    "candidate_count": 1000,
+    "matching_size_count": 20,
+    "result_count": 10,
+    "result_hash": "c022e99508b095c78b5bbb60af8403c9aa6ea0f1d44264394f04bdd8db37c8de",
+    "seconds": [
+      0.2830567999990308,
+      0.2795327999992878,
+      0.27456729999903473
+    ],
+    "median_seconds": 0.2795327999992878
+  },
+  "after": {
+    "candidate_count": 1000,
+    "matching_size_count": 20,
+    "result_count": 10,
+    "result_hash": "c022e99508b095c78b5bbb60af8403c9aa6ea0f1d44264394f04bdd8db37c8de",
+    "seconds": [
+      0.07667669999864302,
+      0.06952839999939897,
+      0.07791939999879105
+    ],
+    "median_seconds": 0.07667669999864302
+  },
+  "identical_result": true,
+  "median_speedup": 3.65,
+  "limitation": "Not PostgreSQL p95, a concurrency test or real-catalogue latency"
+}

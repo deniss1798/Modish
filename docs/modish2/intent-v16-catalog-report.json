@@ -1,0 +1,827 @@
+{
+  "scope": "isolated_postgresql_catalogue",
+  "checked_at": "2026-10-08T13:30:01.638250+00:00",
+  "archive_sha256": "6726baf5e159a4407628fba0a84cc35d42b2c97294fae1afa355dcd053828d20",
+  "image_id": "sha256:c3a1e0501448a592e303750fb0ba9341cb6e7ba841c4123a434c033d0a2ff55e",
+  "synthetic_users_rolled_back": true,
+  "stock_timestamps_modified": false,
+  "profiles": [
+    {
+      "index": 1,
+      "clothing_size": "42",
+      "clothing_system": "RU",
+      "shoe_size": "36",
+      "shoe_system": "EU",
+      "segment": "mid",
+      "budget": 25000,
+      "feed_cards": 0,
+      "filters": {
+        "обувь": 0,
+        "верхний_слой": 0
+      },
+      "tasks": [
+        {
+          "query_kind": "single_item",
+          "categories": [
+            "брюки"
+          ],
+          "occasion": null,
+          "no_heel": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 1.232,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "single_item",
+          "categories": [
+            "платья"
+          ],
+          "occasion": null,
+          "no_heel": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 1.062,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "outfit",
+          "categories": [],
+          "occasion": "office",
+          "no_heel": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 19.054,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "outfit",
+          "categories": [],
+          "occasion": "wedding",
+          "no_heel": true,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 19.478,
+          "invalid_returned": 0
+        }
+      ],
+      "permanent_taste_unchanged": true,
+      "seconds": 52.675
+    },
+    {
+      "index": 2,
+      "clothing_size": "44",
+      "clothing_system": "RU",
+      "shoe_size": "37",
+      "shoe_system": "EU",
+      "segment": "mid",
+      "budget": 25000,
+      "feed_cards": 0,
+      "filters": {
+        "обувь": 0,
+        "верхний_слой": 0
+      },
+      "tasks": [
+        {
+          "query_kind": "single_item",
+          "categories": [
+            "брюки"
+          ],
+          "occasion": null,
+          "no_heel": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 1.009,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "single_item",
+          "categories": [
+            "платья"
+          ],
+          "occasion": null,
+          "no_heel": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 0.945,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "outfit",
+          "categories": [],
+          "occasion": "office",
+          "no_heel": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 18.825,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "outfit",
+          "categories": [],
+          "occasion": "wedding",
+          "no_heel": true,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 19.917,
+          "invalid_returned": 0
+        }
+      ],
+      "permanent_taste_unchanged": true,
+      "seconds": 52.659
+    },
+    {
+      "index": 3,
+      "clothing_size": "46",
+      "clothing_system": "RU",
+      "shoe_size": "38",
+      "shoe_system": "EU",
+      "segment": "mid",
+      "budget": 25000,
+      "feed_cards": 0,
+      "filters": {
+        "обувь": 0,
+        "верхний_слой": 0
+      },
+      "tasks": [
+        {
+          "query_kind": "single_item",
+          "categories": [
+            "брюки"
+          ],
+          "occasion": null,
+          "no_heel": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 1.079,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "single_item",
+          "categories": [
+            "платья"
+          ],
+          "occasion": null,
+          "no_heel": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 1.004,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "outfit",
+          "categories": [],
+          "occasion": "office",
+          "no_heel": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 19.21,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "outfit",
+          "categories": [],
+          "occasion": "wedding",
+          "no_heel": true,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 19.31,
+          "invalid_returned": 0
+        }
+      ],
+      "permanent_taste_unchanged": true,
+      "seconds": 52.682
+    },
+    {
+      "index": 4,
+      "clothing_size": "48",
+      "clothing_system": "RU",
+      "shoe_size": "39",
+      "shoe_system": "EU",
+      "segment": "mid",
+      "budget": 25000,
+      "feed_cards": 0,
+      "filters": {
+        "обувь": 0,
+        "верхний_слой": 0
+      },
+      "tasks": [
+        {
+          "query_kind": "single_item",
+          "categories": [
+            "брюки"
+          ],
+          "occasion": null,
+          "no_heel": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 1.182,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "single_item",
+          "categories": [
+            "платья"
+          ],
+          "occasion": null,
+          "no_heel": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 1.037,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "outfit",
+          "categories": [],
+          "occasion": "office",
+          "no_heel": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 19.132,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "outfit",
+          "categories": [],
+          "occasion": "wedding",
+          "no_heel": true,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 19.0,
+          "invalid_returned": 0
+        }
+      ],
+      "permanent_taste_unchanged": true,
+      "seconds": 52.363
+    },
+    {
+      "index": 5,
+      "clothing_size": "50",
+      "clothing_system": "RU",
+      "shoe_size": "40",
+      "shoe_system": "EU",
+      "segment": "mid",
+      "budget": 25000,
+      "feed_cards": 0,
+      "filters": {
+        "обувь": 0,
+        "верхний_слой": 0
+      },
+      "tasks": [
+        {
+          "query_kind": "single_item",
+          "categories": [
+            "брюки"
+          ],
+          "occasion": null,
+          "no_heel": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 1.207,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "single_item",
+          "categories": [
+            "платья"
+          ],
+          "occasion": null,
+          "no_heel": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 1.047,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "outfit",
+          "categories": [],
+          "occasion": "office",
+          "no_heel": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 19.425,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "outfit",
+          "categories": [],
+          "occasion": "wedding",
+          "no_heel": true,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 18.704,
+          "invalid_returned": 0
+        }
+      ],
+      "permanent_taste_unchanged": true,
+      "seconds": 52.038
+    },
+    {
+      "index": 6,
+      "clothing_size": "XS",
+      "clothing_system": "LETTER",
+      "shoe_size": "36",
+      "shoe_system": "EU",
+      "segment": "mass",
+      "budget": 10000,
+      "feed_cards": 0,
+      "filters": {
+        "обувь": 0,
+        "верхний_слой": 16
+      },
+      "tasks": [
+        {
+          "query_kind": "single_item",
+          "categories": [
+            "брюки"
+          ],
+          "occasion": null,
+          "no_heel": false,
+          "products": 10,
+          "outfits": 0,
+          "empty": false,
+          "seconds": 1.614,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "single_item",
+          "categories": [
+            "платья"
+          ],
+          "occasion": null,
+          "no_heel": false,
+          "products": 10,
+          "outfits": 0,
+          "empty": false,
+          "seconds": 1.996,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "outfit",
+          "categories": [],
+          "occasion": "office",
+          "no_heel": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 19.282,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "outfit",
+          "categories": [],
+          "occasion": "wedding",
+          "no_heel": true,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 17.225,
+          "invalid_returned": 0
+        }
+      ],
+      "permanent_taste_unchanged": true,
+      "seconds": 47.602
+    },
+    {
+      "index": 7,
+      "clothing_size": "S",
+      "clothing_system": "LETTER",
+      "shoe_size": "37",
+      "shoe_system": "EU",
+      "segment": "mass",
+      "budget": 10000,
+      "feed_cards": 0,
+      "filters": {
+        "обувь": 0,
+        "верхний_слой": 20
+      },
+      "tasks": [
+        {
+          "query_kind": "single_item",
+          "categories": [
+            "брюки"
+          ],
+          "occasion": null,
+          "no_heel": false,
+          "products": 10,
+          "outfits": 0,
+          "empty": false,
+          "seconds": 1.83,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "single_item",
+          "categories": [
+            "платья"
+          ],
+          "occasion": null,
+          "no_heel": false,
+          "products": 10,
+          "outfits": 0,
+          "empty": false,
+          "seconds": 2.188,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "outfit",
+          "categories": [],
+          "occasion": "office",
+          "no_heel": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 19.993,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "outfit",
+          "categories": [],
+          "occasion": "wedding",
+          "no_heel": true,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 19.192,
+          "invalid_returned": 0
+        }
+      ],
+      "permanent_taste_unchanged": true,
+      "seconds": 50.075
+    },
+    {
+      "index": 8,
+      "clothing_size": "M",
+      "clothing_system": "LETTER",
+      "shoe_size": "38",
+      "shoe_system": "EU",
+      "segment": "mass",
+      "budget": 10000,
+      "feed_cards": 0,
+      "filters": {
+        "обувь": 0,
+        "верхний_слой": 20
+      },
+      "tasks": [
+        {
+          "query_kind": "single_item",
+          "categories": [
+            "брюки"
+          ],
+          "occasion": null,
+          "no_heel": false,
+          "products": 10,
+          "outfits": 0,
+          "empty": false,
+          "seconds": 1.784,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "single_item",
+          "categories": [
+            "платья"
+          ],
+          "occasion": null,
+          "no_heel": false,
+          "products": 10,
+          "outfits": 0,
+          "empty": false,
+          "seconds": 2.11,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "outfit",
+          "categories": [],
+          "occasion": "office",
+          "no_heel": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 19.54,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "outfit",
+          "categories": [],
+          "occasion": "wedding",
+          "no_heel": true,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 18.763,
+          "invalid_returned": 0
+        }
+      ],
+      "permanent_taste_unchanged": true,
+      "seconds": 49.301
+    },
+    {
+      "index": 9,
+      "clothing_size": "L",
+      "clothing_system": "LETTER",
+      "shoe_size": "39",
+      "shoe_system": "EU",
+      "segment": "mass",
+      "budget": 10000,
+      "feed_cards": 0,
+      "filters": {
+        "обувь": 0,
+        "верхний_слой": 20
+      },
+      "tasks": [
+        {
+          "query_kind": "single_item",
+          "categories": [
+            "брюки"
+          ],
+          "occasion": null,
+          "no_heel": false,
+          "products": 10,
+          "outfits": 0,
+          "empty": false,
+          "seconds": 1.608,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "single_item",
+          "categories": [
+            "платья"
+          ],
+          "occasion": null,
+          "no_heel": false,
+          "products": 10,
+          "outfits": 0,
+          "empty": false,
+          "seconds": 2.048,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "outfit",
+          "categories": [],
+          "occasion": "office",
+          "no_heel": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 18.817,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "outfit",
+          "categories": [],
+          "occasion": "wedding",
+          "no_heel": true,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 18.208,
+          "invalid_returned": 0
+        }
+      ],
+      "permanent_taste_unchanged": true,
+      "seconds": 48.212
+    },
+    {
+      "index": 10,
+      "clothing_size": "XL",
+      "clothing_system": "LETTER",
+      "shoe_size": "40",
+      "shoe_system": "EU",
+      "segment": "mass",
+      "budget": 10000,
+      "feed_cards": 0,
+      "filters": {
+        "обувь": 0,
+        "верхний_слой": 20
+      },
+      "tasks": [
+        {
+          "query_kind": "single_item",
+          "categories": [
+            "брюки"
+          ],
+          "occasion": null,
+          "no_heel": false,
+          "products": 10,
+          "outfits": 0,
+          "empty": false,
+          "seconds": 1.956,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "single_item",
+          "categories": [
+            "платья"
+          ],
+          "occasion": null,
+          "no_heel": false,
+          "products": 10,
+          "outfits": 0,
+          "empty": false,
+          "seconds": 2.04,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "outfit",
+          "categories": [],
+          "occasion": "office",
+          "no_heel": false,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 18.605,
+          "invalid_returned": 0
+        },
+        {
+          "query_kind": "outfit",
+          "categories": [],
+          "occasion": "wedding",
+          "no_heel": true,
+          "products": 0,
+          "outfits": 0,
+          "empty": true,
+          "seconds": 17.62,
+          "invalid_returned": 0
+        }
+      ],
+      "permanent_taste_unchanged": true,
+      "seconds": 48.033
+    }
+  ],
+  "sources": [
+    {
+      "source": "aimclo",
+      "stored": 429,
+      "active": 0,
+      "newest_observation": "2026-05-27T18:57:02.650245+00:00"
+    },
+    {
+      "source": "baon",
+      "stored": 18610,
+      "active": 6647,
+      "newest_observation": "2026-10-06T06:30:30.904078+00:00"
+    },
+    {
+      "source": "befree",
+      "stored": 7971,
+      "active": 0,
+      "newest_observation": "2026-05-17T21:51:27.908119+00:00"
+    },
+    {
+      "source": "demix",
+      "stored": 2156,
+      "active": 0,
+      "newest_observation": "2026-05-27T19:03:45.166982+00:00"
+    },
+    {
+      "source": "fable",
+      "stored": 661,
+      "active": 0,
+      "newest_observation": "2026-05-27T18:57:00.634206+00:00"
+    },
+    {
+      "source": "mongolshop",
+      "stored": 3945,
+      "active": 0,
+      "newest_observation": "2026-05-27T19:02:45.597621+00:00"
+    },
+    {
+      "source": "postmeridiem",
+      "stored": 746,
+      "active": 239,
+      "newest_observation": "2026-10-06T06:39:43.411320+00:00"
+    },
+    {
+      "source": "sela",
+      "stored": 1780,
+      "active": 0,
+      "newest_observation": "2026-05-17T21:52:10.880869+00:00"
+    },
+    {
+      "source": "serginnetti",
+      "stored": 18591,
+      "active": 12340,
+      "newest_observation": "2026-10-06T06:37:22.427123+00:00"
+    },
+    {
+      "source": "shoppinglive",
+      "stored": 55789,
+      "active": 34258,
+      "newest_observation": "2026-10-06T06:32:00.580794+00:00"
+    },
+    {
+      "source": "sportmaster",
+      "stored": 21747,
+      "active": 0,
+      "newest_observation": "2026-05-27T18:57:50.472850+00:00"
+    },
+    {
+      "source": "tsumoutlet",
+      "stored": 74,
+      "active": 0,
+      "newest_observation": "2026-05-27T19:03:58.786560+00:00"
+    },
+    {
+      "source": "vipavenue",
+      "stored": 71106,
+      "active": 0,
+      "newest_observation": "2026-05-27T19:04:38.043908+00:00"
+    }
+  ],
+  "fresh_available_skus": 53484,
+  "source_size_evidence": {
+    "shoppinglive": {
+      "unknown_or_unavailable": 32373,
+      "known": 1885
+    },
+    "serginnetti": {
+      "unknown_or_unavailable": 12340
+    },
+    "postmeridiem": {
+      "known": 239
+    },
+    "baon": {
+      "known": 6515,
+      "unknown_or_unavailable": 132
+    }
+  },
+  "category_size_evidence": {
+    "обувь": {
+      "unknown_or_unavailable": 9351
+    },
+    "рубашки": {
+      "unknown_or_unavailable": 5114,
+      "known": 880
+    },
+    "брюки": {
+      "unknown_or_unavailable": 6095,
+      "known": 772
+    },
+    "джинсы": {
+      "unknown_or_unavailable": 1457,
+      "known": 5
+    },
+    "футболки": {
+      "unknown_or_unavailable": 4652,
+      "known": 1695
+    },
+    "джемперы": {
+      "unknown_or_unavailable": 4417,
+      "known": 1184
+    },
+    "юбки": {
+      "unknown_or_unavailable": 2247,
+      "known": 354
+    },
+    "верхний_слой": {
+      "unknown_or_unavailable": 6378,
+      "known": 1972
+    },
+    "худи": {
+      "unknown_or_unavailable": 1333,
+      "known": 174
+    },
+    "шорты": {
+      "unknown_or_unavailable": 417,
+      "known": 388
+    },
+    "платья": {
+      "unknown_or_unavailable": 3384,
+      "known": 1185
+    },
+    "костюмы": {
+      "known": 16
+    },
+    "комбинезоны": {
+      "known": 14
+    }
+  },
+  "checks_passed": true,
+  "release_gate": {
+    "all_profiles_feed_at_least_10": false,
+    "all_profiles_shoes_and_outerwear": false,
+    "all_profiles_have_office_outfit": false,
+    "all_profiles_wedding_no_heel": false,
+    "no_invalid_returned": true
+  },
+  "product_ready": false
+}

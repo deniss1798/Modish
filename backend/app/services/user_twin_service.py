@@ -5,11 +5,13 @@ from datetime import datetime, timezone
 from math import exp
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import select, tuple_
 from sqlalchemy.orm import Session
 
 from ..catalog_normalize import normalize_category, normalize_product_colors
-from ..models import Product, TasteProfile, UserTasteFeature
+from ..models import Product, TasteProfile, UserTasteFeature, User
+from .profile_repository import ensure_taste_profile as _ensure_taste_profile
+from .catalog.product_dna import RULE_VERSION as DNA_RULE_VERSION, reliable_taste_features
 from .recommendation_config import (
   GENERIC_DISLIKE_FEATURE_MULTIPLIER,
   USER_TWIN_CONFIDENCE_EVIDENCE_SCALE,
@@ -30,11 +32,20 @@ TASTE_FEATURE_TYPES = frozenset(
     "silhouette",
     "fit",
     "material",
+    "pattern", "length", "sleeve", "neckline", "rise", "texture",
     "occasion",
     "price_band",
     "item",
   }
 )
+
+DNA_TASTE_DIMENSIONS = frozenset({"material", "fit", "silhouette", "pattern", "length", "sleeve", "neckline", "rise", "texture"})
+DNA_TASTE_PREFIX = DNA_RULE_VERSION + ":"
+
+
+def current_taste_feature(feature_type: str, feature_value: str) -> bool:
+  """Legacy construction confidence is kept for history, not reused as proof."""
+  return feature_type not in DNA_TASTE_DIMENSIONS or feature_value.startswith(DNA_TASTE_PREFIX)
 
 
 def _now() -> datetime:
@@ -71,7 +82,7 @@ def _category_values(product: Product) -> set[str]:
   return out
 
 
-def product_taste_features(product: Product) -> dict[str, set[str]]:
+def product_taste_features(product: Product, *, dna_features: dict[str, set[str]] | None = None) -> dict[str, set[str]]:
   colors = set(normalize_product_colors(list(product.colors or [])))
   colors |= {_norm(c) for c in (product.colors or []) if _norm(c)}
   if getattr(product, "color_family", None):
@@ -86,12 +97,18 @@ def product_taste_features(product: Product) -> dict[str, set[str]]:
     "brand": {_norm(product.brand)} if _norm(product.brand) else set(),
     "color": {c for c in colors if c},
     "style": {_norm(t) for t in (product.style_tags or []) if _norm(t)},
-    "silhouette": {_norm(product.silhouette)} if _norm(product.silhouette) else set(),
-    "fit": {_norm(product.fit)} if _norm(product.fit) else set(),
-    "material": {_norm(product.material)} if _norm(product.material) else set(),
     "occasion": {_norm(product.occasion)} if _norm(product.occasion) else set(),
     "price_band": {_price_band(product.price)} if _price_band(product.price) else set(),
   }
+  # First DNA rollout is bounded to construction/composition. Raw composition
+  # strings and guessed legacy fields do not become learned facts. Both event
+  # updates and MIE read these same canonical keys; styles/colors keep their
+  # current path until catalogue coverage for those dimensions is validated.
+  dna = dna_features if dna_features is not None else reliable_taste_features(product, dimensions=tuple(DNA_TASTE_DIMENSIONS))
+  for dimension, values in dna.items():
+    if dimension not in DNA_TASTE_DIMENSIONS:
+      continue
+    features[dimension] = {DNA_TASTE_PREFIX + value for value in values}
   return {k: v for k, v in features.items() if v}
 
 
@@ -111,7 +128,7 @@ def _targets_for_event(event_type: str, meta: dict | None) -> set[str]:
     "purchase",
     "post_purchase_positive",
   }:
-    return {
+    return set(DNA_TASTE_DIMENSIONS) | {
       "category",
       "brand",
       "color",
@@ -119,7 +136,6 @@ def _targets_for_event(event_type: str, meta: dict | None) -> set[str]:
       "silhouette",
       "fit",
       "material",
-      "occasion",
       "price_band",
     }
   if event_type == "unsave":
@@ -136,6 +152,8 @@ def _targets_for_event(event_type: str, meta: dict | None) -> set[str]:
       return {"item", "style", "category"}
     if reason == "dont_like_fit":
       return {"item", "fit", "silhouette"}
+    if reason == "not_for_context":
+      return {"item"}
     if reason == "too_expensive":
       return {"item", "price_band"}
     if reason in {"already_have_similar", "other"}:
@@ -152,55 +170,14 @@ def _target_multiplier(event_type: str, meta: dict | None, feature_type: str) ->
   return 1.0
 
 
-def _ensure_taste_profile(db: Session, user_id: str, *, as_of: datetime) -> TasteProfile:
-  row = db.execute(select(TasteProfile).where(TasteProfile.user_id == user_id)).scalar_one_or_none()
-  if row:
-    return row
-  row = TasteProfile(
-    id=str(uuid4()),
-    user_id=user_id,
-    liked_categories=[],
-    disliked_categories=[],
-    liked_colors=[],
-    disliked_colors=[],
-    liked_brands=[],
-    disliked_brands=[],
-    liked_styles=[],
-    disliked_styles=[],
-    category_weights={},
-    brand_weights={},
-    color_weights={},
-    style_weights={},
-    price_min=0,
-    price_max=10_000,
-    preferred_fit="regular",
-    profile_version=1,
-    created_at=as_of,
-    updated_at=as_of,
-  )
-  db.add(row)
-  db.flush()
-  return row
-
-
-def _get_or_create_feature(
-  db: Session,
+def _new_feature(
   *,
   user_id: str,
   feature_type: str,
   feature_value: str,
   as_of: datetime,
 ) -> UserTasteFeature:
-  row = db.execute(
-    select(UserTasteFeature).where(
-      UserTasteFeature.user_id == user_id,
-      UserTasteFeature.feature_type == feature_type,
-      UserTasteFeature.feature_value == feature_value,
-    )
-  ).scalar_one_or_none()
-  if row:
-    return row
-  row = UserTasteFeature(
+  return UserTasteFeature(
     id=str(uuid4()),
     user_id=user_id,
     feature_type=feature_type,
@@ -214,9 +191,6 @@ def _get_or_create_feature(
     created_at=as_of,
     updated_at=as_of,
   )
-  db.add(row)
-  db.flush()
-  return row
 
 
 def update_confidence(feature: UserTasteFeature) -> float:
@@ -301,26 +275,34 @@ def apply_event_to_user_twin(
     return []
 
   features = product_taste_features(product)
+  keys = sorted((kind, value) for kind in targets if kind in TASTE_FEATURE_TYPES
+                for value in features.get(kind, set()))
+  if not keys:
+    return []
+  # Serialize all writers for this account, including callers outside the API.
+  # The existing user row also protects creation of previously absent features.
+  db.execute(select(User.id).where(User.id == user_id).with_for_update()).scalar_one()
+  existing = {(row.feature_type, row.feature_value): row for row in db.scalars(
+    select(UserTasteFeature).where(UserTasteFeature.user_id == user_id,
+      tuple_(UserTasteFeature.feature_type, UserTasteFeature.feature_value).in_(keys))
+    .execution_options(populate_existing=True))}
   touched: list[UserTasteFeature] = []
-  for feature_type in sorted(targets):
-    if feature_type not in TASTE_FEATURE_TYPES:
-      continue
+  for feature_type, feature_value in keys:
     multiplier = _target_multiplier(event_type, meta, feature_type)
     feature_signal = signal * multiplier
-    for feature_value in sorted(features.get(feature_type, set())):
-      row = _get_or_create_feature(
-        db,
-        user_id=user_id,
-        feature_type=feature_type,
-        feature_value=feature_value,
-        as_of=occurred_at,
-      )
-      _apply_signal(row, signal=feature_signal, as_of=occurred_at)
-      touched.append(row)
+    row = existing.get((feature_type, feature_value))
+    if row is None:
+      row = _new_feature(user_id=user_id, feature_type=feature_type,
+                         feature_value=feature_value, as_of=occurred_at)
+      db.add(row)
+    _apply_signal(row, signal=feature_signal, as_of=occurred_at)
+    touched.append(row)
 
   if touched:
     taste = _ensure_taste_profile(db, user_id, as_of=occurred_at)
-    taste.profile_version = int(taste.profile_version or 1) + 1
+    # An ORM profile may predate the lock; increment in SQL to avoid losing
+    # a version committed by another worker while this session was waiting.
+    taste.profile_version = TasteProfile.profile_version + 1
     taste.updated_at = occurred_at
   db.flush()
   return touched

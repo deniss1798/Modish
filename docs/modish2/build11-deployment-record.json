@@ -1,0 +1,51 @@
+{
+  "started_at": "2026-09-21T22:23:14.290823+00:00",
+  "previous_tag": "modish-backend:release9-quality-20260920",
+  "previous_image": "sha256:02a0a2531da09c51b8924081b67377c556e2b2fe771bcc5a184b88117f24386c",
+  "tag": "modish-backend:build11-20260922",
+  "migrations_applied": false,
+  "catalog_data_changed": false,
+  "catalog_foundation_included": false,
+  "archive_sha256": "fcaeee0e8101e49f9e4bd3fb9c55382519e23e286660e8341276a7f788d708af",
+  "unit_tests": 128,
+  "checks": [
+    {
+      "route": "http://127.0.0.1:8000/health",
+      "status": 200
+    },
+    {
+      "route": "http://127.0.0.1:8000/openapi.json",
+      "status": 200
+    },
+    {
+      "route": "http://127.0.0.1:8000/products?q=%D0%BA%D1%83%D1%80%D1%82%D0%BA%D0%B0&limit=3",
+      "status": 200
+    },
+    {
+      "route": "http://127.0.0.1:8000/products?q=modish-no-such-item-9283716",
+      "status": 200
+    },
+    {
+      "route": "https://modish.org.ru/health",
+      "status": 200
+    },
+    {
+      "route": "https://modish.org.ru/openapi.json",
+      "status": 200
+    },
+    {
+      "route": "https://modish.org.ru/products?q=%D0%BA%D1%83%D1%80%D1%82%D0%BA%D0%B0&limit=3",
+      "status": 200
+    },
+    {
+      "route": "https://modish.org.ru/products?q=modish-no-such-item-9283716",
+      "status": 200
+    }
+  ],
+  "status": "deployed",
+  "image_id": "sha256:420c4ff4467bd995cfd11f9598c0f90988e79c1e4faf33d004f11f69c87c201f",
+  "database_and_redis_containers_preserved": true,
+  "backup": "/var/backups/modish/20260922-build11/pre-activation.dump",
+  "rollback": "/opt/modish-releases/20260922-build11/rollback.sh",
+  "finished_at": "2026-09-21T22:23:51.306178+00:00"
+}

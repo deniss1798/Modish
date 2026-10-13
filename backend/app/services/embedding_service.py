@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from ..models import Product, ProductEmbedding, RecommendationEventV2, User
 from .recommendation_config import EMBEDDING_MODEL_VERSION
+from .catalog.stock_freshness import fresh_stock_conditions
 
 
 EMBEDDING_MODEL = EMBEDDING_MODEL_VERSION
@@ -253,6 +254,7 @@ class SqlAlchemyVectorStore:
   ) -> list[VectorSearchResult]:
     exclude = {str(pid).strip() for pid in (exclude_product_ids or set()) if str(pid).strip()}
     conds = [
+      *fresh_stock_conditions(),
       ProductEmbedding.embedding_model == EMBEDDING_MODEL,
       Product.is_active == 1,
       Product.is_available == 1,

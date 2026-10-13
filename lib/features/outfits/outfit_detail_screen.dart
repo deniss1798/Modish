@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../../core/network/merchant_link.dart';
 import '../../app.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -81,79 +81,82 @@ class OutfitDetailScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-        children: [
-          Text(outfitScenarioLabel(scenario), style: AppTextStyles.displaySm),
-          const SizedBox(height: 6),
-          Text(reason, style: AppTextStyles.bodyMuted),
-          const SizedBox(height: 16),
-          ..._slots.map((slot) {
-            final p = pmap[slot.$1];
-            if (p is! Map) return const SizedBox.shrink();
-            final m = Map<String, dynamic>.from(p);
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: SoftCard(
-                padding: const EdgeInsets.all(12),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(8),
-                  onTap: () => _openProduct(context, m),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 76,
-                        height: 96,
-                        child: ProductFillImage(
-                          fit: BoxFit.contain,
-                          imageUrl: (m['image_url'] ?? '').toString(),
-                          borderRadius: BorderRadius.circular(10),
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          children: [
+            Text(outfitScenarioLabel(scenario), style: AppTextStyles.displaySm),
+            const SizedBox(height: 6),
+            Text(reason, style: AppTextStyles.bodyMuted),
+            const SizedBox(height: 16),
+            ..._slots.map((slot) {
+              final p = pmap[slot.$1];
+              if (p is! Map) return const SizedBox.shrink();
+              final m = Map<String, dynamic>.from(p);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: SoftCard(
+                  padding: const EdgeInsets.all(12),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () => _openProduct(context, m),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 76,
+                          height: 96,
+                          child: ProductFillImage(
+                            fit: BoxFit.contain,
+                            imageUrl: (m['image_url'] ?? '').toString(),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(slot.$2, style: AppTextStyles.caption),
-                            Text(
-                              (m['title'] ?? 'Товар').toString(),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(slot.$2, style: AppTextStyles.caption),
+                              Text(
+                                (m['title'] ?? 'Товар').toString(),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${m['brand'] ?? ''} · ${m['price'] ?? ''} ₽',
-                              style: AppTextStyles.bodyMuted,
-                            ),
-                          ],
+                              const SizedBox(height: 4),
+                              Text(
+                                '${m['brand'] ?? ''} · ${m['price'] ?? ''} ₽',
+                                style: AppTextStyles.bodyMuted,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      const Icon(Icons.chevron_right, color: AppColors.muted),
-                    ],
+                        const Icon(Icons.chevron_right, color: AppColors.muted),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            );
-          }),
-          Text('Итого: $total ₽', style: AppTextStyles.price),
-          const SizedBox(height: 16),
-          PrimaryButton(
-            label: 'Купить всё',
-            icon: Icons.shopping_bag_outlined,
-            onPressed: () => _buyAll(context),
-          ),
-          const SizedBox(height: 10),
-          SecondaryButton(
-            label: saved ? 'Убрать из сохранённого' : 'Сохранить образ',
-            onPressed: controller.isLoading
-                ? null
-                : () => _toggleSaved(context),
-          ),
-        ],
+              );
+            }),
+            Text('Итого: $total ₽', style: AppTextStyles.price),
+            const SizedBox(height: 16),
+            PrimaryButton(
+              label: 'Купить всё',
+              icon: Icons.shopping_bag_outlined,
+              onPressed: () => _buyAll(context),
+            ),
+            const SizedBox(height: 10),
+            SecondaryButton(
+              label: saved ? 'Убрать из сохранённого' : 'Сохранить образ',
+              onPressed: controller.isLoading
+                  ? null
+                  : () => _toggleSaved(context),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -169,10 +172,11 @@ class OutfitDetailScreen extends StatelessWidget {
       final id = (p['id'] ?? '').toString();
       if (id.isEmpty) continue;
       try {
-        final res = await controller.api.affiliateClick(id);
-        final url = res['url']?.toString();
-        if (url != null && url.isNotEmpty) {
-          await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        if (await openMerchantLink(
+          controller.api,
+          id,
+          surface: 'outfit_detail',
+        )) {
           opened++;
         }
       } catch (_) {}

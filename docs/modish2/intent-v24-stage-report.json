@@ -1,0 +1,108 @@
+{
+  "checked_at": "2026-10-12T16:32:52.645119+00:00",
+  "scope": "isolated_clone",
+  "archive_sha256": "b7fb93daf0e66307c32935abf7d034cc365b17cddbad83adcb8c00a9931e22fc",
+  "production_changed": false,
+  "production_unchanged": true,
+  "product_ready": false,
+  "result": "validation_complete_catalogue_readiness_unproven",
+  "test_pg_container_id": "881ea4c21dc23bbbe79889d3779b2500707af32e4705a619790e680688d6786f",
+  "completed_fresh_refresh": {
+    "path": "/opt/modish-releases/20261009-intent-v20/refresh-retry-20261010/refresh-report.json",
+    "sha256": "7f9b8ec2ec072ade23044460f07abf1b2fb428a4cf8ab23a2094d2327dccd41f",
+    "products_after_import": 204894
+  },
+  "migration_sources_unchanged_from_v22": true,
+  "helpers": {
+    "metrics": {
+      "filename": "metrics-smoke.py",
+      "sha256": "e4660f86c5314ca4b0d2d6fb30e578760c68195003f13f40505224631144de37"
+    },
+    "activation": {
+      "filename": "activation-performance.py",
+      "sha256": "8f8be6b771a1b09b89ad4614761511238850f276f9dcf89afbd8058443bf3049"
+    },
+    "inventory": {
+      "filename": "size-raw-inventory.py",
+      "sha256": "a0c00d2a00f390407016ab5cd8ff2f1d3dc2d19c5db2b337ec7252f37c53ef87"
+    }
+  },
+  "image_id": "sha256:9b9662779677e2bb490efe8b8b82c91ea4bae0b39c445f7079fa115b62e08e6f",
+  "unit_tests": {
+    "count": 367,
+    "summary": "Ran 367 tests in 66.051s",
+    "expected_count_from_package": 367,
+    "exit_code": 0
+  },
+  "positive_pg_metrics_passed": true,
+  "positive_pg_metrics_scope": "isolated_postgresql_synthetic_contract_not_real_coverage",
+  "fixed_now_utc": "2026-10-12T16:35:04.704655+00:00",
+  "clock_basis": "current_wall_clock",
+  "historical_replay": false,
+  "fresh_observations_at_current_wall_clock": 64863,
+  "fresh_observations_at_benchmark_clock": 64863,
+  "workload_equality": [
+    {
+      "index": 1,
+      "bootstrap_count_equal": true,
+      "activation_completion_equal": true,
+      "wow_outfit_count_equal": true,
+      "feed_count_equal": true,
+      "deck_hash_equal": false,
+      "feed_hash_equal": false,
+      "admitted_output_counts_equal": true,
+      "ordered_selected_ids_equal": false,
+      "all_equal": false,
+      "baseline_bootstrap_ids_sha256": "57739a621bc8b98558909c2aaac52c22d07157d682b4b7df12b255930c05c2d7",
+      "current_bootstrap_ids_sha256": "32f02daf04e525a478355596abd477c1061c616814f6a840a263397d4a1ddebb",
+      "baseline_feed_ids_sha256": "110c888d8fe154dc4518d18ebea73e7b5e30a330458210a6002248aaf023d057",
+      "current_feed_ids_sha256": "7d75197918294b7bb6a936a132a3d31395cff45b52025338da50f7ca17a6bf30"
+    },
+    {
+      "index": 2,
+      "bootstrap_count_equal": true,
+      "activation_completion_equal": true,
+      "wow_outfit_count_equal": true,
+      "feed_count_equal": true,
+      "deck_hash_equal": false,
+      "feed_hash_equal": false,
+      "admitted_output_counts_equal": true,
+      "ordered_selected_ids_equal": false,
+      "all_equal": false,
+      "baseline_bootstrap_ids_sha256": "57739a621bc8b98558909c2aaac52c22d07157d682b4b7df12b255930c05c2d7",
+      "current_bootstrap_ids_sha256": "32f02daf04e525a478355596abd477c1061c616814f6a840a263397d4a1ddebb",
+      "baseline_feed_ids_sha256": "110c888d8fe154dc4518d18ebea73e7b5e30a330458210a6002248aaf023d057",
+      "current_feed_ids_sha256": "7d75197918294b7bb6a936a132a3d31395cff45b52025338da50f7ca17a6bf30"
+    },
+    {
+      "index": 3,
+      "bootstrap_count_equal": true,
+      "activation_completion_equal": true,
+      "wow_outfit_count_equal": true,
+      "feed_count_equal": true,
+      "deck_hash_equal": false,
+      "feed_hash_equal": false,
+      "admitted_output_counts_equal": true,
+      "ordered_selected_ids_equal": false,
+      "all_equal": false,
+      "baseline_bootstrap_ids_sha256": "57739a621bc8b98558909c2aaac52c22d07157d682b4b7df12b255930c05c2d7",
+      "current_bootstrap_ids_sha256": "32f02daf04e525a478355596abd477c1061c616814f6a840a263397d4a1ddebb",
+      "baseline_feed_ids_sha256": "110c888d8fe154dc4518d18ebea73e7b5e30a330458210a6002248aaf023d057",
+      "current_feed_ids_sha256": "7d75197918294b7bb6a936a132a3d31395cff45b52025338da50f7ca17a6bf30"
+    }
+  ],
+  "admitted_output_counts_unchanged": true,
+  "deck_and_feed_ids_unchanged": false,
+  "rank_changed": true,
+  "selection_comparison": "rank_changed",
+  "selection_comparison_basis": "actual_ordered_selected_id_sha256_not_count_only",
+  "wow_selection_comparison": "both_images_returned_no_outfits",
+  "reaction_input_comparison": "different_deck_ids_may_change_first_15_reactions_and_learned_taste",
+  "timing_comparability": "same_protocol_not_same_workload",
+  "fresh_stock_checked_as_part_of_eligibility": true,
+  "all_returned_items_exact_size_and_fresh": true,
+  "activation_measurement_status": "completed_real_activation",
+  "size_raw_inventory_report": "size-raw-inventory.json",
+  "test_revision": "20261008_0024",
+  "migration_roundtrip": "not_repeated_no_migration_change"
+}

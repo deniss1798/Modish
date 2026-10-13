@@ -54,5 +54,7 @@ def affiliate_click(
     ip_hash=ip_hash,
   )
   db.add(click)
+  # This records a URL request, not a successful browser launch. The client
+  # sends the affiliate_click event only after it opens the merchant URL.
   db.commit()
   return {"url": url, "click_id": click.click_id}

@@ -52,6 +52,14 @@ class _FiltersScreenState extends State<FiltersScreen> {
   final Set<String> _selColor = {};
   RangeValues _price = const RangeValues(0, 100000);
   bool _priceEnabled = false;
+  String _scenario = 'daily';
+  static const _scenarios = {
+    'daily': 'На каждый день',
+    'office': 'В офис',
+    'evening': 'На вечер',
+    'date': 'На свидание',
+    'vacation': 'В отпуск',
+  };
   static const categoryKeys = {
     'Верхняя одежда': 'outerwear',
     'Топы': 'tops',
@@ -62,6 +70,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
   void initState() {
     super.initState();
     final c = widget.controller;
+    _scenario = c.feedScenario;
     _selCat.addAll(
       categoryKeys.keys.where(
         (k) => c.feedFilterCategories.contains(categoryKeys[k]),
@@ -96,6 +105,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
               _selColor.clear();
               _price = const RangeValues(0, 100000);
               _priceEnabled = false;
+              _scenario = 'daily';
             }),
             child: const Text(
               'Сбросить',
@@ -107,6 +117,28 @@ class _FiltersScreenState extends State<FiltersScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
         children: [
+          if (widget.controller.supportsShoppingContext) ...[
+            Text('Для какого случая?', style: AppTextStyles.sectionTitle),
+            const SizedBox(height: 6),
+            const Text(
+              'Только для этой подборки',
+              style: AppTextStyles.bodyMuted,
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                for (final entry in _scenarios.entries)
+                  ChoiceChip(
+                    label: Text(entry.value),
+                    selected: _scenario == entry.key,
+                    onSelected: (_) => setState(() => _scenario = entry.key),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 24),
+          ],
           Text('Категории', style: AppTextStyles.sectionTitle),
           const SizedBox(height: 10),
           Row(
@@ -116,17 +148,17 @@ class _FiltersScreenState extends State<FiltersScreen> {
                 child: Padding(
                   padding: const EdgeInsets.only(right: 6),
                   child: InkWell(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(18),
                     onTap: () =>
                         setState(() => on ? _selCat.remove(c) : _selCat.add(c)),
                     child: Container(
-                      height: 64,
+                      height: 76,
                       decoration: BoxDecoration(
                         color: on ? AppColors.accent : AppColors.card,
                         border: Border.all(
                           color: on ? AppColors.accent : AppColors.line,
                         ),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(18),
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -138,11 +170,12 @@ class _FiltersScreenState extends State<FiltersScreen> {
                           ),
                           const SizedBox(height: 5),
                           Text(
-                            c,
-                            maxLines: 1,
+                            c == 'Верхняя одежда' ? 'Верхняя\nодежда' : c,
+                            maxLines: 2,
+                            textAlign: TextAlign.center,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 9,
+                              fontSize: 11,
                               color: on ? AppColors.onAccent : AppColors.ink,
                             ),
                           ),
@@ -237,6 +270,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
             label: 'Показать товары',
             onPressed: () {
               widget.controller.applyFeedFilters(
+                scenario: _scenario,
                 minPrice: _priceEnabled ? _price.start.round() : null,
                 maxPrice: _priceEnabled ? _price.end.round() : null,
                 categories: _selCat.map((c) => categoryKeys[c]!).toList(),

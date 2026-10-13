@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../app.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/presentation/catalog_labels.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/modish_widgets.dart';
 import '../catalog/brands_screen.dart';
+import '../catalog/search_screen.dart';
 import '../settings/settings_screen.dart';
 import 'edit_profile_screen.dart';
 
@@ -13,20 +15,25 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final b = controller.billing;
-    final plus = b['is_plus_available'] == true || '${b['status']}' == 'active';
-    final summary = controller.summary;
     final fit = controller.fitProfile;
-    final suitableColors = List<String>.from(
-      summary['suitable_colors'] as List? ?? const [],
+    final taste = controller.tasteProfile;
+    final weights = taste['weights'] as Map? ?? const {};
+    final colors = _values(
+      _positiveWeights(weights['colors']),
+      catalogColorLabels,
     );
-    final styleLines = List<String>.from(
-      summary['style_direction_human'] as List? ?? const [],
+    final learnedStyles = _values(
+      _positiveWeights(weights['styles']),
+      _styleLabels,
     );
-    final styleTags = _styleTags(styleLines, fit);
-    final size = (fit['clothing_size'] ?? 'M').toString();
+    final chosenStyles = _values(
+      controller.activationStatus['style_preferences'],
+      _styleLabels,
+    );
+    final scenarios = _values(fit['style_scenarios'], _styleLabels);
+    final size = (fit['clothing_size'] ?? 'Не указан').toString();
     final budgetMax = fit['budget_max'];
-    final budgetLabel = budgetMax != null ? 'до $budgetMax ₽' : 'Средний';
+    final budgetLabel = budgetMax != null ? 'до $budgetMax ₽' : 'Не указан';
     final name = controller.email.split('@').first;
 
     final feedCount = controller.productFeed.length;
@@ -36,7 +43,8 @@ class ProfileScreen extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       children: [
-        ScreenHeader(title: 'Профиль'),
+        const EditorialHeading('Профиль'),
+        const SizedBox(height: 12),
         SoftCard(
           child: Row(
             children: [
@@ -55,34 +63,24 @@ class ProfileScreen extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Text(
-                          name,
-                          style: AppTextStyles.displaySm.copyWith(fontSize: 22),
-                        ),
-                        if (plus) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.accent,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Text(
-                              'Plus',
-                              style: TextStyle(
-                                color: AppColors.onAccent,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                              ),
+                        Flexible(
+                          child: Text(
+                            name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.displaySm.copyWith(
+                              fontSize: 22,
                             ),
                           ),
-                        ],
+                        ),
                       ],
                     ),
-                    Text(controller.email, style: AppTextStyles.bodyMuted),
+                    Text(
+                      controller.email,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.bodyMuted,
+                    ),
                   ],
                 ),
               ),
@@ -104,53 +102,43 @@ class ProfileScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Мой стиль', style: AppTextStyles.sectionTitle),
-              const SizedBox(height: 14),
-              Text(
-                'Цвета',
-                style: AppTextStyles.caption.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+              const Text(
+                'Ваши предпочтения',
+                style: AppTextStyles.sectionTitle,
               ),
               const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: suitableColors.isEmpty
-                    ? [
-                        Chip(
-                          label: const Text('Пройдите анализ фото'),
-                          backgroundColor: AppColors.chipBg,
-                          side: BorderSide.none,
-                        ),
-                      ]
-                    : suitableColors.take(5).map((c) {
-                        return Chip(
-                          label: Text(c),
-                          backgroundColor: AppColors.chipBg,
-                          side: BorderSide.none,
-                        );
-                      }).toList(),
+              const Text(
+                'Эта сводка помогает объяснить подбор. Она уточняется по вашим оценкам вещей.',
+                style: AppTextStyles.bodyMuted,
               ),
-              const SizedBox(height: 14),
-              Text(
-                'Предпочтения',
-                style: AppTextStyles.caption.copyWith(
-                  fontWeight: FontWeight.w600,
+              if (chosenStyles.isNotEmpty)
+                _PreferenceLine(
+                  label: 'Вы выбрали при знакомстве',
+                  values: chosenStyles,
                 ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: styleTags.map((s) {
-                  return Chip(
-                    label: Text(s),
-                    backgroundColor: AppColors.chipBg,
-                    side: BorderSide.none,
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 14),
+              if (learnedStyles.isNotEmpty)
+                _PreferenceLine(
+                  label: 'Стили по вашим оценкам',
+                  values: learnedStyles,
+                ),
+              if (colors.isNotEmpty)
+                _PreferenceLine(
+                  label: 'Цвета по вашим оценкам',
+                  values: colors,
+                ),
+              if (scenarios.isNotEmpty)
+                _PreferenceLine(
+                  label: 'В параметрах подборки',
+                  values: scenarios,
+                ),
+              if (learnedStyles.isEmpty && colors.isEmpty) ...[
+                const SizedBox(height: 14),
+                const Text(
+                  'Пока мало данных. Отмечайте понравившиеся вещи — здесь появятся ваши предпочтения.',
+                  style: AppTextStyles.bodyMuted,
+                ),
+              ],
+              const SizedBox(height: 18),
               Row(
                 children: [
                   Expanded(
@@ -196,12 +184,28 @@ class ProfileScreen extends StatelessWidget {
               MenuTile(
                 icon: Icons.storefront_outlined,
                 title: 'Бренды',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => BrandsScreen(controller: controller),
-                  ),
-                ),
+                onTap: () async {
+                  final brand = await Navigator.push<String>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => BrandsScreen(controller: controller),
+                    ),
+                  );
+                  if (!context.mounted ||
+                      brand == null ||
+                      brand.trim().isEmpty) {
+                    return;
+                  }
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => SearchScreen(
+                        controller: controller,
+                        initialQuery: brand,
+                      ),
+                    ),
+                  );
+                },
               ),
               const Divider(color: AppColors.line),
               MenuTile(
@@ -229,27 +233,58 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
-List<String> _styleTags(List<String> styleLines, Map<String, dynamic> fit) {
-  const labels = {
-    'daily': 'Каждый день',
-    'office': 'Офис',
-    'evening': 'Вечер',
-    'casual': 'Casual',
-    'minimal': 'Минимализм',
-    'streetwear': 'Streetwear',
-  };
-  final scenarios = List<String>.from(
-    fit['style_scenarios'] as List? ?? const [],
+const _styleLabels = {
+  'daily': 'Каждый день',
+  'office': 'В офис',
+  'evening': 'Вечер',
+  'casual': 'Повседневный',
+  'smart_casual': 'Smart casual',
+  'minimal': 'Минимализм',
+  'minimalism': 'Минимализм',
+  'romantic': 'Романтичный',
+  'elegant': 'Элегантный',
+  'streetwear': 'Городской',
+  'classic': 'Классический',
+  'sport': 'Спортивный',
+  'sporty': 'Спортивный',
+  'boho': 'Бохо',
+};
+List<String> _values(dynamic raw, Map<String, String> labels) =>
+    (raw is List ? raw : const [])
+        .map((v) => labels['$v'.toLowerCase()] ?? '$v')
+        .where((v) => v.trim().isNotEmpty)
+        .toSet()
+        .take(5)
+        .toList();
+
+List<String> _positiveWeights(dynamic raw) {
+  if (raw is! Map) return const [];
+  final entries =
+      raw.entries.where((e) => (num.tryParse('${e.value}') ?? 0) > 0).toList()
+        ..sort(
+          (a, b) => (num.tryParse('${b.value}') ?? 0).compareTo(
+            num.tryParse('${a.value}') ?? 0,
+          ),
+        );
+  return entries.map((e) => '${e.key}').toList();
+}
+
+class _PreferenceLine extends StatelessWidget {
+  const _PreferenceLine({required this.label, required this.values});
+  final String label;
+  final List<String> values;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 14),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: AppTextStyles.caption),
+        const SizedBox(height: 5),
+        Text(values.join(' · '), style: AppTextStyles.body),
+      ],
+    ),
   );
-  if (scenarios.isNotEmpty) {
-    return scenarios.map((s) => labels[s] ?? s).take(6).toList();
-  }
-  final short = styleLines
-      .where((s) => s.trim().isNotEmpty && s.length <= 28)
-      .take(6)
-      .toList();
-  if (short.isNotEmpty) return short;
-  return const ['Минимализм', 'Casual'];
 }
 
 class _InfoBox extends StatelessWidget {

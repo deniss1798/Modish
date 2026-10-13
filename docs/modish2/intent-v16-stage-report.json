@@ -1,0 +1,13 @@
+{
+  "checked_at": "2026-10-08T13:28:18.493638+00:00",
+  "scope": "isolated_clone",
+  "production_changed": false,
+  "result": "catalogue_coverage_failed",
+  "archive_sha256": "6726baf5e159a4407628fba0a84cc35d42b2c97294fae1afa355dcd053828d20",
+  "image_id": "sha256:c3a1e0501448a592e303750fb0ba9341cb6e7ba841c4123a434c033d0a2ff55e",
+  "test_backup": "/opt/modish-releases/20261008-intent-v16/test-before-migration.dump",
+  "migration_roundtrip": true,
+  "test_revision": "20261008_0024",
+  "production_unchanged": true,
+  "product_ready": false
+}

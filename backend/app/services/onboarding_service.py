@@ -72,7 +72,7 @@ def _ensure_fit_profile(db: Session, user: User) -> FitProfile:
     height_cm=user.height_cm or 170,
     weight_kg=user.weight_kg,
     gender_target="unisex",
-    clothing_size="M",
+    clothing_size=None,
     budget_min=0,
     budget_max=10_000,
   )

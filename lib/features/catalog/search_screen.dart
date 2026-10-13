@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../app.dart';
 import '../../core/theme/app_colors.dart';
@@ -8,9 +9,13 @@ import '../products/models.dart' as prod;
 import '../products/product_detail_screen.dart';
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key, required this.controller});
+  const SearchScreen({
+    super.key,
+    required this.controller,
+    this.initialQuery = '',
+  });
   final AppController controller;
-
+  final String initialQuery;
   @override
   State<SearchScreen> createState() => _SearchScreenState();
 }
@@ -18,46 +23,90 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final _query = TextEditingController();
   List<prod.Product> _results = [];
+  Timer? _debounce;
+  int _request = 0;
   bool _loading = false;
+  bool _hasMore = false;
+  String _submitted = '';
+  String? _error;
+  static const _pageSize = 40;
+  static const _examples = ['Куртки', 'Джинсы', 'Платья', 'Обувь'];
 
-  static const _recent = ['бомбер', 'джинсы', 'сумка'];
-  static const _popular = ['Верхняя одежда', 'Обувь', 'Платья', 'Брюки'];
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initialQuery.trim();
+    if (initial.isEmpty) return;
+    _query.text = initial;
+    _loading = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _search();
+    });
+  }
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _query.dispose();
     super.dispose();
   }
 
-  Future<void> _search([String? q]) async {
-    final text = (q ?? _query.text).trim();
-    if (text.isEmpty) return;
-    setState(() => _loading = true);
+  void _changed(String text) {
+    _debounce?.cancel();
+    _request++;
+    setState(() {
+      _results = [];
+      _submitted = '';
+      _hasMore = false;
+      _error = null;
+      _loading = text.trim().isNotEmpty;
+    });
+    if (text.trim().isNotEmpty) {
+      _debounce = Timer(const Duration(milliseconds: 450), () => _search());
+    }
+  }
+
+  Future<void> _search({bool more = false}) async {
+    _debounce?.cancel();
+    final text = _query.text.trim();
+    if (text.isEmpty) {
+      _changed('');
+      return;
+    }
+    final request = ++_request;
+    final offset = more ? _results.length : 0;
+    setState(() {
+      _loading = true;
+      _error = null;
+      _submitted = text;
+      if (!more) _results = [];
+    });
     try {
-      final rows = await widget.controller.api.productsList(limit: 40, brand: text.contains(' ') ? null : text);
-      var products = rows.map(prod.Product.fromApi).toList();
-      if (text.contains(' ')) {
-        final lower = text.toLowerCase();
-        products = products.where((p) {
-          return p.title.toLowerCase().contains(lower) || p.brand.toLowerCase().contains(lower);
-        }).toList();
-      }
-      if (!mounted) return;
+      final rows = await widget.controller.api.productsList(
+        limit: _pageSize,
+        offset: offset,
+        query: text,
+      );
+      if (!mounted || request != _request) return;
       setState(() {
-        _results = products;
+        _results = [..._results, ...rows.map(prod.Product.fromApi)];
+        _hasMore = rows.length == _pageSize;
         _loading = false;
       });
     } catch (_) {
-      if (!mounted) return;
-      final local = widget.controller.productFeed
-          .map((c) => c.product)
-          .where((p) => p.title.toLowerCase().contains(text.toLowerCase()))
-          .toList();
+      if (!mounted || request != _request) return;
       setState(() {
-        _results = local;
         _loading = false;
+        _error =
+            'Не удалось выполнить поиск. Проверьте подключение и попробуйте снова.';
       });
     }
+  }
+
+  void _submit([String? text]) {
+    if (text != null) _query.text = text;
+    FocusScope.of(context).unfocus();
+    _search();
   }
 
   @override
@@ -65,52 +114,106 @@ class _SearchScreenState extends State<SearchScreen> {
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
-        backgroundColor: AppColors.bg,
-        elevation: 0,
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.pop(context)),
+        toolbarHeight: 72,
+        leading: IconButton(
+          tooltip: 'Назад',
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.maybePop(context),
+        ),
         title: TextField(
           controller: _query,
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Поиск товаров',
-            border: InputBorder.none,
+          autofocus: widget.initialQuery.trim().isEmpty,
+          maxLength: 160,
+          textInputAction: TextInputAction.search,
+          decoration: InputDecoration(
+            hintText: 'Поиск по каталогу',
+            counterText: '',
+            suffixIcon: _query.text.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Очистить поиск',
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () {
+                      _query.clear();
+                      _changed('');
+                    },
+                  ),
           ),
-          onSubmitted: _search,
+          onChanged: _changed,
+          onSubmitted: (_) => _submit(),
         ),
         actions: [
-          IconButton(icon: const Icon(Icons.search), onPressed: () => _search()),
+          IconButton(
+            tooltip: 'Найти',
+            icon: const Icon(Icons.search),
+            onPressed: () => _submit(),
+          ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          if (_results.isEmpty && !_loading) ...[
-            Text('Недавние', style: AppTextStyles.sectionTitle),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              children: _recent.map((r) => ActionChip(label: Text(r), onPressed: () {
-                _query.text = r;
-                _search(r);
-              })).toList(),
-            ),
-            const SizedBox(height: 24),
-            Text('Популярное', style: AppTextStyles.sectionTitle),
-            const SizedBox(height: 10),
-            ..._popular.map((p) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(p),
-                  trailing: const Icon(Icons.north_west, size: 18, color: AppColors.muted),
-                  onTap: () {
-                    _query.text = p;
-                    _search(p);
-                  },
-                )),
-          ],
-          if (_loading) const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
-          if (_results.isNotEmpty)
-            ..._results.map((p) {
-              return Padding(
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.all(20),
+          children: [
+            if (_submitted.isEmpty && !_loading) ...[
+              const Text(
+                'Найдите нужную вещь',
+                style: AppTextStyles.sectionTitle,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Введите название, категорию или бренд — например, «чёрные брюки» или «BAON».',
+                style: AppTextStyles.bodyMuted,
+              ),
+              const SizedBox(height: 20),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _examples
+                    .map(
+                      (text) => ActionChip(
+                        label: Text(text),
+                        onPressed: () => _submit(text),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
+            if (_submitted.isNotEmpty && _results.isNotEmpty) ...[
+              Text(
+                'Результаты: «$_submitted»',
+                style: AppTextStyles.sectionTitle,
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Каталог с учётом пола в вашем профиле.',
+                style: AppTextStyles.caption,
+              ),
+              const SizedBox(height: 16),
+            ],
+            if (!_loading &&
+                _error == null &&
+                _submitted.isNotEmpty &&
+                _results.isEmpty)
+              SoftCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Ничего не найдено',
+                      style: AppTextStyles.sectionTitle,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'По запросу «$_submitted» нет доступных товаров. Попробуйте более общее название или другой бренд.',
+                      style: AppTextStyles.bodyMuted,
+                    ),
+                  ],
+                ),
+              ),
+            ..._results.map(
+              (p) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: SoftCard(
                   padding: const EdgeInsets.all(12),
@@ -128,8 +231,11 @@ class _SearchScreenState extends State<SearchScreen> {
                       children: [
                         SizedBox(
                           width: 72,
-                          height: 90,
-                          child: ProductFillImage(imageUrl: p.imageUrl, borderRadius: BorderRadius.circular(12)),
+                          height: 96,
+                          child: ProductFillImage(
+                            imageUrl: p.imageUrl,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -137,18 +243,52 @@ class _SearchScreenState extends State<SearchScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(p.brand, style: AppTextStyles.caption),
-                              Text(p.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppTextStyles.displaySm.copyWith(fontSize: 16)),
-                              Text('${p.price} ${p.currency}', style: AppTextStyles.price.copyWith(fontSize: 16)),
+                              Text(
+                                p.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTextStyles.body.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                '${p.price} ₽',
+                                style: AppTextStyles.price.copyWith(
+                                  fontSize: 16,
+                                ),
+                              ),
                             ],
                           ),
                         ),
+                        const Icon(Icons.chevron_right, color: AppColors.muted),
                       ],
                     ),
                   ),
                 ),
-              );
-            }),
-        ],
+              ),
+            ),
+            if (_loading)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+            if (_error != null) ...[
+              Text(_error!, style: AppTextStyles.bodyMuted),
+              TextButton(
+                onPressed: () => _search(more: _results.isNotEmpty),
+                child: const Text('Повторить поиск'),
+              ),
+            ],
+            if (_hasMore && !_loading && _error == null)
+              SecondaryButton(
+                label: 'Показать ещё',
+                onPressed: () => _search(more: true),
+              ),
+          ],
+        ),
       ),
     );
   }

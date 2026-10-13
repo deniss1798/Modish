@@ -1,3 +1,4 @@
+import '../../core/theme/app_text_styles.dart';
 import 'package:flutter/material.dart';
 import '../../app.dart';
 import '../../core/theme/app_colors.dart';
@@ -55,7 +56,7 @@ class _DetailScreenState extends State<DetailScreen> {
                   Text(
                     outfit.title,
                     style: const TextStyle(
-                      fontFamily: 'Georgia',
+                      fontFamily: AppFonts.displayFamily,
                       fontSize: 34,
                       color: AppColors.ink,
                     ),
@@ -69,7 +70,9 @@ class _DetailScreenState extends State<DetailScreen> {
                   Wrap(
                     spacing: 8,
                     children: outfit.colors
-                        .map((c) => CircleAvatar(backgroundColor: c, radius: 11))
+                        .map(
+                          (c) => CircleAvatar(backgroundColor: c, radius: 11),
+                        )
                         .toList(),
                   ),
                   const SizedBox(height: 12),
@@ -108,7 +111,7 @@ class _DetailScreenState extends State<DetailScreen> {
                     style: TextStyle(
                       fontSize: 22,
                       color: AppColors.ink,
-                      fontFamily: 'Georgia',
+                      fontFamily: AppFonts.displayFamily,
                     ),
                   ),
                   ...outfit.alternatives.map(

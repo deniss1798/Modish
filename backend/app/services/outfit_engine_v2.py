@@ -15,8 +15,10 @@ from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import Session
 
 from ..catalog_normalize import normalize_category, normalize_colors_value
-from ..models import FitProfile, MetricEvent, Outfit, Product, RecommendationEventV2, User
+from ..models import ActivationSession, FitProfile, MetricEvent, Outfit, Product, RecommendationEventV2, User
 from .catalog.catalog_quality import product_is_feed_eligible
+from .product_eligibility import evaluate_eligibility
+from .catalog.stock_freshness import fresh_stock_conditions
 from .catalog.rule_filters import load_rules_by_source_id, product_gender_compatible, product_passes_source_rules
 from .feed_filters import product_passes_budget, product_passes_size
 from .recommendation_config import OUTFIT_ENGINE_VERSION, OUTFIT_SCORE_WEIGHTS
@@ -117,6 +119,8 @@ def _scenario_product_ok(product: Product, scenario: str) -> bool:
 
 
 def _hard_ok(product: Product, *, fit: FitProfile | None, rules_by_source: dict) -> bool:
+  if not evaluate_eligibility(product, fit).eligible:
+    return False
   if not product_is_feed_eligible(product):
     return False
   if not product_passes_source_rules(product, rules_by_source):
@@ -202,6 +206,7 @@ def _catalog_slot_candidates(
   for slot in sorted(slots):
     found = 0
     query = select(Product).where(
+      *fresh_stock_conditions(),
       Product.is_active == 1, Product.is_available == 1,
       Product.is_deleted_from_feed == 0, Product.source != "demo",
       Product.price > 0, _slot_category_conditions({slot}), *adult_catalog_conditions(),
@@ -242,6 +247,31 @@ def _build_slot_candidates(
 ) -> dict[str, list[SlotCandidate]]:
   slots = set().union(*[set(option) for option in SCENARIO_SLOT_OPTIONS[scenario]])
   buckets: dict[str, list[SlotCandidate]] = {slot: [] for slot in slots}
+  activation = db.get(ActivationSession, user.id)
+  if activation is not None:
+    from .activation_service import candidate_pool
+    from .profile_repository import load_preferences
+    from .personalization_scoring import AffinityScorer
+    from .mie_scoring import load_user_taste_feature_map
+    from .recommendation_context import context_for
+    preferences = load_preferences(db, user)
+    profile, _, taste = preferences
+    context = context_for(scenario)
+    taste_features = load_user_taste_feature_map(db, user_id=user.id)
+    scorer = AffinityScorer(profile, taste, taste_features=taste_features, context=context)
+    required_roles = set.intersection(*(set(option) for option in SCENARIO_SLOT_OPTIONS[scenario]))
+    rows = candidate_pool(db, user, activation, exclude_ids=excluded, context=context,
+        taste_features=taste_features, scorer=scorer, preferences=preferences,
+        required_roles=required_roles)
+    for product in rows:
+      slot = product_slot(product)
+      if slot not in buckets or len(buckets[slot]) >= per_slot: continue
+      if excluded_keys and product_identity_keys(product) & excluded_keys: continue
+      if not _scenario_product_ok(product, scenario): continue
+      evaluation = scorer.evaluate(product)
+      buckets[slot].append(SlotCandidate(slot, product, evaluation.affinity, evaluation.fit_score,
+          evaluation.taste_score, evaluation.context_score))
+    return buckets
   seen: set[str] = set()
   seen_keys: set[str] = set(excluded_keys or ())
   rules_by_source = load_rules_by_source_id(db)
@@ -404,15 +434,32 @@ def compatibility_score(items: list[SlotCandidate], *, scenario: str) -> tuple[f
     "silhouette_balance": _clamp01(silhouette_score),
     "occasion_compatibility": _clamp01(occasion_score),
   }
+  from .catalog.product_dna import reliable_taste_features
+  facts = [reliable_taste_features(p, dimensions=('pattern', 'fit', 'season', 'formality')) for p in products]
+  patterns = [f.get('pattern', set()) - {'solid'} for f in facts]
+  patterned = [p for p in patterns if p]
+  # Multiple conspicuous prints are a soft compatibility penalty. Unknown
+  # attributes stay neutral and do not become a claim about the garment.
+  if patterned:
+    parts['pattern_balance'] = .8 if len(patterned) == 1 else .65 if set.intersection(*patterned) else .35
+  known_fits = [f['fit'] for f in facts if f.get('fit')]
+  if known_fits:
+    loose = sum(bool(f & {'oversized', 'relaxed'}) for f in known_fits)
+    parts['construction_balance'] = .55 if loose == len(known_fits) and loose > 1 else .75
+  formalities = [f['formality'] for f in facts if f.get('formality')]
+  if formalities:
+    values = set().union(*formalities)
+    parts['evidenced_formality'] = .3 if {'casual', 'formal'} <= values else .8
   return _clamp01(sum(parts.values()) / len(parts)), parts
 
 
 def _personal_score(items: list[SlotCandidate]) -> float:
   if not items:
     return 0.0
-  values = []
-  for item in items:
-    values.append(_clamp01(((item.fit_score + item.taste_score + item.context_score) / 3.0) - item.skip_penalty))
+  # Slot admission has already produced the full personal score, including
+  # Quality/Exploration and any legacy skip penalty. Do not discard factors
+  # or subtract the same penalty again during composition.
+  values = [_clamp01(item.personal_score) for item in items]
   return _clamp01(sum(values) / len(values))
 
 
@@ -546,6 +593,7 @@ def generate_outfits_v2(
   db.execute(select(User.id).where(User.id == user.id).with_for_update()).scalar_one()
   fit = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
   excluded = _excluded_product_ids(db, user, scenario=scenario_key)
+  activation = db.get(ActivationSession, user.id)
   skipped_ids = _recent_skip_product_ids(db, user)
   existing = db.execute(select(Outfit).where(Outfit.user_id == user.id)).scalars().all()
   prior_ids = {str(pid) for row in existing for pid in (row.items_json or {}).values() if pid}
@@ -577,11 +625,14 @@ def generate_outfits_v2(
       excluded_keys=used_keys if fresh_only else None,
     )
     combinations = _build_combinations(buckets, scenario=scenario_key, fit=fit, limit=need)
+    if activation is not None:
+      combinations = [candidate for candidate in combinations if candidate.total_price <= int(fit.budget_max or 0)]
     combinations = [candidate for candidate in combinations if all(
       sum(not bool(product_identity_keys(item.product) & keys) for item in candidate.items.values()) >= 2
       for keys in recent_keys
     ) and all(
-      any(not (product_identity_keys(item.product) & keys) for item in candidate.items.values())
+      (all(not (product_identity_keys(item.product) & keys) for item in candidate.items.values()) if activation is not None
+       else any(not (product_identity_keys(item.product) & keys) for item in candidate.items.values()))
       for keys in other_keys
     )]
     selected = _diverse_top(combinations, limit=need)

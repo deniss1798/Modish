@@ -8,6 +8,7 @@ import '../../core/widgets/modish_widgets.dart';
 import '../../core/widgets/product_image.dart';
 import '../catalog/filters_screen.dart';
 import '../catalog/search_screen.dart';
+import '../shopping/shopping_task_screen.dart';
 import '../products/models.dart' as prod;
 import '../products/product_detail_screen.dart';
 
@@ -20,7 +21,7 @@ class FeedScreen extends StatefulWidget {
 }
 
 class _FeedScreenState extends State<FeedScreen> {
-  String? _lastViewRecordedId;
+  String? _lastRelatedProductId;
 
   @override
   void initState() {
@@ -56,28 +57,52 @@ class _FeedScreenState extends State<FeedScreen> {
     final controller = widget.controller;
     final card = controller.currentProduct;
     final id = card?.product.id;
-    if (id != null && id != _lastViewRecordedId) {
-      _lastViewRecordedId = id;
-      unawaited(controller.recordProductViewIfNeeded(id));
+    if (id != null && controller.tab == 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) unawaited(controller.loadRelatedProducts(id));
+        if (mounted &&
+            controller.tab == 0 &&
+            controller.currentProduct?.product.id == id &&
+            (ModalRoute.of(context)?.isCurrent ?? true)) {
+          // The controller deduplicates in-flight and successful views. A
+          // failed request stays retryable when this card becomes visible again.
+          unawaited(controller.recordProductViewIfNeeded(id));
+          if (_lastRelatedProductId != id) {
+            _lastRelatedProductId = id;
+            unawaited(controller.loadRelatedProducts(id));
+          }
+        }
       });
     }
     if (id == null) {
-      _lastViewRecordedId = null;
+      _lastRelatedProductId = null;
     }
     final related = id == null
         ? <prod.FeedCard>[]
         : controller.relatedProducts(id);
+    final viewport = MediaQuery.sizeOf(context);
+    final compact = viewport.height < 700 && viewport.width < 600;
 
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 12, 4),
+          padding: EdgeInsets.fromLTRB(20, compact ? 8 : 16, 12, 8),
           child: Row(
             children: [
-              const GoldWordmark(fontSize: 26),
-              const Spacer(),
+              const Expanded(child: EditorialHeading('Лента')),
+              if (compact && controller.supportsShoppingIntent)
+                IconButton(
+                  key: const ValueKey('open-shopping-intent'),
+                  tooltip: 'Ваш запрос',
+                  icon: const Icon(Icons.auto_awesome_outlined, size: 21),
+                  color: AppColors.accent,
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          ShoppingTaskScreen(controller: controller),
+                    ),
+                  ),
+                ),
               IconButton(
                 tooltip: 'Поиск',
                 icon: const Icon(Icons.search, size: 22),
@@ -105,6 +130,35 @@ class _FeedScreenState extends State<FeedScreen> {
             ],
           ),
         ),
+        if (controller.supportsShoppingIntent && !compact)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: InkWell(
+              key: const ValueKey('open-shopping-intent'),
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ShoppingTaskScreen(controller: controller),
+                ),
+              ),
+              child: const SoftCard(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.auto_awesome_outlined,
+                      color: AppColors.accent,
+                      size: 20,
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(child: Text('Что вы ищете?')),
+                    Icon(Icons.arrow_forward, size: 18),
+                  ],
+                ),
+              ),
+            ),
+          ),
         Expanded(
           child: RefreshIndicator(
             color: AppColors.accent,
@@ -112,27 +166,52 @@ class _FeedScreenState extends State<FeedScreen> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: card == null
-                  ? ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      children: [
-                        SizedBox(
-                          height: MediaQuery.sizeOf(context).height * 0.45,
-                          child: _EmptyFeed(
-                            controller: controller,
-                            onRefresh: _onRefresh,
+                  ? LayoutBuilder(
+                      builder: (context, bounds) => ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: [
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minHeight: bounds.maxHeight,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              child: _EmptyFeed(
+                                controller: controller,
+                                onRefresh: _onRefresh,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     )
-                  : _SwipeProductCard(
-                      key: ValueKey(card.product.id),
-                      controller: controller,
-                      card: card,
+                  : AnimatedSwitcher(
+                      duration: MediaQuery.disableAnimationsOf(context)
+                          ? Duration.zero
+                          : const Duration(milliseconds: 220),
+                      switchInCurve: Curves.easeOutCubic,
+                      transitionBuilder: (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: ScaleTransition(
+                          scale: Tween<double>(
+                            begin: 0.97,
+                            end: 1,
+                          ).animate(animation),
+                          child: child,
+                        ),
+                      ),
+                      child: _SwipeProductCard(
+                        key: ValueKey(card.product.id),
+                        controller: controller,
+                        card: card,
+                      ),
                     ),
             ),
           ),
         ),
-        if (card != null && related.isNotEmpty) ...[
+        if (card != null &&
+            related.isNotEmpty &&
+            MediaQuery.sizeOf(context).height >= 700) ...[
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 4),
             child: Align(
@@ -140,18 +219,8 @@ class _FeedScreenState extends State<FeedScreen> {
               child: Text('С чем носить', style: AppTextStyles.sectionTitle),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                controller.relatedProductsHint(id!),
-                style: AppTextStyles.caption,
-              ),
-            ),
-          ),
           SizedBox(
-            height: MediaQuery.sizeOf(context).height < 760 ? 84 : 104,
+            height: 86,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               scrollDirection: Axis.horizontal,
@@ -196,6 +265,7 @@ class _FeedScreenState extends State<FeedScreen> {
         ],
         if (card != null)
           FeedActionBar(
+            compact: compact,
             onSkip: () =>
                 controller.sendProductEvent(context, card.product.id, 'skip'),
             onDislike: () =>
@@ -212,7 +282,8 @@ class _FeedScreenState extends State<FeedScreen> {
 }
 
 bool _hasActiveFilters(AppController c) {
-  return c.feedFilterCategories.isNotEmpty ||
+  return c.feedScenario != 'daily' ||
+      c.feedFilterCategories.isNotEmpty ||
       c.feedMinPrice != null ||
       c.feedMaxPrice != null ||
       c.feedFilterSizes.isNotEmpty ||
@@ -299,9 +370,11 @@ class _SwipeProductCardState extends State<_SwipeProductCard>
     setState(() => _animating = true);
     final target = event == 'like' ? 420.0 : -420.0;
     final start = _dx;
-    const steps = 12;
+    final steps = MediaQuery.disableAnimationsOf(context) ? 1 : 12;
     for (var i = 1; i <= steps; i++) {
-      await Future<void>.delayed(const Duration(milliseconds: 16));
+      if (steps > 1) {
+        await Future<void>.delayed(const Duration(milliseconds: 16));
+      }
       if (!mounted) return;
       setState(() => _dx = start + (target - start) * (i / steps));
     }
@@ -496,8 +569,13 @@ class _ProductCardView extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = card.product;
     final currency = {'RUB', 'RUR'}.contains(p.currency) ? '₽' : p.currency;
-    return SoftCard(
-      padding: const EdgeInsets.all(10),
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: const Color(0xFF39332B)),
+      ),
       child: LayoutBuilder(
         builder: (context, bounds) {
           final compact = bounds.maxHeight < 350;
@@ -508,9 +586,13 @@ class _ProductCardView extends StatelessWidget {
                 child: Stack(
                   children: [
                     Positioned.fill(
-                      child: _FeedImageCarousel(
-                        urls: p.galleryUrls,
-                        borderRadius: BorderRadius.circular(16),
+                      child: ColoredBox(
+                        key: const ValueKey('feed-product-photo'),
+                        color: const Color(0xFFEDEAE4),
+                        child: _FeedImageCarousel(
+                          urls: p.galleryUrls,
+                          borderRadius: BorderRadius.zero,
+                        ),
                       ),
                     ),
                     if ((p.discountPercent ?? 0) > 0)
@@ -540,7 +622,7 @@ class _ProductCardView extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(6, 12, 6, 4),
+                padding: EdgeInsets.fromLTRB(16, compact ? 10 : 16, 16, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -559,21 +641,24 @@ class _ProductCardView extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            p.shopLabel,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.caption,
+                        if (p.shopLabel.toLowerCase() !=
+                            p.brand.toLowerCase()) ...[
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              p.shopLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.caption,
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 6),
                     Text(
                       p.title.isEmpty ? 'Товар' : p.title,
-                      maxLines: compact ? 1 : 2,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 16,
@@ -611,25 +696,60 @@ class _ProductCardView extends StatelessWidget {
                           ),
                       ],
                     ),
-                    if (!compact && card.reasons.isNotEmpty) ...[
-                      const SizedBox(height: 9),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.auto_awesome_outlined,
-                            size: 13,
-                            color: AppColors.accent,
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              card.reasons.first,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTextStyles.caption,
+                    if (card.reasons.isNotEmpty) ...[
+                      const SizedBox(height: 5),
+                      InkWell(
+                        onTap: () => showModalBottomSheet<void>(
+                          context: context,
+                          showDragHandle: true,
+                          builder: (context) => SafeArea(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(24, 0, 24, 28),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Почему это вам',
+                                    style: AppTextStyles.sectionTitle,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  for (final reason in card.reasons.take(2))
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: 12,
+                                      ),
+                                      child: Text(
+                                        reason,
+                                        style: AppTextStyles.body,
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
                           ),
-                        ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 5),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.auto_awesome_outlined,
+                                size: 13,
+                                color: AppColors.accent,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  'Почему это вам',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTextStyles.caption,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
                   ],
@@ -661,7 +781,7 @@ Future<void> _showDislikeReasonSheet(
   AppController controller,
   String productId,
 ) async {
-  const reasons = [
+  final reasons = [
     ('not_my_style', 'Не мой стиль'),
     ('dont_like_color', 'Не нравится цвет'),
     ('dont_like_fit', 'Не нравится посадка'),
@@ -670,6 +790,8 @@ Future<void> _showDislikeReasonSheet(
     ('too_expensive', 'Слишком дорого'),
     ('already_have_similar', 'Похожее уже есть'),
     ('dont_like_design', 'Не нравится дизайн'),
+    if (controller.supportsShoppingContext)
+      ('not_for_context', 'Не подходит для случая'),
     ('other', 'Другая причина'),
   ];
   final reason = await showModalBottomSheet<String>(
@@ -680,36 +802,48 @@ Future<void> _showDislikeReasonSheet(
     ),
     builder: (sheetContext) {
       return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Что не подошло?',
-                style: AppTextStyles.sectionTitle.copyWith(fontSize: 18),
-              ),
-              const SizedBox(height: 10),
-              ...reasons.map(
-                (r) => ListTile(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Что не подошло?',
+                  style: AppTextStyles.sectionTitle.copyWith(fontSize: 18),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Причина необязательна.',
+                  style: AppTextStyles.caption,
+                ),
+                ListTile(
                   contentPadding: EdgeInsets.zero,
                   dense: true,
-                  title: Text(r.$2),
-                  onTap: () => Navigator.pop(sheetContext, r.$1),
+                  title: const Text('Без уточнения'),
+                  onTap: () => Navigator.pop(sheetContext),
                 ),
-              ),
-            ],
+                ...reasons.map(
+                  (r) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: Text(r.$2),
+                    onTap: () => Navigator.pop(sheetContext, r.$1),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
     },
   );
-  if (reason == null || !context.mounted) return;
+  if (!context.mounted) return;
   await controller.sendProductEvent(
     context,
     productId,
     'dislike',
-    meta: {'reason': reason},
+    meta: reason == null ? null : {'reason': reason},
   );
 }

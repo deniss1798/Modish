@@ -1,0 +1,20 @@
+{
+  "catalogue": {
+    "products": 204894,
+    "products_state_digest": "cef4c682adcd5ac131b5369f47d3e7f5",
+    "catalog_records_state_digest": "dc407b5ba1e5a83273f5d8879aaf2c4e",
+    "outside_source_products_state_digest": "6368aa507b2522483972b1b3dd59b03b",
+    "outside_catalog_records_state_digest": "d78d3066daae9ec461ee2474b84ed6a1",
+    "outside_sources_state_digest": "554d5cee65b29001f31965e529390114",
+    "users": 57,
+    "shopping_intents": 0
+  },
+  "backup": {
+    "filename": "test-before-refresh.dump",
+    "bytes": 204889066,
+    "sha256": "3936f010384df3293e17a2ec1a1b0ae96540d1cb720aa87c23e2ed429c74a2cb",
+    "scope": "existing_isolated_modish_test_only",
+    "toc_verified": true
+  },
+  "run_id": "43080ae69c664cbeb71a9ed161ccc57d"
+}

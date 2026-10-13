@@ -1,0 +1,193 @@
+{
+  "profiles": [
+    {
+      "profile": 1,
+      "size": "XS",
+      "shoe": "36",
+      "budget": "economy",
+      "styles": [
+        "casual",
+        "minimalism"
+      ],
+      "deck": 20,
+      "wow": 0,
+      "feed": 20,
+      "reranked": 10,
+      "viewed": 10,
+      "seconds": 9.44
+    },
+    {
+      "profile": 2,
+      "size": "S",
+      "shoe": "37",
+      "budget": "mass",
+      "styles": [
+        "casual",
+        "smart_casual"
+      ],
+      "deck": 20,
+      "wow": 3,
+      "feed": 20,
+      "reranked": 10,
+      "viewed": 10,
+      "seconds": 10.97
+    },
+    {
+      "profile": 3,
+      "size": "M",
+      "shoe": "38",
+      "budget": "mass",
+      "styles": [
+        "casual",
+        "minimalism"
+      ],
+      "deck": 20,
+      "wow": 3,
+      "feed": 20,
+      "reranked": 10,
+      "viewed": 10,
+      "seconds": 12.88
+    },
+    {
+      "profile": 4,
+      "size": "L",
+      "shoe": "39",
+      "budget": "mass",
+      "styles": [
+        "casual",
+        "smart_casual"
+      ],
+      "deck": 20,
+      "wow": 3,
+      "feed": 20,
+      "reranked": 10,
+      "viewed": 10,
+      "seconds": 11.95
+    },
+    {
+      "profile": 5,
+      "size": "XL",
+      "shoe": "40",
+      "budget": "mid",
+      "styles": [
+        "smart_casual",
+        "elegant"
+      ],
+      "deck": 20,
+      "wow": 3,
+      "feed": 20,
+      "reranked": 10,
+      "viewed": 10,
+      "seconds": 12.29
+    },
+    {
+      "profile": 6,
+      "size": "42",
+      "shoe": "37",
+      "budget": "mass",
+      "styles": [
+        "casual",
+        "romantic"
+      ],
+      "deck": 20,
+      "wow": 3,
+      "feed": 20,
+      "reranked": 10,
+      "viewed": 10,
+      "seconds": 12.3
+    },
+    {
+      "profile": 7,
+      "size": "44",
+      "shoe": "38",
+      "budget": "mass",
+      "styles": [
+        "minimalism",
+        "smart_casual"
+      ],
+      "deck": 20,
+      "wow": 3,
+      "feed": 20,
+      "reranked": 10,
+      "viewed": 10,
+      "seconds": 11.78
+    },
+    {
+      "profile": 8,
+      "size": "46",
+      "shoe": "39",
+      "budget": "mid",
+      "styles": [
+        "elegant",
+        "romantic"
+      ],
+      "deck": 20,
+      "wow": 3,
+      "feed": 20,
+      "reranked": 10,
+      "viewed": 10,
+      "seconds": 13.28
+    },
+    {
+      "profile": 9,
+      "size": "48",
+      "shoe": "40",
+      "budget": "mid",
+      "styles": [
+        "casual",
+        "minimalism"
+      ],
+      "deck": 20,
+      "wow": 3,
+      "feed": 20,
+      "reranked": 10,
+      "viewed": 10,
+      "seconds": 13.33
+    },
+    {
+      "profile": 10,
+      "size": "S",
+      "shoe": "38",
+      "budget": "mass",
+      "styles": [
+        "romantic",
+        "elegant"
+      ],
+      "deck": 20,
+      "wow": 3,
+      "feed": 20,
+      "reranked": 10,
+      "viewed": 10,
+      "seconds": 13.45
+    }
+  ],
+  "concurrent_idempotency": true,
+  "catalog_products": 199384,
+  "test_metrics": {
+    "days": 7,
+    "completed_onboarding_users": 21,
+    "unique_first20_views": 230,
+    "like_or_save": 198,
+    "dislike": 0,
+    "open_product": 0,
+    "affiliate_click": 0,
+    "reached_card10_users": 21,
+    "like_save_rate": 86.09,
+    "dislike_rate": 0.0,
+    "open_product_rate": 0.0,
+    "affiliate_click_rate": 0.0,
+    "reached_card10_rate": 100.0,
+    "targets_percent": {
+      "like_save_rate_min": 25,
+      "dislike_rate_max": 35,
+      "open_product_rate_min": 20,
+      "affiliate_click_rate_min": 3,
+      "reached_card10_rate_min": 60
+    },
+    "basis": "Actual unique card views, excluding Style Swipe and server prefetch. Like/Save counted as a union."
+  },
+  "wow_coverage": 9,
+  "result": "passed",
+  "image_id": "sha256:57ff3fffbd12c4c920500652ec89ef68150d585303d99650056187b4ccade0ff",
+  "production_unchanged": true
+}

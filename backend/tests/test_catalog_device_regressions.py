@@ -1,3 +1,4 @@
+from fit_fixtures import confirmed_fit
 """Regressions from the September 13 device report."""
 import unittest
 from datetime import datetime, timezone, timedelta
@@ -21,7 +22,8 @@ def product(**kwargs):
     pid = str(uuid4())
     fields = dict(id=pid, external_id=pid, source='vipavenue', title='Рубашка', brand='Brand', category='рубашки', price=2500,
         image_url=f'https://media2.vipavenue.ru/{pid}.jpg', product_url='https://vipavenue.ru/product/123/',
-        gender_target='menswear', available_sizes=['M','50'], colors=['black'], is_active=1,is_available=1,is_deleted_from_feed=0)
+        gender_target='menswear', available_sizes=['M','50'], colors=['black'], is_active=1,is_available=1, availability_status='in_stock',is_deleted_from_feed=0,
+        last_seen_in_feed_at=datetime.now(timezone.utc))
     fields.update(kwargs)
     return Product(**fields)
 
@@ -66,7 +68,8 @@ class CatalogDeviceRegressions(unittest.TestCase):
         Base.metadata.create_all(engine)
         with sessionmaker(bind=engine)() as db:
             user=User(id=str(uuid4()),email='filters@example.test',password_hash='unused');db.add(user);db.flush()
-            db.add(FitProfile(id=str(uuid4()),user_id=user.id,height_cm=180,gender_target='menswear',clothing_size='XL',budget_max=1000,interest_categories=['обувь']))
+            fit = confirmed_fit(id=str(uuid4()),user_id=user.id,height_cm=180,gender_target='menswear',clothing_size='M',budget_max=3000,interest_categories=['обувь'])
+            db.add(fit)
             db.add_all([product(colors=['white'], available_sizes=['S'], price=1500) for _ in range(720)])
             target=product(title='Чёрные брюки',category='брюки',price=2500,colors=['black'],available_sizes=['M','50'],created_at=datetime.now(timezone.utc)-timedelta(days=90),updated_at=datetime.now(timezone.utc)-timedelta(days=90))
             female=product(title='Чёрные брюки',category='брюки',raw_params_json={'param_пол':'Женская'},colors=['black'])
@@ -75,4 +78,6 @@ class CatalogDeviceRegressions(unittest.TestCase):
                 result=generate_feed(db,user,filters=filters)
                 self.assertEqual([r.product.id for r in result],[target.id])
             self.assertEqual(generate_feed(db,user,filters=CatalogFilters(colors=('Красный',))),[])
+            fit.budget_max = 1000
+            self.assertEqual(generate_feed(db,user,filters=CatalogFilters(min_price=2000,max_price=3000)),[])
         engine.dispose()

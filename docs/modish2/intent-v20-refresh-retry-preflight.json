@@ -1,0 +1,7 @@
+{
+  "scope": "offline_streamed_refresh_retry",
+  "csv_equivalence_quoted_newlines_decimal_conflicts": true,
+  "safety_tests": 13,
+  "passed": true,
+  "network_calls": false
+}

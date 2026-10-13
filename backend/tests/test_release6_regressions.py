@@ -1,3 +1,4 @@
+from fit_fixtures import confirmed_fit
 import unittest
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
@@ -24,7 +25,7 @@ class Release6Regressions(unittest.TestCase):
         self.db = sessionmaker(bind=self.engine)()
         self.user = User(id=str(uuid4()), email='release6@example.test', password_hash='unused')
         self.db.add(self.user); self.db.flush()
-        self.db.add(FitProfile(id=str(uuid4()), user_id=self.user.id, height_cm=180,
+        self.db.add(confirmed_fit(id=str(uuid4()), user_id=self.user.id, height_cm=180,
             gender_target='menswear', clothing_size='XL', budget_max=30000))
         self.db.commit()
 
@@ -50,9 +51,13 @@ class Release6Regressions(unittest.TestCase):
             self.assertTrue(product_is_fashion(product(title, category)), title)
 
     def test_inflight_swipes_excluded_even_before_events_are_committed(self):
+        from unittest.mock import patch
         p, next_p = product(), product()
         self.db.add_all([p, next_p]); self.db.commit()
-        rows = _feed_scored_items(self.db, self.user, limit=30, exclude_ids=[p.id])
+        # This regression isolates in-flight exclusions; activation gating has
+        # separate end-to-end tests, including existing warm accounts.
+        with patch('app.services.activation_service.require_warm_feed'):
+            rows = _feed_scored_items(self.db, self.user, limit=30, exclude_ids=[p.id])
         self.assertEqual([r['product']['id'] for r in rows], [next_p.id])
 
     def test_refresh_is_persistent_revocable_and_not_an_access_token(self):

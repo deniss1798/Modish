@@ -1,0 +1,121 @@
+{
+  "scope": "stratified_real_rows_on_isolated_clone",
+  "sources": [
+    {
+      "source": "aimclo",
+      "scanned": 384,
+      "sample": 23,
+      "counts": {
+        "quarantined": 20,
+        "passed": 3
+      },
+      "replayed": 23
+    },
+    {
+      "source": "baon",
+      "scanned": 1000,
+      "sample": 15,
+      "counts": {
+        "passed": 6,
+        "unavailable": 3,
+        "quarantined": 6
+      },
+      "replayed": 15
+    },
+    {
+      "source": "demix",
+      "scanned": 1000,
+      "sample": 34,
+      "counts": {
+        "passed": 3,
+        "quarantined": 31
+      },
+      "replayed": 34
+    },
+    {
+      "source": "fable",
+      "scanned": 660,
+      "sample": 31,
+      "counts": {
+        "unavailable": 3,
+        "quarantined": 25,
+        "passed": 3
+      },
+      "replayed": 31
+    },
+    {
+      "source": "mongolshop",
+      "scanned": 1000,
+      "sample": 45,
+      "counts": {
+        "quarantined": 45
+      },
+      "replayed": 45
+    },
+    {
+      "source": "postmeridiem",
+      "scanned": 700,
+      "sample": 24,
+      "counts": {
+        "passed": 3,
+        "quarantined": 18,
+        "unavailable": 3
+      },
+      "replayed": 24
+    },
+    {
+      "source": "serginnetti",
+      "scanned": 1000,
+      "sample": 12,
+      "counts": {
+        "unavailable": 3,
+        "passed": 3,
+        "quarantined": 6
+      },
+      "replayed": 12
+    },
+    {
+      "source": "shoppinglive",
+      "scanned": 1000,
+      "sample": 16,
+      "counts": {
+        "passed": 6,
+        "quarantined": 10
+      },
+      "replayed": 16
+    },
+    {
+      "source": "sportmaster",
+      "scanned": 1000,
+      "sample": 47,
+      "counts": {
+        "quarantined": 41,
+        "passed": 3,
+        "unavailable": 3
+      },
+      "replayed": 47
+    },
+    {
+      "source": "tsumoutlet",
+      "scanned": 74,
+      "sample": 10,
+      "counts": {
+        "quarantined": 10
+      },
+      "replayed": 10
+    },
+    {
+      "source": "vipavenue",
+      "scanned": 1000,
+      "sample": 26,
+      "counts": {
+        "unavailable": 4,
+        "quarantined": 19,
+        "passed": 3
+      },
+      "replayed": 26
+    }
+  ],
+  "result": "passed",
+  "products_unchanged_count": 183543
+}

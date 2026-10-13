@@ -1,0 +1,74 @@
+{
+  "checked_at": "2026-10-09T06:24:27.349832+00:00",
+  "scope": "isolated_clone",
+  "archive_sha256": "099dafc5f037b8afb6912bf20ed8380c748438e5949bde3d1bb62b347f035644",
+  "production_changed": false,
+  "production_unchanged": true,
+  "product_ready": false,
+  "result": "validation_complete_catalogue_readiness_unproven",
+  "test_pg_container_id": "881ea4c21dc23bbbe79889d3779b2500707af32e4705a619790e680688d6786f",
+  "migration_sources_unchanged_from_v19": true,
+  "helpers": {
+    "metrics": {
+      "filename": "metrics-smoke.py",
+      "sha256": "e4660f86c5314ca4b0d2d6fb30e578760c68195003f13f40505224631144de37"
+    },
+    "activation": {
+      "filename": "activation-performance.py",
+      "sha256": "8503a07c74d4a7df9a2c602c82a743d970b1f7da979d903269419bb3df0dc425"
+    },
+    "inventory": {
+      "filename": "size-raw-inventory.py",
+      "sha256": "a0c00d2a00f390407016ab5cd8ff2f1d3dc2d19c5db2b337ec7252f37c53ef87"
+    }
+  },
+  "image_id": "sha256:cfc4376eed5398c2167527779eb0586eb567dad6d7600251abfdaab32ff69fdc",
+  "unit_tests": {
+    "count": 302,
+    "summary": "Ran 302 tests in 41.414s",
+    "expected_count_from_package": 302,
+    "exit_code": 0
+  },
+  "positive_pg_metrics_passed": true,
+  "positive_pg_metrics_scope": "isolated_postgresql_synthetic_contract_not_real_coverage",
+  "fixed_now_utc": "2026-10-09T06:26:21.639727+00:00",
+  "clock_basis": "current_wall_clock",
+  "historical_replay": false,
+  "fresh_observations_at_current_wall_clock": 64389,
+  "fresh_observations_at_benchmark_clock": 64389,
+  "activation_measurement_status": "completed_real_activation",
+  "deck_and_feed_ids_unchanged": true,
+  "workload_equality": [
+    {
+      "index": 1,
+      "bootstrap_count_equal": true,
+      "deck_hash_equal": true,
+      "activation_completion_equal": true,
+      "feed_count_equal": true,
+      "feed_hash_equal": true,
+      "all_equal": true
+    },
+    {
+      "index": 2,
+      "bootstrap_count_equal": true,
+      "deck_hash_equal": true,
+      "activation_completion_equal": true,
+      "feed_count_equal": true,
+      "feed_hash_equal": true,
+      "all_equal": true
+    },
+    {
+      "index": 3,
+      "bootstrap_count_equal": true,
+      "deck_hash_equal": true,
+      "activation_completion_equal": true,
+      "feed_count_equal": true,
+      "feed_hash_equal": true,
+      "all_equal": true
+    }
+  ],
+  "timing_comparability": "same_selected_deck_and_feed",
+  "size_raw_inventory_report": "size-raw-inventory.json",
+  "test_revision": "20261008_0024",
+  "migration_roundtrip": "not_repeated_no_migration_change"
+}

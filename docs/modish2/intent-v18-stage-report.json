@@ -1,0 +1,13 @@
+{
+  "checked_at": "2026-10-08T21:08:29.423644+00:00",
+  "scope": "isolated_clone",
+  "production_changed": false,
+  "result": "latency_and_metrics_checked_catalogue_pending",
+  "archive_sha256": "7e347d5baf3cd0e68dbdb547c2555b2dfcc0c88448ae06f5b2f6772ad40ec95e",
+  "image_id": "sha256:c2e5f0a87185f9ddd1eae315e34db659ea6be5c96fcebac10385c8ae6b9e880f",
+  "test_revision": "20261008_0024",
+  "migration_roundtrip": "not_repeated_no_migration_change",
+  "positive_pg_metrics_passed": true,
+  "production_unchanged": true,
+  "product_ready": false
+}

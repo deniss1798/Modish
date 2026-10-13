@@ -28,14 +28,28 @@ class ApiClient {
               },
             ),
           ) {
+    _stampSessionOptions();
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
           options.extra.putIfAbsent('sessionVersion', () => _sessionVersion);
+          if (options.extra['sessionVersion'] != _sessionVersion) {
+            handler.reject(_staleSession(options));
+            return;
+          }
           if (options.extra['publicAuth'] == true) {
             options.headers.remove('Authorization');
           }
           handler.next(options);
+        },
+        onResponse: (response, handler) {
+          final request = response.requestOptions;
+          if (request.extra['publicAuth'] != true &&
+              request.extra['sessionVersion'] != _sessionVersion) {
+            handler.reject(_staleSession(request));
+            return;
+          }
+          handler.next(response);
         },
         onError: (error, handler) async {
           final request = error.requestOptions;
@@ -71,12 +85,29 @@ class ApiClient {
               }
               handler.next(refreshError);
               return;
+            } catch (refreshError, stackTrace) {
+              // A malformed refresh response/storage callback must finish the
+              // original request, rather than leave its interceptor pending.
+              handler.next(
+                DioException(
+                  requestOptions: request,
+                  error: refreshError,
+                  stackTrace: stackTrace,
+                  message: 'Не удалось обновить сессию. Повторите запрос.',
+                ),
+              );
+              return;
             }
           }
           if (_shouldRetry(error) &&
               error.requestOptions.extra['retried'] != true) {
             error.requestOptions.extra['retried'] = true;
             await Future<void>.delayed(const Duration(milliseconds: 800));
+            if (request.extra['publicAuth'] != true &&
+                request.extra['sessionVersion'] != _sessionVersion) {
+              handler.next(_staleSession(request));
+              return;
+            }
             try {
               final response = await _dio.fetch(error.requestOptions);
               handler.resolve(response);
@@ -101,6 +132,35 @@ class ApiClient {
   Future<void>? _refreshing;
   int _sessionVersion = 0;
 
+  /// Account identity for work which awaits something outside this transport.
+  /// Access-token rotation keeps the value; login/logout/disposal advance it.
+  int get sessionEpoch => _sessionVersion;
+
+  void _stampSessionOptions() {
+    // Dio copies BaseOptions.extra when the call constructs RequestOptions,
+    // before its async interceptor runs. Stamping only in onRequest is late.
+    _dio.options.extra = {
+      ..._dio.options.extra,
+      'sessionVersion': _sessionVersion,
+    };
+  }
+
+  void _advanceSession() {
+    _sessionVersion++;
+    _refreshing = null;
+    _stampSessionOptions();
+  }
+
+  DioException _staleSession(RequestOptions request) => DioException(
+    requestOptions: request,
+    type: DioExceptionType.cancel,
+    message: 'Сессия изменилась. Предыдущий запрос отменён.',
+  );
+
+  void _requireSession(int version, RequestOptions request) {
+    if (version != _sessionVersion) throw _staleSession(request);
+  }
+
   Future<void> _acceptSession(dynamic data) async {
     final access = data['access_token'] as String;
     refreshToken = data['refresh_token'] as String?;
@@ -109,7 +169,13 @@ class ApiClient {
   }
 
   Future<void> _refreshAccess() {
-    return _refreshing ??= _doRefresh().whenComplete(() => _refreshing = null);
+    final pending = _refreshing;
+    if (pending != null) return pending;
+    late final Future<void> refresh;
+    refresh = _doRefresh().whenComplete(() {
+      if (identical(_refreshing, refresh)) _refreshing = null;
+    });
+    return _refreshing = refresh;
   }
 
   Future<void> _doRefresh() async {
@@ -134,7 +200,9 @@ class ApiClient {
 
   Future<void> upgradeSession() async {
     if (refreshToken != null) return;
+    final version = _sessionVersion;
     final response = await _dio.post('/auth/session');
+    _requireSession(version, response.requestOptions);
     await _acceptSession(response.data);
   }
 
@@ -245,12 +313,21 @@ class ApiClient {
   }
 
   void clearToken() {
-    _sessionVersion++;
+    _advanceSession();
     refreshToken = null;
     _dio.options.headers.remove('Authorization');
   }
 
+  /// The client owns its transport; a controller must close only its own client.
+  void dispose() {
+    clearToken();
+    onUnauthorized = null;
+    onSessionChanged = null;
+    _dio.close(force: true);
+  }
+
   Future<String> register(String email, String password) async {
+    final version = _sessionVersion;
     final response = await _dio.post(
       '/auth/register',
       data: {'email': email.trim(), 'password': password},
@@ -261,13 +338,17 @@ class ApiClient {
       ),
     );
 
-    _sessionVersion++;
+    _requireSession(version, response.requestOptions);
+    _advanceSession();
+    final acceptedVersion = _sessionVersion;
     await _acceptSession(response.data);
+    _requireSession(acceptedVersion, response.requestOptions);
     final token = '${response.data['access_token']}';
     return token;
   }
 
   Future<String> login(String email, String password) async {
+    final version = _sessionVersion;
     final response = await _dio.post(
       '/auth/login',
       data: {'email': email.trim(), 'password': password},
@@ -278,8 +359,11 @@ class ApiClient {
       ),
     );
 
-    _sessionVersion++;
+    _requireSession(version, response.requestOptions);
+    _advanceSession();
+    final acceptedVersion = _sessionVersion;
     await _acceptSession(response.data);
+    _requireSession(acceptedVersion, response.requestOptions);
     final token = '${response.data['access_token']}';
     return token;
   }
@@ -390,6 +474,7 @@ class ApiClient {
 
   Future<List<Map<String, dynamic>>> productFeed({
     int limit = 30,
+    String scenario = 'daily',
     String? source,
     int? minPrice,
     int? maxPrice,
@@ -400,6 +485,7 @@ class ApiClient {
   }) async {
     final queryParameters = <String, dynamic>{
       'limit': limit,
+      if (scenario != 'daily') 'scenario': scenario,
       'min_price': ?minPrice,
       'max_price': ?maxPrice,
       if (categories.isNotEmpty) 'categories': categories,
@@ -441,8 +527,95 @@ class ApiClient {
     return Map<String, dynamic>.from(response.data as Map);
   }
 
+  Future<Map<String, dynamic>> replaceIntentOutfitItem(
+    String intentId,
+    String outfitId,
+    String slot,
+    int version,
+  ) async {
+    final response = await _dio.post(
+      '/shopping-intents/$intentId/outfits/$outfitId/replace',
+      data: {'slot': slot, 'expected_version': version},
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  Future<void> saveIntentOutfit(
+    String intentId,
+    String outfitId,
+    int version,
+  ) async {
+    await _dio.post(
+      '/shopping-intents/$intentId/outfits/$outfitId/save',
+      data: {'expected_version': version},
+    );
+  }
+
+  Future<Map<String, dynamic>> giveIntentFeedback(
+    String intentId,
+    String productId,
+    String? reason,
+    int version,
+  ) async {
+    final response = await _dio.post(
+      '/shopping-intents/$intentId/feedback',
+      data: {
+        'product_id': productId,
+        'reason': ?reason,
+        'expected_version': version,
+      },
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
   Future<Map<String, dynamic>> productById(String id) async {
     final response = await _dio.get('/products/$id');
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  Future<Map<String, dynamic>> createShoppingIntent(
+    String text,
+    String requestId,
+  ) async {
+    final response = await _dio.post(
+      '/shopping-intents',
+      data: {'text': text, 'request_id': requestId},
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  Future<void> closeShoppingIntent(
+    String id,
+    int version,
+    String outcome,
+  ) async {
+    await _dio.post(
+      '/shopping-intents/$id/close',
+      data: {'expected_version': version, 'outcome': outcome},
+    );
+  }
+
+  Future<Map<String, dynamic>> shoppingIntent(String id) async {
+    final response = await _dio.get('/shopping-intents/$id');
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  Future<Map<String, dynamic>> refineShoppingIntent(
+    String id,
+    String text,
+    int version, {
+    String? referenceProductId,
+    String? referenceOutfitId,
+  }) async {
+    final response = await _dio.post(
+      '/shopping-intents/$id/refine',
+      data: {
+        'text': text,
+        'expected_version': version,
+        'reference_product_id': ?referenceProductId,
+        'reference_outfit_id': ?referenceOutfitId,
+      },
+    );
     return Map<String, dynamic>.from(response.data as Map);
   }
 
@@ -470,8 +643,12 @@ class ApiClient {
     String? category,
     String? source,
     String? brand,
+    String? query,
   }) async {
     final queryParameters = <String, dynamic>{'limit': limit, 'offset': offset};
+    if (query != null && query.trim().isNotEmpty) {
+      queryParameters['q'] = query.trim();
+    }
 
     if (category != null && category.trim().isNotEmpty) {
       queryParameters['category'] = category.trim();
@@ -519,6 +696,50 @@ class ApiClient {
 
   Future<Map<String, dynamic>> onboardingStatus() async {
     final response = await _dio.get('/onboarding/status');
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  Future<void> activationPreferences({
+    required String ageGroup,
+    required String clothingSize,
+    required String shoeSize,
+    required List<String> styles,
+    required String priceSegment,
+    int? height,
+  }) async {
+    await _dio.post(
+      '/onboarding/preferences',
+      data: {
+        'age_group': ageGroup,
+        'clothing_size': clothingSize,
+        'shoe_size': shoeSize,
+        'clothing_size_system': RegExp(r'^\d').hasMatch(clothingSize)
+            ? 'RU'
+            : 'LETTER',
+        'shoe_size_system': 'EU',
+        'styles': styles,
+        'price_segment': priceSegment,
+        'height': ?height,
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> styleSwipeDeck() async {
+    final response = await _dio.get(
+      '/onboarding/style-swipe',
+      options: Options(receiveTimeout: const Duration(seconds: 90)),
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  Future<Map<String, dynamic>> styleSwipeFeedback(
+    String productId,
+    String reaction,
+  ) async {
+    final response = await _dio.post(
+      '/onboarding/style-swipe',
+      data: {'product_id': productId, 'reaction': reaction},
+    );
     return Map<String, dynamic>.from(response.data as Map);
   }
 
@@ -585,6 +806,7 @@ class ApiClient {
     final response = await _dio.post(
       '/onboarding/complete',
       queryParameters: {'count': count},
+      options: Options(receiveTimeout: const Duration(seconds: 120)),
     );
     return Map<String, dynamic>.from(response.data as Map);
   }
@@ -594,6 +816,8 @@ class ApiClient {
     int? weight,
     required String genderTarget,
     required String clothingSize,
+    String? shoeSize,
+    Map<String, dynamic>? sizes,
     required int budgetMin,
     required int budgetMax,
     List<String> interestCategories = const [],
@@ -606,6 +830,13 @@ class ApiClient {
         'weight': weight,
         'gender_target': genderTarget,
         'clothing_size': clothingSize,
+        'shoe_size': ?shoeSize,
+        'sizes': ?sizes,
+        'clothing_size_system':
+            sizes?['one_piece']?['system'] ??
+            (RegExp(r'^\d').hasMatch(clothingSize) ? 'RU' : 'LETTER'),
+        if (shoeSize != null)
+          'shoe_size_system': sizes?['shoes']?['system'] ?? 'EU',
         'budget_min': budgetMin,
         'budget_max': budgetMax,
         'interest_categories': interestCategories,
@@ -739,38 +970,28 @@ class ApiClient {
       if (inner.contains('Connection closed') ||
           inner.contains('Connection reset') ||
           inner.contains('Software caused connection abort')) {
-        final host = resolvedBaseUrl();
-        return 'Сервер недоступен или перезагружается.\n\n'
-            'Проверьте интернет и VPN. Сервер: $host';
+        return 'Не удалось подключиться. Проверьте интернет и попробуйте снова.';
       }
 
       if (e.type == DioExceptionType.connectionError ||
           e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout ||
           e.type == DioExceptionType.sendTimeout) {
-        final host = resolvedBaseUrl();
-        final emulatorHint = isLikelyEmulatorOnlyUrl
-            ? '\n\nСейчас указан адрес для эмулятора ($host). '
-                  'На телефоне нужен IP компьютера в Wi‑Fi или https://api.ваш-домен.ru '
-                  '(см. README, MODISH_API_BASE_URL).'
-            : '\n\nСервер: $host';
-        return 'Нет связи с сервером. Проверьте интернет и что backend запущен.$emulatorHint';
+        return 'Не удалось подключиться. Проверьте интернет и попробуйте снова.';
       }
 
       final status = e.response?.statusCode;
+      if (status != null && status >= 500) {
+        return 'Не удалось загрузить данные. Попробуйте снова.';
+      }
+      if (status == 401) return 'Сессия истекла — войдите снова.';
+      if (status == 403) return 'Это действие сейчас недоступно.';
       final detail = _detailFromResponse(e.response?.data);
       if (detail != null) {
         if (detail.contains('недоступен') || detail.contains('недоступ')) {
           return 'Товар временно недоступен';
         }
         return detail;
-      }
-
-      if (status != null && status >= 500) {
-        return 'Ошибка на сервере ($status). Обновите экран или попробуйте позже.';
-      }
-      if (status == 401 || status == 403) {
-        return 'Сессия истекла — войдите снова.';
       }
 
       final msg = e.message?.trim();
@@ -781,7 +1002,7 @@ class ApiClient {
         return msg;
       }
 
-      return 'Не удалось выполнить запрос. Проверьте интернет и сервер.';
+      return 'Не удалось выполнить запрос. Проверьте интернет и попробуйте снова.';
     }
 
     return e.toString();

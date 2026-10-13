@@ -1,0 +1,127 @@
+{
+  "scope": "isolated_real_catalogue",
+  "product_ready": false,
+  "checks_passed": true,
+  "comparisons": [
+    {
+      "intent_type": "single_item",
+      "occasion": null,
+      "before_seconds": 1.773008543998003,
+      "after_seconds": 1.6434391848742962,
+      "speedup": 1.078840373477901
+    },
+    {
+      "intent_type": "outfit",
+      "occasion": "office",
+      "before_seconds": 23.30215135961771,
+      "after_seconds": 5.399682642892003,
+      "speedup": 4.315466834017002
+    },
+    {
+      "intent_type": "outfit",
+      "occasion": "wedding",
+      "before_seconds": 22.481785194948316,
+      "after_seconds": 5.347826285287738,
+      "speedup": 4.203910896806307
+    }
+  ],
+  "baseline": {
+    "scope": "isolated_real_catalogue",
+    "checked_at": "2026-10-08T20:10:59.418098+00:00",
+    "archive_sha256": "6726baf5e159a4407628fba0a84cc35d42b2c97294fae1afa355dcd053828d20",
+    "image_id": "sha256:c3a1e0501448a592e303750fb0ba9341cb6e7ba841c4123a434c033d0a2ff55e",
+    "stock_timestamps_modified": false,
+    "synthetic_writes_rolled_back": true,
+    "queries": [
+      {
+        "query_kind": "single_item",
+        "occasion": null,
+        "product_count": 10,
+        "outfit_count": 0,
+        "seconds": [
+          1.773008543998003,
+          1.7333522383123636,
+          1.790694072842598
+        ],
+        "median_seconds": 1.773008543998003
+      },
+      {
+        "query_kind": "outfit",
+        "occasion": "office",
+        "product_count": 0,
+        "outfit_count": 0,
+        "seconds": [
+          23.162333466112614,
+          23.30215135961771,
+          24.142312990501523
+        ],
+        "median_seconds": 23.30215135961771
+      },
+      {
+        "query_kind": "outfit",
+        "occasion": "wedding",
+        "product_count": 0,
+        "outfit_count": 0,
+        "seconds": [
+          22.23223675787449,
+          22.596010958775878,
+          22.481785194948316
+        ],
+        "median_seconds": 22.481785194948316
+      }
+    ],
+    "postgresql_metrics_query_passed": true,
+    "catalogue_product_count": 203605,
+    "test_cohort_intents": 9
+  },
+  "current": {
+    "scope": "isolated_real_catalogue",
+    "checked_at": "2026-10-08T20:13:25.175122+00:00",
+    "archive_sha256": "bff0e63e0b1bb929f463622b0ffeb7182f1934b4cbe6996e3da2dedfbbc75d2b",
+    "image_id": "sha256:a4a0ae7f05f82c082c00fe06284cf95803f8c1d6fbf7a4d9747d109624e3ab24",
+    "stock_timestamps_modified": false,
+    "synthetic_writes_rolled_back": true,
+    "queries": [
+      {
+        "query_kind": "single_item",
+        "occasion": null,
+        "product_count": 10,
+        "outfit_count": 0,
+        "seconds": [
+          1.6434391848742962,
+          1.5273414049297571,
+          1.6938645523041487
+        ],
+        "median_seconds": 1.6434391848742962
+      },
+      {
+        "query_kind": "outfit",
+        "occasion": "office",
+        "product_count": 0,
+        "outfit_count": 0,
+        "seconds": [
+          5.482642386108637,
+          5.260646287351847,
+          5.399682642892003
+        ],
+        "median_seconds": 5.399682642892003
+      },
+      {
+        "query_kind": "outfit",
+        "occasion": "wedding",
+        "product_count": 0,
+        "outfit_count": 0,
+        "seconds": [
+          5.0942461639642715,
+          5.347826285287738,
+          5.403917361050844
+        ],
+        "median_seconds": 5.347826285287738
+      }
+    ],
+    "postgresql_metrics_query_passed": true,
+    "catalogue_product_count": 203605,
+    "test_cohort_intents": 9
+  },
+  "limitation": "Latency smoke does not establish size coverage, onboarding readiness or catalogue completeness"
+}

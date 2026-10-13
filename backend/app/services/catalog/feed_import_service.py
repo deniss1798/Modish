@@ -16,12 +16,10 @@ from ...integrations.admitad.feed_parser import (
   parse_admitad_yml,
   parse_yml_catalog_xml,
 )
-from ...models import CatalogSyncRun, Product, ProductSource
+from ...models import CatalogRecord, CatalogSyncRun, Product, ProductSource
 from ...log_redaction import redact
 from ...config import get_admitad_export_config
-from .affiliate_link_service import apply_deeplink_for_product
-from .feed_row_mapper import row_to_normalized
-from .product_normalizer import orm_kwargs_from_normalized
+from .catalog_records import store_record
 
 
 @dataclass
@@ -109,61 +107,21 @@ def _ingest_feed_rows(
     sync_ts=datetime.now(timezone.utc),
   )
   seen_external: set[str] = set()
+  # Serialize imports/replays for one merchant; distinct merchants are independent.
+  db.execute(select(ProductSource.id).where(ProductSource.id == source.id).with_for_update()).scalar_one()
 
   for row in rows:
-    try:
-      n = row_to_normalized(row, source)
-      if n is None:
-        result.note_skip("invalid_row")
-        continue
-
-      img = (n.image_url or "").strip()
-      if not img and n.image_urls:
-        img = (n.image_urls[0] or "").strip()
-      raw_dest = (n.affiliate_url or n.original_url or "").strip()
-      if not img:
-        result.note_skip("missing_image")
-        continue
-      if not raw_dest:
-        result.note_skip("missing_url")
-        continue
-
-      payload = orm_kwargs_from_normalized(n, source_id=source.id, sync_ts=result.sync_ts)
-      payload["image_url"] = img
-      raw_aff = (n.affiliate_url or "").strip()
-      raw_orig = (n.original_url or "").strip()
-      base_for_tpl = raw_aff or raw_orig
-      aff_templated = apply_deeplink_for_product(
-        base_for_tpl,
-        source,
-        external_id=n.external_id,
-        original_url=raw_orig or raw_aff,
-      )
-      payload["affiliate_url"] = aff_templated if aff_templated else None
-      payload["original_url"] = raw_orig or None
-      payload["product_url"] = (aff_templated or raw_orig or raw_aff).strip()
-
-      seen_external.add(n.external_id)
-      existing = db.execute(
-        select(Product).where(
-          Product.external_id == n.external_id,
-          Product.source == source.code,
-        )
-      ).scalar_one_or_none()
-
-      if existing is None:
-        pid = str(uuid4())
-        p = Product(id=pid, **payload)
-        db.add(p)
-        result.created += 1
-      else:
-        for k, v in payload.items():
-          setattr(existing, k, v)
-        existing.updated_at = result.sync_ts
-        result.updated += 1
-    except Exception:
-      result.note_skip("row_error")
-      continue
+    record, action = store_record(db, source, row, result.sync_ts)
+    if record.external_id:
+      seen_external.add(record.external_id)
+    if action == "created":
+      result.created += 1
+    elif action == "updated":
+      result.updated += 1
+    else:
+      result.skipped += 1
+      for reason in record.reasons:
+        result.skip_breakdown[reason] = result.skip_breakdown.get(reason, 0) + 1
 
   result.ingested = result.created + result.updated
 
@@ -182,6 +140,11 @@ def _ingest_feed_rows(
       )
     )
     result.deactivated = res.rowcount or 0
+    db.execute(update(CatalogRecord).where(
+      CatalogRecord.source_id == source.id,
+      CatalogRecord.external_id.isnot(None),
+      CatalogRecord.external_id.notin_(list(seen_external)),
+    ).values(status="missing", reasons=["missing_from_feed"]))
 
   return result
 
@@ -229,12 +192,8 @@ def sync_partner_feed(db: Session, *, source: ProductSource) -> CatalogSyncRun:
       raise RuntimeError("feed_url is empty")
     body = _download_feed_body(source.feed_url)
     rows = _parse_feed_rows(source.feed_url, body)
-    ingest = _ingest_feed_rows(db, source=source, rows=rows)
-    if ingest.ingested == 0 and ingest.total_received > 0:
-      err = (
-        f"No products ingested from {ingest.total_received} offers "
-        f"(skipped={ingest.skipped}, breakdown={ingest.skip_breakdown})"
-      )
+    with db.begin_nested():
+      ingest = _ingest_feed_rows(db, source=source, rows=rows)
   except Exception as exc:  # noqa: BLE001
     err = redact(str(exc))[:2000]
   ok = err is None
@@ -264,12 +223,8 @@ def sync_partner_feed_from_text(
   err: str | None = None
   try:
     rows = _parse_feed_rows(parser_url_hint, body)
-    ingest = _ingest_feed_rows(db, source=source, rows=rows)
-    if ingest.ingested == 0 and ingest.total_received > 0:
-      err = (
-        f"No products ingested from {ingest.total_received} offers "
-        f"(skipped={ingest.skipped}, breakdown={ingest.skip_breakdown})"
-      )
+    with db.begin_nested():
+      ingest = _ingest_feed_rows(db, source=source, rows=rows)
   except Exception as exc:  # noqa: BLE001
     err = redact(str(exc))[:2000]
   ok = err is None

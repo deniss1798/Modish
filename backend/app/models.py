@@ -36,6 +36,56 @@ class AuthSession(Base):
   created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
+class ShoppingIntent(Base):
+  __tablename__ = "shopping_intents"
+  __table_args__ = (UniqueConstraint('user_id', 'request_id', name='uq_shopping_intent_request'),)
+  id: Mapped[str] = mapped_column(String(36), primary_key=True)
+  user_id: Mapped[str] = mapped_column(ForeignKey('users.id'), index=True)
+  request_id: Mapped[str] = mapped_column(String(64))
+  version: Mapped[int] = mapped_column(Integer, default=1)
+  free_text: Mapped[str] = mapped_column(Text)
+  constraints_json: Mapped[dict] = mapped_column(JSON, default=dict)
+  context_json: Mapped[dict] = mapped_column(JSON, default=dict)
+  active: Mapped[int] = mapped_column(Integer, default=1)
+  created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+  updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+  expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class ActivationSession(Base):
+  """Durable first-session funnel, separate from optional photo analysis."""
+  __tablename__ = "activation_sessions"
+  user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), primary_key=True)
+  version: Mapped[int] = mapped_column(Integer, default=1)
+  segment: Mapped[str] = mapped_column(String(64), default="female_casual_mass_mid")
+  shoe_size: Mapped[str | None] = mapped_column(String(16), nullable=True)
+  swipe_product_ids: Mapped[list] = mapped_column(JSON, default=list)
+  swipes_json: Mapped[dict] = mapped_column(JSON, default=dict)
+  issued_feed_ids: Mapped[list] = mapped_column(JSON, default=list)
+  wow_json: Mapped[list] = mapped_column(JSON, default=list)
+  completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+  created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+  updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+
+class ActivationExposure(Base):
+  """First 20 actually viewed cards; repeated requests never inflate counts."""
+  __tablename__ = "activation_exposures"
+  id: Mapped[str] = mapped_column(String(36), primary_key=True)
+  user_id: Mapped[str] = mapped_column(ForeignKey("activation_sessions.user_id"), index=True)
+  product_id: Mapped[str] = mapped_column(ForeignKey("products.id"))
+  position: Mapped[int] = mapped_column(Integer)
+  reaction: Mapped[str | None] = mapped_column(String(16), nullable=True)
+  saved: Mapped[int] = mapped_column(Integer, default=0)
+  opened: Mapped[int] = mapped_column(Integer, default=0)
+  clicked: Mapped[int] = mapped_column(Integer, default=0)
+  shown_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+  __table_args__ = (
+    UniqueConstraint("user_id", "product_id", name="uq_activation_exposure_product"),
+    UniqueConstraint("user_id", "position", name="uq_activation_exposure_position"),
+  )
+
+
 class StyleProfile(Base):
   __tablename__ = "style_profiles"
   id: Mapped[str] = mapped_column(String(36), primary_key=True)
@@ -240,6 +290,26 @@ class Product(Base):
   __table_args__ = (UniqueConstraint("external_id", "source", name="uq_product_external_source"),)
 
 
+class CatalogRecord(Base):
+  """Latest parsed source row, independently replayable even when quarantined."""
+  __tablename__ = "catalog_records"
+  id: Mapped[str] = mapped_column(String(36), primary_key=True)
+  source_id: Mapped[str] = mapped_column(ForeignKey("product_sources.id"), index=True)
+  raw_key: Mapped[str] = mapped_column(String(160))
+  external_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+  product_id: Mapped[str | None] = mapped_column(ForeignKey("products.id"), nullable=True, index=True)
+  raw_json: Mapped[dict] = mapped_column(JSON)
+  raw_hash: Mapped[str] = mapped_column(String(64))
+  canonical_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+  normalization_version: Mapped[str] = mapped_column(String(64))
+  status: Mapped[str] = mapped_column(String(32), index=True)
+  reasons: Mapped[list[str]] = mapped_column(JSON, default=list)
+  first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+  last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+  processed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+  __table_args__ = (UniqueConstraint("source_id", "raw_key", name="uq_catalog_record_source_key"),)
+
+
 class ProductEmbedding(Base):
   __tablename__ = "product_embeddings"
   id: Mapped[str] = mapped_column(String(36), primary_key=True)
@@ -319,7 +389,9 @@ class FitProfile(Base):
   height_cm: Mapped[int] = mapped_column(Integer)
   weight_kg: Mapped[int | None] = mapped_column(Integer, nullable=True)
   gender_target: Mapped[str] = mapped_column(String(32), default="unisex")
-  clothing_size: Mapped[str] = mapped_column(String(32), default="M")
+  clothing_size: Mapped[str | None] = mapped_column(String(32), nullable=True)
+  size_profile_json: Mapped[dict] = mapped_column(JSON, default=dict)
+  body_measurements_json: Mapped[dict] = mapped_column(JSON, default=dict)
   body_proportions: Mapped[str] = mapped_column(Text, default="")
   contrast_level: Mapped[str] = mapped_column(String(32), default="")
   color_palette: Mapped[list[str]] = mapped_column(JSON, default=list)
@@ -362,6 +434,7 @@ class Outfit(Base):
   id: Mapped[str] = mapped_column(String(36), primary_key=True)
   user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
   items_json: Mapped[dict] = mapped_column(JSON, default=dict)  # {top: product_id, bottom:..., shoes:...}
+  intent_constraints_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
   total_price: Mapped[int] = mapped_column(Integer, default=0)
   style_direction: Mapped[str] = mapped_column(String(128), default="")
   reason: Mapped[str] = mapped_column(Text, default="")

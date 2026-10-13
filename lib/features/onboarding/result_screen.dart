@@ -1,3 +1,4 @@
+import '../../core/theme/app_text_styles.dart';
 import 'package:flutter/material.dart';
 import '../../app.dart';
 import '../../core/theme/app_colors.dart';
@@ -33,7 +34,7 @@ class _ResultScreenState extends State<ResultScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final stats = (brief['stats'] as Map?) ?? const {};
+    final stats = brief['stats'] is Map ? brief['stats'] as Map : const {};
     final events = stats['events']?.toString() ?? '—';
     final saved = stats['saved']?.toString() ?? '—';
     return Scaffold(
@@ -47,14 +48,21 @@ class _ResultScreenState extends State<ResultScreen> {
             const Text(
               'Готово',
               textAlign: TextAlign.center,
-              style: TextStyle(fontFamily: 'Georgia', fontSize: 40, color: AppColors.ink),
+              style: TextStyle(
+                fontFamily: AppFonts.displayFamily,
+                fontSize: 40,
+                color: AppColors.ink,
+              ),
             ),
             const SizedBox(height: 10),
             SoftCard(
               child: loading
                   ? const Padding(
                       padding: EdgeInsets.all(18),
-                      child: Text('Собираем результаты…', style: TextStyle(color: AppColors.muted)),
+                      child: Text(
+                        'Собираем результаты…',
+                        style: TextStyle(color: AppColors.muted),
+                      ),
                     )
                   : Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,11 +71,14 @@ class _ResultScreenState extends State<ResultScreen> {
                         const SizedBox(height: 10),
                         const Text(
                           'Дальше',
-                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 18,
+                          ),
                         ),
                         const SizedBox(height: 6),
                         const Text(
-                          'Откройте вкладку «Образы» — мы собрали 3 комплекта под ваш профиль.',
+                          'Откройте вкладку «Образы», чтобы посмотреть доступные варианты. Их наличие зависит от размеров и товаров в каталоге.',
                           style: TextStyle(color: AppColors.muted),
                         ),
                       ],
@@ -88,4 +99,3 @@ class _ResultScreenState extends State<ResultScreen> {
     );
   }
 }
-

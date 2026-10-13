@@ -1,0 +1,26 @@
+{
+  "package": {
+    "archive_sha256": "8978c0c01c98ec5e6dab97581685d3dd8e466c5d13b5fc659ffe9ec74d1b1392",
+    "verified_files": 188,
+    "environment": "local_windows_sqlite_not_server_docker",
+    "test_exit_code": 0,
+    "test_summary": "Ran 321 tests in 17.577s",
+    "production_changed": false
+  },
+  "server": {
+    "image_id": "sha256:f7fbd86663730d42c90fc21205d1dc21f32688181b82d5773fae7fc6efeb36c9",
+    "unit_tests": {
+      "count": 321,
+      "summary": "Ran 321 tests in 39.732s",
+      "expected_count_from_package": 321,
+      "exit_code": 0
+    },
+    "positive_pg_metrics_passed": true,
+    "production_unchanged": true
+  },
+  "performance_report": "intent-v22-catalog-report.json",
+  "product_ready": false,
+  "deployment": "production build13 unchanged",
+  "catalogue_readiness_report": "intent-v20-fresh-retry-20261010-readiness-report.json",
+  "limitation": "One controlled profile; no catalogue coverage or human feedback gate pass"
+}

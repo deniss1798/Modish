@@ -13,6 +13,7 @@ from ...catalog_normalize import (
 from ...models import Product
 from .catalog_quality import deactivate_ineligible_products
 from .style_tagger import infer_style_tags
+from .size_evidence import explicit_size_system
 
 
 def renormalize_product_row(p: Product) -> bool:
@@ -28,7 +29,8 @@ def renormalize_product_row(p: Product) -> bool:
     p.available_sizes = sizes
     changed = True
 
-  sys = infer_size_system(sizes) or p.size_system
+  inferred = infer_size_system(sizes)
+  sys = explicit_size_system(p.feed_raw_json, p.raw_params_json) or (inferred if inferred != 'EU' else None)
   if sys != p.size_system:
     p.size_system = sys
     changed = True

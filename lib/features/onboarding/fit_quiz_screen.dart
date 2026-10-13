@@ -15,8 +15,8 @@ class FitQuizScreen extends StatefulWidget {
 
 class _FitQuizScreenState extends State<FitQuizScreen> {
   String _gender = 'menswear';
-  String _size = 'M';
-  final _height = TextEditingController(text: '170');
+  String? _size;
+  final _height = TextEditingController();
   final _weight = TextEditingController();
   final _budgetMax = TextEditingController(text: '10000');
   final Set<String> _categories = {};
@@ -50,19 +50,34 @@ class _FitQuizScreenState extends State<FitQuizScreen> {
     if (_gender != 'menswear' && _gender != 'womenswear') {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Выберите «Мужское» или «Женское» — иначе лента будет случайной'),
+          content: Text(
+            'Выберите «Мужское» или «Женское» — иначе лента будет случайной',
+          ),
         ),
       );
       return;
     }
-    final bMax = int.tryParse(_budgetMax.text.trim()) ?? 10000;
+    final bMax = int.tryParse(_budgetMax.text.trim());
+    final height = int.tryParse(_height.text.trim());
+    final size = _size;
+    if (size == null ||
+        height == null ||
+        height < 50 ||
+        height > 250 ||
+        bMax == null ||
+        bMax <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Укажите свой рост, размер и бюджет')),
+      );
+      return;
+    }
     final wRaw = _weight.text.trim();
     widget.controller.setPendingFitPrefs(
       genderTarget: _gender,
-      clothingSize: _size,
+      clothingSize: size,
       budgetMin: 0,
       budgetMax: bMax,
-      height: int.tryParse(_height.text.trim()) ?? 170,
+      height: height,
       weight: wRaw.isEmpty ? null : int.tryParse(wRaw),
       interestCategories: _categories.toList(),
       styleScenarios: _styles.toList(),
@@ -79,7 +94,10 @@ class _FitQuizScreenState extends State<FitQuizScreen> {
           children: [
             const Center(child: GoldWordmark(fontSize: 32)),
             const SizedBox(height: 20),
-            Text('Ваш профиль', style: AppTextStyles.display.copyWith(fontSize: 28)),
+            Text(
+              'Ваш профиль',
+              style: AppTextStyles.display.copyWith(fontSize: 28),
+            ),
             const SizedBox(height: 8),
             Text(
               'Подборка строится по полу, размеру и бюджету. Фото — позже, по желанию.',
@@ -108,7 +126,9 @@ class _FitQuizScreenState extends State<FitQuizScreen> {
                         child: TextField(
                           controller: _height,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: 'Рост (см)'),
+                          decoration: const InputDecoration(
+                            labelText: 'Рост (см)',
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -116,7 +136,9 @@ class _FitQuizScreenState extends State<FitQuizScreen> {
                         child: TextField(
                           controller: _weight,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: 'Вес (кг)'),
+                          decoration: const InputDecoration(
+                            labelText: 'Вес (кг)',
+                          ),
                         ),
                       ),
                     ],
@@ -134,6 +156,7 @@ class _FitQuizScreenState extends State<FitQuizScreen> {
                         onSelected: (_) => setState(() => _size = s),
                         selectedColor: AppColors.accent,
                         labelStyle: TextStyle(
+                          fontFamily: AppFonts.bodyFamily,
                           color: on ? AppColors.onAccent : AppColors.ink,
                         ),
                       );
@@ -148,7 +171,10 @@ class _FitQuizScreenState extends State<FitQuizScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text('Категории (необязательно)', style: AppTextStyles.sectionTitle),
+                  const Text(
+                    'Категории (необязательно)',
+                    style: AppTextStyles.sectionTitle,
+                  ),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
@@ -169,7 +195,10 @@ class _FitQuizScreenState extends State<FitQuizScreen> {
                     }).toList(),
                   ),
                   const SizedBox(height: 12),
-                  const Text('Сценарии (необязательно)', style: AppTextStyles.sectionTitle),
+                  const Text(
+                    'Сценарии (необязательно)',
+                    style: AppTextStyles.sectionTitle,
+                  ),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
@@ -207,7 +236,10 @@ class _FitQuizScreenState extends State<FitQuizScreen> {
       selected: on,
       onSelected: (_) => setState(() => _gender = value),
       selectedColor: AppColors.accent,
-      labelStyle: TextStyle(color: on ? AppColors.onAccent : AppColors.ink),
+      labelStyle: TextStyle(
+        fontFamily: AppFonts.bodyFamily,
+        color: on ? AppColors.onAccent : AppColors.ink,
+      ),
     );
   }
 }

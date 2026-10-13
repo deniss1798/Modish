@@ -1,0 +1,119 @@
+{
+  "scope": "isolated_clone",
+  "checked_at": "2026-10-06T21:46:19.381524+00:00",
+  "rules_version": "product_dna_rules_v3",
+  "image_id": "sha256:5c635c83421afdbb7edd043021da7e5aa82306ccdbba17a7b2eb6661e2408197",
+  "archive_sha256": "79c0cad1068bb95410e23cea4818f68a63ddaec8f7005b3df757045f98c770ec",
+  "checks": [
+    {
+      "scenario": "daily",
+      "category": null,
+      "cards": 18,
+      "seconds": 1.404,
+      "ids": [
+        "1e8a16fd-abbe-4e96-a13d-9570f0ac42ec",
+        "1f71617c-fb82-425b-a560-98765a2621fe",
+        "f16b0294-e24d-4981-a28e-244d14d6340e",
+        "21a976bd-1a50-4d63-9da1-701891ec19e6",
+        "69b9be69-6349-4aa2-9661-ce6afa5f5866",
+        "2a3eecd9-99a8-4b76-8de2-a4f12c3e7640",
+        "312b387c-aa97-4dd9-9c02-7306dd051d25",
+        "14eb80ba-9742-4e6f-ade0-443d58ae97d2",
+        "4096ed54-bd62-4615-af29-f9717f50387a",
+        "cbdd311a-5e08-4f81-a062-b21f5f51f26d",
+        "2d16dbba-7c01-4770-8419-2892371e8dda",
+        "07c6a47e-3192-4629-bc46-f4ec38b55439",
+        "616dbb05-048c-4ac4-912c-5410e267c1e2",
+        "18ba3543-31e4-4a99-9ecf-60dd890980ed",
+        "f57316c1-b89a-4189-af57-227cd071ae43",
+        "d4775442-f1f3-48ba-8701-dc69efec526a",
+        "4e13dae9-3e85-4dfc-8e58-7e35bbb9c475",
+        "142dc133-37ab-4b35-ba44-e02de303e53f"
+      ]
+    },
+    {
+      "scenario": "office",
+      "category": null,
+      "cards": 12,
+      "seconds": 1.587,
+      "ids": [
+        "f16b0294-e24d-4981-a28e-244d14d6340e",
+        "14eb80ba-9742-4e6f-ade0-443d58ae97d2",
+        "4096ed54-bd62-4615-af29-f9717f50387a",
+        "88e8e2bf-a110-487e-a387-fa659ca0dc24",
+        "108f0a6e-66a6-4dab-b420-73bc8fc12950",
+        "c0577c99-cd83-464e-a966-3765ab5a60c1",
+        "6c019a18-b23d-4a0d-ae00-df4b33af7c66",
+        "a1cbaaf7-bfe7-4b5e-8734-4c0f4c717a11",
+        "2d16dbba-7c01-4770-8419-2892371e8dda",
+        "58185330-176f-4314-82c1-0c9c4deb68cd",
+        "4e13dae9-3e85-4dfc-8e58-7e35bbb9c475",
+        "142dc133-37ab-4b35-ba44-e02de303e53f"
+      ]
+    },
+    {
+      "scenario": "evening",
+      "category": null,
+      "cards": 12,
+      "seconds": 1.624,
+      "ids": [
+        "f16b0294-e24d-4981-a28e-244d14d6340e",
+        "14eb80ba-9742-4e6f-ade0-443d58ae97d2",
+        "4096ed54-bd62-4615-af29-f9717f50387a",
+        "88e8e2bf-a110-487e-a387-fa659ca0dc24",
+        "108f0a6e-66a6-4dab-b420-73bc8fc12950",
+        "c0577c99-cd83-464e-a966-3765ab5a60c1",
+        "6c019a18-b23d-4a0d-ae00-df4b33af7c66",
+        "a1cbaaf7-bfe7-4b5e-8734-4c0f4c717a11",
+        "2d16dbba-7c01-4770-8419-2892371e8dda",
+        "58185330-176f-4314-82c1-0c9c4deb68cd",
+        "4e13dae9-3e85-4dfc-8e58-7e35bbb9c475",
+        "142dc133-37ab-4b35-ba44-e02de303e53f"
+      ]
+    },
+    {
+      "scenario": "daily",
+      "category": "outerwear",
+      "cards": 20,
+      "seconds": 0.674,
+      "ids": [
+        "c8920f19-6712-46d6-a991-290720a87ecc",
+        "8457cf2c-db12-41aa-9647-472b6d164d9a",
+        "5db601d8-671c-4f2c-b546-0f2339b25998",
+        "9967098d-8ea4-4f12-8c91-ecda0253070e",
+        "7c9d4e17-44c2-44b6-b4c4-de30bf1a8fa3",
+        "3db59645-6504-4553-8268-fd49a7a43bad",
+        "5eea12ac-14c1-4e4b-ad32-478c6465e5ba",
+        "c21861af-c447-4c85-a224-08c56fb3f4d2",
+        "105b7df8-a9a4-4ae5-bf73-63c9613df85a",
+        "8be9b6be-18d5-49ef-924f-a7782eb4e4bf",
+        "73145040-f0a7-46be-80f2-3a8c5b7e3d51",
+        "e27a2524-08a6-4328-a7f2-e574652a6953",
+        "f5f7f994-a00e-4a5d-8611-e0a27ee3ccb0",
+        "ecf98cbe-e317-4a23-bc55-84fa8a7e6476",
+        "573699a5-2a7f-42b1-8df0-1baecff2cf1f",
+        "e91c7cfa-7130-4c4e-829f-89bac76fbe51",
+        "c4b2599c-6e0c-4870-aad8-ada7afa0e73e",
+        "8416860d-a24c-4b9e-ab04-e346247f8269",
+        "deebdf87-a05c-4835-9e98-da68327dff22",
+        "de56917f-1c94-48c5-9964-61d208f138f1"
+      ]
+    }
+  ],
+  "initial_pool": {
+    "cards": 351,
+    "context_evidence": {
+      "style": 143,
+      "occasion": 0,
+      "formality": 0
+    },
+    "scope": "eligible candidate pool for one M / EU 38 / mass profile, not entire catalogue"
+  },
+  "search": {
+    "query": "рубашка",
+    "cards": 20,
+    "seconds": 3.12
+  },
+  "intent_did_not_modify_taste": true,
+  "result": "passed"
+}

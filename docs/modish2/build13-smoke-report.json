@@ -1,0 +1,16 @@
+{
+  "transaction_read_only": true,
+  "categories": [
+    {
+      "category": "shoes",
+      "eligible_pool": 50,
+      "page": 20
+    },
+    {
+      "category": "outerwear",
+      "eligible_pool": 50,
+      "page": 20
+    }
+  ],
+  "result": "passed"
+}

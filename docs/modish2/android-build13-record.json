@@ -1,0 +1,27 @@
+{
+  "release": "Modish Android 1.0.0+13",
+  "status": "built_and_copied",
+  "checked_at": "2026-10-07",
+  "package": "com.example.modish",
+  "version_name": "1.0.0",
+  "version_code": 13,
+  "apk_bytes": 61285831,
+  "apk_sha256": "E6DCCB64AAAEA5CB3A35076D45E8BB9BB51FAB8891CB6E4F76CBE89139EB9204",
+  "certificate_sha256": "56aa2a86188fb19e48f6dfbbb67bd59c4bd7aa67783b97edc8217a0bb6cc4f0d",
+  "icon_sha256": "f36d07f468ae1baf90638996e071f1db3f7b930fed421638edd0e0ec2dea38e4",
+  "source_icon": "C:/Users/User/Downloads/Modish_icon_fullsize_1024.png",
+  "copies": [
+    "C:/Users/User/Downloads/Modish-1.0.0-build13.apk",
+    "C:/Users/User/Desktop/Modish-build13.apk"
+  ],
+  "checks": {
+    "physical_device": "not_tested",
+    "signature": "verified_same_certificate",
+    "targeted_flutter_tests": 27,
+    "embedded_icon": "exact_source_match",
+    "flutter_analyze": "passed"
+  },
+  "context_ui": "hidden_until_server_advertises_context_v1",
+  "foundation_v9": "isolated_only",
+  "production_api": "unchanged_build13"
+}

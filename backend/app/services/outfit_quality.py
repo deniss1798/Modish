@@ -11,9 +11,14 @@ FORMAL_SCENARIOS = {"office", "evening", "restaurant", "wedding", "date", "party
 
 def garment_text(product: Product) -> str:
   # Descriptions often cross-sell other categories; use the actual item fields.
-  return " ".join(str(getattr(product, name, "") or "") for name in (
-    "title", "category", "category_name", "subcategory", "merchant_category", "merchant_subcategory",
-  )).lower().replace("ё", "е")
+  parts = [str(product.title or '')]
+  for name in ('category','category_name','subcategory','merchant_category','merchant_subcategory'):
+    value = str(getattr(product,name,'') or '').lower()
+    # Shared navigation is not a garment attribute. Keep all other context
+    # (children, beach, sport, homewear) for the existing strict exclusions.
+    value = re.sub(r'обувь[ _]+и[ _]+аксессуары', 'обувь', value)
+    parts.append(value)
+  return ' '.join(parts).lower().replace('ё','е')
 
 
 _EXCLUDED = re.compile(
@@ -30,6 +35,36 @@ _CASUAL_ONLY = re.compile(r"кроссов|кед[ыа ]|шорт|худи|то�
                           r"\b(?:sneakers?|trainers?|shorts?|hoodie|sweatshirt|t-shirt|polo|leggings?|joggers?|slides?)\b")
 _TECHNICAL = re.compile(r"горнолыж|лыжн|сноуборд|треккин|рыболов|охотнич|\b(?:ski|skiing|snowboard|trekking|fishing|hunting)\b")
 
+# Many merchants omit season. Use the sold garment and explicit attributes,
+# never a cross-selling sentence such as "wear this coat with sandals".
+_COLD = re.compile(r"пух|утеплен|зимн|стеган|овчин|дублен|шуб|синтепон|холлофайбер|"
+                   r"\b(?:winter|puffer|padded|insulated|down)\b")
+_OPEN_SHOES = re.compile(r"сандал|босонож|шлепан|сланц|сабо|мюли|открыт.{0,12}(?:нос|пят)|"
+                         r"\b(?:sandals?|slides?|flip.flops?|mules?|open.toe)\b")
+_LIGHT_SHOES = re.compile(r"туфл|балетк|лофер|мокасин|эспадрил|"
+                          r"\b(?:pumps?|flats?|loafers?|moccasins?|espadrilles?)\b")
+
+
+def _weather_text(product: Product) -> str:
+  attributes = ' '.join(str(value) for key, value in (product.raw_params_json or {}).items()
+    if any(term in str(key).lower() for term in ('сезон', 'утепл', 'наполн', 'season', 'insulation', 'filling')))
+  return f'{garment_text(product)} {product.season or ""} {attributes}'.lower().replace('ё', 'е')
+
+
+def _weather_compatible(left: Product, right: Product) -> bool:
+  for garment, shoe in ((left, right), (right, left)):
+    if product_role(shoe) != 'shoes':
+      continue
+    text, shoe_text = _weather_text(garment), _weather_text(shoe)
+    outerwear = product_role(garment) == 'outerwear'
+    # A cardigan can be a light layer; a coat/jacket needs closed footwear.
+    outdoor_layer = outerwear and not re.search(r'кардиган|\bcardigan\b', garment_text(garment))
+    if (outdoor_layer or _COLD.search(text)) and _OPEN_SHOES.search(shoe_text):
+      return False
+    if outerwear and _COLD.search(text) and _LIGHT_SHOES.search(shoe_text):
+      return False
+  return True
+
 
 def is_sports_item(product: Product) -> bool:
   # The first sentence describes the sold item; later text can cross-sell it.
@@ -45,12 +80,21 @@ def pair_compatible(left: Product, right: Product) -> bool:
   a, b = product_role(left), product_role(right)
   if not a or not b or a == b or ({a, b} & {"one_piece"} and {a, b} & {"top", "bottom"}):
     return False
+  if not _weather_compatible(left, right):
+    return False
+  from .catalog.product_dna import reliable_taste_features
+  documented_seasons = set().union(*(reliable_taste_features(p, dimensions=('season',)).get('season', set()) for p in (left, right)))
+  if {'winter', 'summer'} <= documented_seasons:
+    return False
   for item, other in ((left, right), (right, left)):
     text = garment_text(item)
     if _TECHNICAL.search(text):
       return False
-    if product_role(item) == "shoes" and re.search(r"мех|овчин|утеплен|шерстян.{0,12}подклад", text):
-      if re.search(r"футболк|майк|\bтоп\b|льнян|шифон|\b(?:t-shirt|tank|linen|chiffon)\b", garment_text(other)):
+    if product_role(item) == "shoes" and re.search(r"мех|овчин|утеплен|дутик|зимн|антигололед|шерстян.{0,12}подклад", text):
+      # A generic "dress" title does not prove it is a warm winter garment.
+      if product_role(other) == "one_piece" and not re.search(r"вязан|шерст|тепл|\b(?:knitted|wool|warm)\b", garment_text(other)):
+        return False
+      if re.search(r"футболк|майк|\bтоп\b|сарафан|шорт|льнян|шифон|без[ _]+рукав|бретел|\b(?:t-shirt|tank|linen|chiffon|sundress|sleeveless|shorts)\b", garment_text(other)):
         return False
     if is_sports_item(item):
       text = garment_text(other)

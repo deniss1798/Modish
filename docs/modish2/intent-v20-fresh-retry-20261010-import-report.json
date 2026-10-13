@@ -1,0 +1,103 @@
+{
+  "scope": "fresh_four_sources_atomic_isolated_clone_import",
+  "run_id": "d99335da5f4f46fba934f71056e3d2ff",
+  "image_id": "sha256:cfc4376eed5398c2167527779eb0586eb567dad6d7600251abfdaab32ff69fdc",
+  "archive_sha256": "099dafc5f037b8afb6912bf20ed8380c748438e5949bde3d1bb62b347f035644",
+  "started_at": "2026-10-09T21:25:42.200977+00:00",
+  "sources": [
+    {
+      "code": "baon",
+      "rows": 8706,
+      "created": 55,
+      "updated": 8536,
+      "quarantined": 115,
+      "missing": 9980,
+      "reasons": {
+        "childrenswear": 68,
+        "unrecognized_size": 70,
+        "unsupported_category": 46,
+        "unknown_gender": 61
+      },
+      "observed_at": "2026-10-09T21:23:40.439277+00:00",
+      "distinct_identified_ids": 8706,
+      "identical_duplicate_rows": 0,
+      "previous_distinct_identified_ids": 8697,
+      "snapshot_sha256": "fc1a14680b6e816925a6c0f6cab332d5f987c9ca3a75ce00ce7c3dd62caaa2b6",
+      "ordered_row_content_sha256": "6a7c4811b52f3d7a1a7e41f643f3c1836434d3de9b482cc2a964da3990da29a2"
+    },
+    {
+      "code": "shoppinglive",
+      "rows": 41573,
+      "created": 1150,
+      "updated": 33469,
+      "quarantined": 6954,
+      "missing": 17995,
+      "reasons": {
+        "unsupported_category": 6695,
+        "unrecognized_size": 3925,
+        "childrenswear": 20,
+        "missing_size": 1
+      },
+      "observed_at": "2026-10-09T21:23:50.714729+00:00",
+      "distinct_identified_ids": 41573,
+      "identical_duplicate_rows": 0,
+      "previous_distinct_identified_ids": 41208,
+      "snapshot_sha256": "9acb4d20d5c28652832f1e15374990d324775171bf2a39e7ccc295805a83b863",
+      "ordered_row_content_sha256": "aea4c22d17f4f656a4f87ec92d2cddc6557fbcd8b521eb0e0c05a1dae5a0935e"
+    },
+    {
+      "code": "serginnetti",
+      "rows": 17144,
+      "created": 83,
+      "updated": 16429,
+      "quarantined": 632,
+      "missing": 1776,
+      "reasons": {
+        "unsupported_category": 629,
+        "unknown_gender": 230,
+        "missing_size": 242,
+        "unrecognized_size": 36
+      },
+      "observed_at": "2026-10-09T21:24:07.803045+00:00",
+      "distinct_identified_ids": 17144,
+      "identical_duplicate_rows": 0,
+      "previous_distinct_identified_ids": 16975,
+      "snapshot_sha256": "afde5a2025e49019b5cac90f3e97fa7e7043dca6a126900b9c5a07f8676c0e4c",
+      "ordered_row_content_sha256": "758c833aea3a2ff2e3e167a3c79199edfdf69f2e1a137d13b9e7c9a3c04b4464"
+    },
+    {
+      "code": "postmeridiem",
+      "rows": 368,
+      "created": 1,
+      "updated": 258,
+      "quarantined": 109,
+      "missing": 411,
+      "reasons": {
+        "unknown_gender": 105,
+        "unrecognized_size": 10,
+        "unsupported_category": 10,
+        "invalid_image_url": 1
+      },
+      "observed_at": "2026-10-09T21:24:13.984127+00:00",
+      "distinct_identified_ids": 368,
+      "identical_duplicate_rows": 0,
+      "previous_distinct_identified_ids": 366,
+      "snapshot_sha256": "6888767fe3825d358e6d4c542d61d8afbe8d3efb78a7301fd8930a582025c85d",
+      "ordered_row_content_sha256": "8f802f704ab1d26a72ee610c6cda7722e4c716e01ebd5dc4e3503590f8b3c9a0"
+    }
+  ],
+  "result": "import_committed",
+  "production_database_connected": false,
+  "stock_observation_basis": "actual_download_request_start_utc",
+  "raw_timestamps_injected": false,
+  "other_sources_modified": false,
+  "single_transaction": true,
+  "committed_sources": [
+    "baon",
+    "shoppinglive",
+    "serginnetti",
+    "postmeridiem"
+  ],
+  "existing_product_ids_preserved": true,
+  "finished_at": "2026-10-09T21:32:17.906693+00:00"
+}

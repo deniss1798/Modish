@@ -1,0 +1,77 @@
+{
+  "generated_at": "2026-09-21T04:47:06.298899+00:00",
+  "normalization_version": "catalog_rules_v1",
+  "source": "befree",
+  "input_file": "osnovnoi_products_20260515_001507.csv",
+  "rows": 7971,
+  "counts": {
+    "passed": 6171,
+    "quarantined": 1800
+  },
+  "reasons": {
+    "unsupported_category": 1769,
+    "unrecognized_size": 1349,
+    "childrenswear": 1
+  },
+  "examples": {
+    "unsupported_category": [
+      {
+        "external_id": "2424731123/40",
+        "title": "Трусы-стринги купальные высокие в рубчик",
+        "sizes": [
+          "M",
+          "L"
+        ]
+      },
+      {
+        "external_id": "BF2515343002/60",
+        "title": "Митенки пушистые в виде кошачьих лапок",
+        "sizes": [
+          "ЕДИНЫЙРАЗМЕР"
+        ]
+      },
+      {
+        "external_id": "BF2524730015/68",
+        "title": "Лиф-топ купальный из микрофибры",
+        "sizes": [
+          "XS"
+        ]
+      }
+    ],
+    "unrecognized_size": [
+      {
+        "external_id": "BF2515343002/60",
+        "title": "Митенки пушистые в виде кошачьих лапок",
+        "sizes": [
+          "ЕДИНЫЙРАЗМЕР"
+        ]
+      },
+      {
+        "external_id": "BF2514934055/1",
+        "title": "Набор носков высоких с принтом (2 пары)",
+        "sizes": [
+          "36-38"
+        ]
+      },
+      {
+        "external_id": "BF2514934048/99",
+        "title": "Набор носков с оборками и бантиками (2 пары)",
+        "sizes": [
+          "39-41"
+        ]
+      }
+    ],
+    "childrenswear": [
+      {
+        "external_id": "BF2535172001/99",
+        "title": "Брелок-медвежонок с обвесом",
+        "sizes": [
+          "ЕДИНЫЙРАЗМЕР"
+        ]
+      }
+    ]
+  },
+  "pass_rate": 0.7741814076025593,
+  "scope": "local_feed_snapshot_only",
+  "network_urls_verified": false
+}

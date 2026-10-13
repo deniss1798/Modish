@@ -1,3 +1,4 @@
+import '../../core/theme/app_text_styles.dart';
 import 'package:flutter/material.dart';
 import '../../app.dart';
 import '../../core/theme/app_colors.dart';
@@ -90,7 +91,7 @@ class RecommendationsScreen extends StatelessWidget {
                   const Text(
                     'Уверенность профиля',
                     style: TextStyle(
-                      fontFamily: 'Georgia',
+                      fontFamily: AppFonts.displayFamily,
                       fontSize: 26,
                       color: AppColors.ink,
                     ),
@@ -126,7 +127,7 @@ class _ListBlock extends StatelessWidget {
           Text(
             title,
             style: const TextStyle(
-              fontFamily: 'Georgia',
+              fontFamily: AppFonts.displayFamily,
               fontSize: 28,
               color: AppColors.ink,
             ),
@@ -145,7 +146,7 @@ class _ListBlock extends StatelessWidget {
         Text(
           title,
           style: const TextStyle(
-            fontFamily: 'Georgia',
+            fontFamily: AppFonts.displayFamily,
             fontSize: 28,
             color: AppColors.ink,
           ),

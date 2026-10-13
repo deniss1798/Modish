@@ -36,6 +36,9 @@ def visible_outfits(db: Session, user: User, rows: list[Outfit]) -> list[dict[st
   """Validate older stored outfits too, without deleting saved user data."""
   fit = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
   rules = load_rules_by_source_id(db)
+  from ..models import ActivationSession
+  from ..services.activation_service import product_ok
+  activation = db.get(ActivationSession, user.id)
   ids = {str(pid) for row in rows for pid in (row.items_json or {}).values() if pid}
   products = {p.id: p for p in db.execute(select(Product).where(Product.id.in_(ids))).scalars()} if ids else {}
   result = []
@@ -48,6 +51,13 @@ def visible_outfits(db: Session, user: User, rows: list[Outfit]) -> list[dict[st
     if any(p is None or product_slot(p) != s or not scenario_product_ok(p, scenario) or not _hard_ok(p, fit=fit, rules_by_source=rules) for s, p in slots.items()):
       continue
     if not outfit_compatible(list(slots.values())):
+      continue
+    if row.intent_constraints_json:
+      from ..schemas.shopping_intent import IntentSpec
+      from ..services.intent_outfits import outfit_problem
+      if outfit_problem(slots, fit, IntentSpec.model_validate(row.intent_constraints_json)):
+        continue
+    if activation and (any(not product_ok(p, fit, activation, rules=rules) for p in slots.values()) or sum(int(p.price or 0) for p in slots.values()) > int(fit.budget_max or 0)):
       continue
     keys = set().union(*(product_identity_keys(p) for p in slots.values()))
     if any(sum(bool(product_identity_keys(p) & old) for p in slots.values()) > len(slots) - (2 if old_scenario == scenario else 1) for old_scenario, old in previous_keys):

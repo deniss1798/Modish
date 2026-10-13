@@ -1,0 +1,19 @@
+{
+  "fixture": "1000_products_1002_taste_features_v1",
+  "products": 1000,
+  "optimized": true,
+  "timings_seconds": [
+    0.3715,
+    0.349874,
+    0.357163
+  ],
+  "median_seconds": 0.357163,
+  "scores_sha256": "23bcfb160fbeb62bd63dcaa381a84eb11a7d4ece770045aac348cb894c898e0c",
+  "event_touched_features": 7,
+  "event_sql_statements": {
+    "SELECT": 3,
+    "INSERT": 2,
+    "UPDATE": 1
+  },
+  "scope": "offline CPU and SQLite query count; not production throughput or p95"
+}

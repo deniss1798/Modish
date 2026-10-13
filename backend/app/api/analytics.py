@@ -30,3 +30,19 @@ def get_analytics_summary(
   if not _admin_token_ok(authorization):
     raise HTTPException(status_code=403, detail="Admin token required")
   return analytics_summary(db, days=days)
+
+
+@router.get('/analytics/shopping-intents')
+def get_shopping_analytics(days: int = 7, db: Session = Depends(get_db), authorization: str | None = Header(default=None)):
+  if not _admin_token_ok(authorization):
+    raise HTTPException(status_code=403, detail='Admin token required')
+  from ..services.intent_metrics import summary
+  return summary(db, days=days)
+
+
+@router.get("/analytics/first-session")
+def get_first_session_analytics(days: int = 7, db: Session = Depends(get_db), authorization: str | None = Header(default=None)):
+  if not _admin_token_ok(authorization):
+    raise HTTPException(status_code=403, detail="Admin token required")
+  from ..services.activation_service import activation_metrics
+  return activation_metrics(db, days=days)

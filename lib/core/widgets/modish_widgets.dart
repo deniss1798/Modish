@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 
@@ -91,10 +92,10 @@ class SoftCard extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF1D1C1A), AppColors.card],
+          colors: [Color(0xFF24211D), AppColors.card],
         ),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.line),
+        border: Border.all(color: const Color(0xFF39332B)),
         boxShadow: const [
           BoxShadow(
             color: Color(0x18000000),
@@ -106,6 +107,37 @@ class SoftCard extends StatelessWidget {
       child: child,
     );
   }
+}
+
+/// Shared editorial heading; the brand mark belongs on the welcome screen.
+class EditorialHeading extends StatelessWidget {
+  const EditorialHeading(this.title, {super.key, this.trailing});
+  final String title;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.center,
+    children: [
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(width: 24, height: 2, color: AppColors.accent),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: AppTextStyles.screenTitle.copyWith(
+                fontSize: 28,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+      ?trailing,
+    ],
+  );
 }
 
 class PrimaryButton extends StatelessWidget {
@@ -360,37 +392,57 @@ class ModishBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.card,
-        border: Border(top: BorderSide(color: AppColors.line)),
-      ),
-      child: SafeArea(
-        top: false,
+    return SafeArea(
+      top: false,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: const Color(0xFF39332B)),
+        ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
+          padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
           child: Row(
             children: List.generate(_items.length, (i) {
               final item = _items[i];
               final on = i == index;
               return Expanded(
                 child: Material(
-                  color: on
-                      ? AppColors.accent.withValues(alpha: 0.12)
-                      : Colors.transparent,
+                  color: Colors.transparent,
                   borderRadius: BorderRadius.circular(20),
                   child: InkWell(
-                    onTap: () => onChanged(i),
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      onChanged(i);
+                    },
                     borderRadius: BorderRadius.circular(20),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            on ? item.$2 : item.$1,
-                            color: on ? AppColors.accent : AppColors.muted,
-                            size: 22,
+                          AnimatedContainer(
+                            duration: MediaQuery.disableAnimationsOf(context)
+                                ? Duration.zero
+                                : const Duration(milliseconds: 180),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: on
+                                  ? AppColors.accent.withValues(alpha: 0.15)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Icon(
+                              on ? item.$2 : item.$1,
+                              color: on
+                                  ? AppColors.accentSoft
+                                  : AppColors.muted,
+                              size: 21,
+                            ),
                           ),
                           const SizedBox(height: 3),
                           Text(
@@ -491,6 +543,7 @@ class FeedActionBar extends StatelessWidget {
     required this.onSave,
     required this.onOpen,
     required this.onLike,
+    this.compact = false,
   });
 
   final VoidCallback onSkip;
@@ -498,6 +551,9 @@ class FeedActionBar extends StatelessWidget {
   final VoidCallback onSave;
   final VoidCallback onOpen;
   final VoidCallback onLike;
+
+  /// Short screens keep the same accessible actions with more room for photos.
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -507,35 +563,40 @@ class FeedActionBar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           _FeedAction(
+            compact: compact,
             icon: Icons.close_rounded,
             label: 'Пропуск',
             color: AppColors.muted,
             onTap: onSkip,
           ),
           _FeedAction(
+            compact: compact,
             icon: Icons.thumb_down_alt_outlined,
             label: 'Не моё',
             color: AppColors.muted,
             onTap: onDislike,
           ),
           _FeedAction(
+            compact: compact,
             icon: Icons.bookmark_border_rounded,
             label: 'Сохранить',
             color: AppColors.accentSoft,
             onTap: onSave,
           ),
           _FeedAction(
+            compact: compact,
             icon: Icons.open_in_new_rounded,
-            label: 'Подробнее',
+            label: 'Детали',
             color: AppColors.accentSoft,
             onTap: onOpen,
-            highlight: true,
           ),
           _FeedAction(
+            compact: compact,
             icon: Icons.favorite_border_rounded,
             label: 'Нравится',
             color: AppColors.accent,
             onTap: onLike,
+            highlight: true,
           ),
         ].map((action) => Expanded(child: action)).toList(),
       ),
@@ -543,13 +604,14 @@ class FeedActionBar extends StatelessWidget {
   }
 }
 
-class _FeedAction extends StatelessWidget {
+class _FeedAction extends StatefulWidget {
   const _FeedAction({
     required this.icon,
     required this.label,
     required this.color,
     required this.onTap,
     this.highlight = false,
+    this.compact = false,
   });
 
   final IconData icon;
@@ -557,48 +619,79 @@ class _FeedAction extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
   final bool highlight;
+  final bool compact;
+
+  @override
+  State<_FeedAction> createState() => _FeedActionState();
+}
+
+class _FeedActionState extends State<_FeedAction> {
+  bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: highlight ? 54 : 48,
-              height: highlight ? 54 : 48,
-              decoration: BoxDecoration(
-                gradient: highlight
-                    ? const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [AppColors.accentSoft, AppColors.accent],
-                      )
-                    : null,
-                color: highlight ? null : AppColors.card,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: highlight ? AppColors.accent : AppColors.line,
+    final highlight = widget.highlight;
+    return Semantics(
+      button: true,
+      label: widget.label,
+      child: Tooltip(
+        message: widget.label,
+        excludeFromSemantics: true,
+        child: InkWell(
+          onTapDown: (_) => setState(() => _pressed = true),
+          onTapCancel: () => setState(() => _pressed = false),
+          onTap: () {
+            setState(() => _pressed = false);
+            HapticFeedback.selectionClick();
+            widget.onTap();
+          },
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedScale(
+                  scale: _pressed ? 0.9 : 1,
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? Duration.zero
+                      : const Duration(milliseconds: 160),
+                  child: Container(
+                    width: highlight && !widget.compact ? 54 : 48,
+                    height: highlight && !widget.compact ? 54 : 48,
+                    decoration: BoxDecoration(
+                      gradient: highlight
+                          ? const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [AppColors.accentSoft, AppColors.accent],
+                            )
+                          : null,
+                      color: highlight ? null : AppColors.card,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: highlight ? AppColors.accent : AppColors.line,
+                      ),
+                    ),
+                    child: Icon(
+                      widget.icon,
+                      color: highlight ? AppColors.onAccent : widget.color,
+                      size: highlight ? 24 : 22,
+                    ),
+                  ),
                 ),
-              ),
-              child: Icon(
-                icon,
-                color: highlight ? AppColors.onAccent : color,
-                size: highlight ? 24 : 22,
-              ),
+                if (!widget.compact) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    widget.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.caption.copyWith(fontSize: 10),
+                  ),
+                ],
+              ],
             ),
-            const SizedBox(height: 5),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.caption.copyWith(fontSize: 10),
-            ),
-          ],
+          ),
         ),
       ),
     );

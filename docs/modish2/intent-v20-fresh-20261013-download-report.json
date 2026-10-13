@@ -1,0 +1,50 @@
+{
+  "scope": "four_fixed_admitad_https_exports_no_database",
+  "run_id": "43080ae69c664cbeb71a9ed161ccc57d",
+  "result": "download_complete",
+  "started_at": "2026-10-12T21:23:01.513285+00:00",
+  "sources": [
+    {
+      "code": "baon",
+      "feed_id": "19982",
+      "filename": "baon.csv",
+      "bytes": 27431719,
+      "sha256": "56b4ea0e30e0fc8bbde915dfce7ae30dd0f922bb7a16a7bc3946a0d1782dfa8f",
+      "observed_at": "2026-10-12T21:23:01.581921+00:00",
+      "download_finished_at": "2026-10-12T21:23:11.988981+00:00"
+    },
+    {
+      "code": "shoppinglive",
+      "feed_id": "25461",
+      "filename": "shoppinglive.csv",
+      "bytes": 38305141,
+      "sha256": "42e59881c5cff6842f6d2d0208c0be0d5084dbc1c357894ed5df96f3b323090d",
+      "observed_at": "2026-10-12T21:23:11.989083+00:00",
+      "download_finished_at": "2026-10-12T21:23:27.246219+00:00"
+    },
+    {
+      "code": "serginnetti",
+      "feed_id": "26417",
+      "filename": "serginnetti.csv",
+      "bytes": 15925635,
+      "sha256": "1af45b682724b95a000ac88fa9d1841a17f9a67f361a5dad446d67690bf1dfee",
+      "observed_at": "2026-10-12T21:23:27.246280+00:00",
+      "download_finished_at": "2026-10-12T21:23:33.731708+00:00"
+    },
+    {
+      "code": "postmeridiem",
+      "feed_id": "25200",
+      "filename": "postmeridiem.csv",
+      "bytes": 448357,
+      "sha256": "27921393cd62121f80fe32163dde890ba8680d92279ac14d6212bf2b3abf695a",
+      "observed_at": "2026-10-12T21:23:33.731761+00:00",
+      "download_finished_at": "2026-10-12T21:23:34.403272+00:00"
+    }
+  ],
+  "raw_urls_exported": false,
+  "credentials_persisted": false,
+  "database_connected": false,
+  "max_bytes_per_source": 268435456,
+  "observation_clock_basis": "real_download_request_start_utc",
+  "finished_at": "2026-10-12T21:23:34.403549+00:00"
+}

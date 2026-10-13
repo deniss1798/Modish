@@ -1,5 +1,72 @@
 import 'package:flutter/material.dart';
 
+// Keep the API evidence as received: flat display fields alone cannot detect
+// changes in per-size stock, provenance, or canonical construction evidence.
+const _recommendationFactFields = {
+  'id',
+  'external_id',
+  'offer_id',
+  'source',
+  'source_id',
+  'title',
+  'description',
+  'brand',
+  'category',
+  'category_name',
+  'subcategory',
+  'merchant_category',
+  'merchant_subcategory',
+  'outfit_slot',
+  'price',
+  'old_price',
+  'discount_percent',
+  'currency',
+  'available_sizes',
+  'available_sizes_detailed',
+  'size_system',
+  'size_original',
+  'colors',
+  'color_family',
+  'color_original',
+  'material',
+  'season',
+  'occasion',
+  'gender_target',
+  'fit',
+  'silhouette',
+  'style_tags',
+  'raw_params_json',
+  'feed_raw_json',
+  'recommendation_evidence_version',
+  'image_quality_score',
+  'is_available',
+  'availability_status',
+  'availability_state',
+  'availability_confidence',
+  'availability_reason',
+  'is_active',
+  'is_deleted_from_feed',
+};
+
+dynamic _immutableApiValue(dynamic value) {
+  if (value is Map) {
+    return Map<String, dynamic>.unmodifiable({
+      for (final entry in value.entries)
+        entry.key.toString(): _immutableApiValue(entry.value),
+    });
+  }
+  if (value is List) {
+    return List<dynamic>.unmodifiable(value.map(_immutableApiValue));
+  }
+  return value;
+}
+
+Map<String, dynamic> _recommendationFactsFromApi(Map<String, dynamic> json) =>
+    Map<String, dynamic>.unmodifiable({
+      for (final field in _recommendationFactFields)
+        if (json.containsKey(field)) field: _immutableApiValue(json[field]),
+    });
+
 List<String> _imageUrlsFromJson(dynamic raw) {
   if (raw is! List) return const [];
   final out = <String>[];
@@ -36,6 +103,7 @@ class Product {
     this.groupId = '',
     this.vendorCode = '',
     this.outfitSlot,
+    this.recommendationFacts = const {},
   });
 
   final String id;
@@ -67,8 +135,39 @@ class Product {
   final String vendorCode;
   final String? outfitSlot;
 
+  /// Immutable API facts supporting the recommendation that supplied this item.
+  /// Presentation URLs and observation timestamps do not change these facts.
+  final Map<String, dynamic> recommendationFacts;
+
   Set<String> get identityKeys {
     final keys = <String>{'id:$id'};
+    // The merchant page ties size offers together even when their photos differ.
+    // Keep identity-bearing query parameters; remove tracking and size only.
+    final merchant = Uri.tryParse(originalUrl?.trim() ?? '');
+    if (merchant != null &&
+        {'http', 'https'}.contains(merchant.scheme) &&
+        merchant.host.isNotEmpty &&
+        merchant.path.trim() != '/' &&
+        merchant.path.isNotEmpty) {
+      final query = <String, dynamic>{};
+      for (final key in merchant.queryParametersAll.keys.toList()..sort()) {
+        if (key.toLowerCase().startsWith('utm_') ||
+            {
+              'gclid',
+              'yclid',
+              'fbclid',
+              'size',
+              'size_id',
+            }.contains(key.toLowerCase())) {
+          continue;
+        }
+        query[key] = merchant.queryParametersAll[key];
+      }
+      final path = merchant.path.replaceFirst(RegExp(r'/+$'), '');
+      keys.add(
+        'merchant:${merchant.host.toLowerCase().replaceFirst(RegExp(r'^www\.'), '')}$path${query.isEmpty ? '' : '?${Uri(queryParameters: query).query}'}',
+      );
+    }
     for (final pair in [('group_id', groupId), ('vendor_code', vendorCode)]) {
       if (source.isNotEmpty &&
           pair.$2.isNotEmpty &&
@@ -152,6 +251,7 @@ class Product {
       groupId: (json['group_id'] ?? '').toString().trim(),
       vendorCode: (json['vendor_code'] ?? '').toString().trim(),
       outfitSlot: json['outfit_slot']?.toString(),
+      recommendationFacts: _recommendationFactsFromApi(json),
     );
   }
 }

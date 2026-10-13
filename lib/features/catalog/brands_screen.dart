@@ -83,54 +83,62 @@ class _BrandsScreenState extends State<BrandsScreen> {
         ),
         title: const Text('Бренды', style: AppTextStyles.sectionTitle),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.accent))
-          : _brands.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _error ?? 'Список брендов пуст',
-                          textAlign: TextAlign.center,
-                          style: AppTextStyles.bodyMuted,
-                        ),
-                        const SizedBox(height: 16),
-                        TextButton(onPressed: _load, child: const Text('Повторить')),
-                      ],
-                    ),
-                  ),
-                )
-              : RefreshIndicator(
-                  color: AppColors.accent,
-                  onRefresh: _load,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.all(20),
-                    itemCount: _brands.length,
-                    separatorBuilder: (context, index) =>
-                        const Divider(color: AppColors.line),
-                    itemBuilder: (context, i) {
-                      final e = _brands.entries.elementAt(i);
-                      return ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(
-                          e.key,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        trailing: Text(
-                          '${e.value} товаров',
-                          style: AppTextStyles.bodyMuted,
-                        ),
-                        onTap: () => Navigator.pop(context, e.key),
-                      );
-                    },
+      body: SafeArea(
+        top: false,
+        child: _loading
+            ? const Center(
+                child: CircularProgressIndicator(color: AppColors.accent),
+              )
+            : _brands.isEmpty
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _error ?? 'Список брендов пуст',
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.bodyMuted,
+                      ),
+                      const SizedBox(height: 16),
+                      TextButton(
+                        onPressed: _load,
+                        child: const Text('Повторить'),
+                      ),
+                    ],
                   ),
                 ),
+              )
+            : RefreshIndicator(
+                color: AppColors.accent,
+                onRefresh: _load,
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(20),
+                  itemCount: _brands.length,
+                  separatorBuilder: (context, index) =>
+                      const Divider(color: AppColors.line),
+                  itemBuilder: (context, i) {
+                    final e = _brands.entries.elementAt(i);
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        e.key,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      trailing: Text(
+                        '${e.value} товаров',
+                        style: AppTextStyles.bodyMuted,
+                      ),
+                      onTap: () => Navigator.pop(context, e.key),
+                    );
+                  },
+                ),
+              ),
+      ),
     );
   }
 }

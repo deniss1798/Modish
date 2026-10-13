@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 from ..catalog_normalize import (
-  letter_size_index,
   normalize_category,
   normalize_interest_category,
-  normalize_size_token,
 )
 from ..models import FitProfile, Product
 from .catalog.rule_filters import product_gender_compatible
@@ -26,55 +24,18 @@ def product_passes_budget(product: Product, fit: FitProfile | None) -> bool:
   if bmax <= 0:
     return True
   price = int(product.price or 0)
-  # жёсткий потолок +5% на округление в фиде
-  return price <= int(bmax * 1.05)
+  return 0 < price <= bmax
 
 
 def product_passes_size(product: Product, fit: FitProfile | None) -> bool:
-  """
-  XL не видит товары, где в наличии только XS/S/M (макс. размер сильно меньше).
-  Если размеров нет в карточке — пропускаем (данные неполные).
-  """
-  if fit is None:
-    return True
-  user_size = normalize_size_token((fit.clothing_size or "").strip())
-  if not user_size:
-    return True
-  user_idx = letter_size_index(user_size)
-  if user_idx is None:
-    return True
-
-  sizes = [
-    normalize_size_token(str(s))
-    for s in (product.available_sizes or [])
-    if str(s).strip()
-  ]
-  if not sizes:
-    return True
-
-  upper = {s.upper() for s in sizes}
-  if user_size.upper() in upper:
-    return True
-
-  indices = [letter_size_index(s) for s in sizes]
-  letter_indices = [i for i in indices if i is not None]
-  if not letter_indices:
-    return True
-
-  max_avail = max(letter_indices)
-  # допускаем на один размер меньше (L видит M–XL), но не S-only для XL
-  return max_avail >= user_idx - 1
+  return product_has_confirmed_size(product, fit)
 
 
 def product_has_confirmed_size(product: Product, fit: FitProfile | None) -> bool:
-  """Unknown/vendor numeric sizing must not be labelled as a confirmed XL."""
-  from .garment_roles import product_role
-  if fit is None or product_role(product) == "shoes":
-    return False
-  requested = normalize_size_token(str(fit.clothing_size or ""))
-  return bool(requested and requested in {
-    normalize_size_token(str(size)) for size in (product.available_sizes or [])
-  })
+  from .catalog.size_resolver import exact_size_match
+  from .fit_size_profile import requested_size_for_product
+  requested, system = requested_size_for_product(fit, product)
+  return exact_size_match(product, requested, requested_system=system)
 
 
 def product_passes_interest_categories(product: Product, fit: FitProfile | None) -> bool:

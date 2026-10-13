@@ -3,17 +3,19 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, Header, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..catalog_normalize import normalize_category, normalize_product_colors
 from ..db import SessionLocal
 from ..models import Product
+from ..services.catalog.stock_freshness import stock_observation_problem
 
 router = APIRouter(prefix="/admin/products", tags=["admin-products"])
 
@@ -52,6 +54,8 @@ class ProductIn(BaseModel):
   image_quality_score: float | None = None
   is_available: bool = True
   is_active: bool = True
+  stock_observed_at: AwareDatetime | None = Field(default=None,
+    description="Time stock was observed at the source, with timezone. Required when is_available=true; editing time is not evidence of stock.")
 
 
 def _admin_auth(authorization: str | None) -> None:
@@ -70,6 +74,16 @@ def admin_products_import(
 ) -> dict[str, Any]:
   _admin_auth(authorization)
   now = datetime.now(timezone.utc)
+  # Validate the complete batch before touching persistent or pending rows.
+  # Receiving an admin edit does not prove the merchant still has the product.
+  for index, item in enumerate(items):
+    problem = stock_observation_problem(
+      SimpleNamespace(last_seen_in_feed_at=item.stock_observed_at), checked_at=now,
+    )
+    if (item.is_available and problem) or problem == "invalid_stock_observation_time":
+      raise HTTPException(status_code=422, detail={
+        "item_index": index, "field": "stock_observed_at", "reason": problem,
+      })
   created = 0
   updated = 0
   for it in items:
@@ -104,6 +118,8 @@ def admin_products_import(
         style_tags=payload.get("style_tags") or [],
         image_quality_score=payload.get("image_quality_score"),
         is_available=1 if payload.get("is_available", True) else 0,
+        availability_status="in_stock" if it.is_available else "out_of_stock",
+        last_seen_in_feed_at=it.stock_observed_at.astimezone(timezone.utc) if it.stock_observed_at else None,
         last_checked_at=now,
         is_active=1 if payload.get("is_active", True) else 0,
         created_at=now,
@@ -134,6 +150,10 @@ def admin_products_import(
       existing.style_tags = payload.get("style_tags") or []
       existing.image_quality_score = payload.get("image_quality_score")
       existing.is_available = 1 if payload.get("is_available", True) else 0
+      existing.availability_status = "in_stock" if it.is_available else "out_of_stock"
+      if it.stock_observed_at is not None:
+        existing.last_seen_in_feed_at = it.stock_observed_at.astimezone(timezone.utc)
+        existing.is_deleted_from_feed = 0
       existing.last_checked_at = now
       existing.is_active = 1 if payload.get("is_active", True) else 0
       existing.updated_at = now

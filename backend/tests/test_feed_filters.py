@@ -1,5 +1,7 @@
 import unittest
 from types import SimpleNamespace
+from app.models import Product
+from fit_fixtures import confirmed_fit
 
 from app.services.feed_filters import (
   product_passes_budget,
@@ -16,9 +18,9 @@ class FeedFiltersTests(unittest.TestCase):
     self.assertFalse(product_passes_budget(p_bad, fit))
 
   def test_size_xl_not_s_only(self) -> None:
-    fit = SimpleNamespace(clothing_size="XL")
-    p_s_only = SimpleNamespace(available_sizes=["S", "M"])
-    p_has_xl = SimpleNamespace(available_sizes=["M", "XL"])
+    fit = confirmed_fit(clothing_size="XL")
+    p_s_only = Product(title='Рубашка', category='рубашки', available_sizes=["S", "M"])
+    p_has_xl = Product(title='Рубашка', category='рубашки', available_sizes=["M", "XL"])
     self.assertFalse(product_passes_size(p_s_only, fit))
     self.assertTrue(product_passes_size(p_has_xl, fit))
 

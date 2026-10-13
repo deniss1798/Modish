@@ -5,6 +5,7 @@
   персональная лента → жёсткие фильтры → разнообразие → обучение на действиях.
 """
 from __future__ import annotations
+from fit_fixtures import confirmed_fit
 
 import csv
 import io
@@ -119,7 +120,7 @@ class RecommendationV3Tests(unittest.TestCase):
     db.add(u)
     db.flush()
     db.add(
-      FitProfile(
+      confirmed_fit(
         id=str(uuid4()),
         user_id=u.id,
         height_cm=170,

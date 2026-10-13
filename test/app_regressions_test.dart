@@ -41,6 +41,7 @@ class FakeApi extends ApiClient {
   @override
   Future<List<Map<String, dynamic>>> productFeed({
     int limit = 30,
+    String scenario = 'daily',
     String? source,
     int? minPrice,
     int? maxPrice,
@@ -51,6 +52,7 @@ class FakeApi extends ApiClient {
   }) {
     feedCalls++;
     lastFilters = {
+      'scenario': scenario,
       'min': minPrice,
       'max': maxPrice,
       'categories': categories,
@@ -151,6 +153,8 @@ void main() {
     final old = Completer<List<Map<String, dynamic>>>();
     api.nextFeed = old;
     final first = c.refreshFeedFromUser();
+    // Allow account history to load so the first network request is in flight.
+    await Future<void>.delayed(Duration.zero);
     api.rows = [
       {'product': product('filtered')},
     ];
@@ -160,6 +164,27 @@ void main() {
     ]);
     await first;
     expect(c.productFeed.map((c) => c.product.id), ['filtered']);
+  });
+  test('Filter selections cannot change outside applyFeedFilters', () async {
+    final api = FakeApi();
+    final c = AppController(apiClient: api);
+    final categories = ['shoes'];
+    final sizes = ['38'];
+    final colors = ['black'];
+    await c.applyFeedFilters(
+      categories: categories,
+      sizes: sizes,
+      colors: colors,
+    );
+    categories.clear();
+    sizes.add('40');
+    colors[0] = 'red';
+    expect(() => c.feedFilterCategories.add('tops'), throwsUnsupportedError);
+    await c.refreshFeedFromUser();
+    expect(api.lastFilters['categories'], ['shoes']);
+    expect(api.lastFilters['sizes'], ['38']);
+    expect(api.lastFilters['colors'], ['black']);
+    c.dispose();
   });
   test(
     'Complements use catalogue results and never pad from the feed',
@@ -231,6 +256,90 @@ void main() {
     expect(api.lastFilters['colors'], isEmpty);
     expect(api.lastFilters['max'], isNull);
   });
+
+  testWidgets('Shopping context is hidden for servers without the capability', (
+    tester,
+  ) async {
+    final api = FakeApi();
+    final c = AppController(apiClient: api);
+    await c.applyFeedFilters(scenario: 'office');
+    expect(api.lastFilters['scenario'], 'daily');
+    await tester.pumpWidget(MaterialApp(home: FiltersScreen(controller: c)));
+    expect(find.text('Для какого случая?'), findsNothing);
+  });
+
+  testWidgets(
+    'Shopping context applies, reopens and resets above system buttons',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1;
+      tester.view.padding = const FakeViewPadding(top: 24, bottom: 48);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPadding);
+      final api = FakeApi();
+      final c = AppController(apiClient: api)
+        ..activationStatus = {
+          'recommendation_features': ['context_v1'],
+        };
+      Future<void> openFilters() async {
+        await tester.pumpWidget(const SizedBox());
+        await tester.pumpWidget(
+          MaterialApp(home: FiltersScreen(controller: c)),
+        );
+        await tester.pumpAndSettle();
+      }
+
+      await openFilters();
+      await tester.tap(find.text('В офис'));
+      await tester.pump();
+      expect(
+        tester.getBottomLeft(find.text('Показать товары')).dy,
+        lessThan(592),
+      );
+      await tester.tap(find.text('Показать товары'));
+      await tester.pumpAndSettle();
+      expect(api.lastFilters['scenario'], 'office');
+      await openFilters();
+      expect(
+        tester
+            .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'В офис'))
+            .selected,
+        isTrue,
+      );
+      await tester.tap(find.text('Сбросить'));
+      await tester.pump();
+      await tester.tap(find.text('Показать товары'));
+      await tester.pumpAndSettle();
+      expect(api.lastFilters['scenario'], 'daily');
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  test(
+    'Changing the shopping context discards a slower previous request',
+    () async {
+      final api = FakeApi();
+      final c = AppController(apiClient: api)
+        ..activationStatus = {
+          'recommendation_features': ['context_v1'],
+        };
+      final pending = Completer<List<Map<String, dynamic>>>();
+      api.nextFeed = pending;
+      final first = c.applyFeedFilters(scenario: 'office');
+      await Future<void>.delayed(Duration.zero);
+      api.rows = [
+        {'product': product('evening')},
+      ];
+      await c.applyFeedFilters(scenario: 'evening');
+      pending.complete([
+        {'product': product('office')},
+      ]);
+      await first;
+      expect(c.feedScenario, 'evening');
+      expect(c.currentProduct!.product.id, 'evening');
+    },
+  );
 
   testWidgets('Settings has working help and does not offer dead sections', (
     tester,

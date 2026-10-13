@@ -5,7 +5,7 @@ from typing import Any
 
 
 @dataclass
-class NormalizedProduct:
+class CanonicalProduct:
   """Единый формат после парсинга любого affiliate feed."""
   external_id: str
   source_code: str
@@ -40,3 +40,7 @@ class NormalizedProduct:
   raw_params: dict[str, Any] = field(default_factory=dict)
   size_original: str | None = None
   color_original: str | None = None
+
+
+# Compatibility for existing importers; there is one canonical contract.
+NormalizedProduct = CanonicalProduct

@@ -1,0 +1,1143 @@
+{
+  "scope": "isolated_clone_read_only",
+  "sources": [
+    {
+      "source": "baon",
+      "active": 6647,
+      "systems": [
+        {
+          "category": "джемперы",
+          "system": "LETTER",
+          "count": 960
+        },
+        {
+          "category": "футболки",
+          "system": "LETTER",
+          "count": 1488
+        },
+        {
+          "category": "верхний_слой",
+          "system": "LETTER",
+          "count": 1626
+        },
+        {
+          "category": "брюки",
+          "system": "LETTER",
+          "count": 617
+        },
+        {
+          "category": "джинсы",
+          "system": "unknown",
+          "count": 104
+        },
+        {
+          "category": "юбки",
+          "system": "LETTER",
+          "count": 193
+        },
+        {
+          "category": "платья",
+          "system": "LETTER",
+          "count": 768
+        },
+        {
+          "category": "рубашки",
+          "system": "LETTER",
+          "count": 334
+        },
+        {
+          "category": "худи",
+          "system": "LETTER",
+          "count": 147
+        },
+        {
+          "category": "шорты",
+          "system": "LETTER",
+          "count": 352
+        },
+        {
+          "category": "костюмы",
+          "system": "LETTER",
+          "count": 16
+        },
+        {
+          "category": "комбинезоны",
+          "system": "LETTER",
+          "count": 14
+        },
+        {
+          "category": "шорты",
+          "system": "unknown",
+          "count": 28
+        }
+      ],
+      "examples": {
+        "джемперы": [
+          {
+            "sizes": [
+              "L",
+              "48"
+            ],
+            "original": "L",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "L",
+              "sizes": "L|48"
+            }
+          },
+          {
+            "sizes": [
+              "L",
+              "50"
+            ],
+            "original": "L",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "L",
+              "sizes": "L|50"
+            }
+          }
+        ],
+        "футболки": [
+          {
+            "sizes": [
+              "S",
+              "44"
+            ],
+            "original": "S",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "S",
+              "sizes": "S|44"
+            }
+          },
+          {
+            "sizes": [
+              "L",
+              "48"
+            ],
+            "original": "L",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "L",
+              "sizes": "L|48"
+            }
+          }
+        ],
+        "верхний_слой": [
+          {
+            "sizes": [
+              "L",
+              "50"
+            ],
+            "original": "L",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "L",
+              "sizes": "L|50"
+            }
+          },
+          {
+            "sizes": [
+              "XS",
+              "42"
+            ],
+            "original": "XS",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "XS",
+              "sizes": "XS|42"
+            }
+          }
+        ],
+        "брюки": [
+          {
+            "sizes": [
+              "M",
+              "46"
+            ],
+            "original": "M",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "M",
+              "sizes": "M|46"
+            }
+          },
+          {
+            "sizes": [
+              "XXL",
+              "54"
+            ],
+            "original": "XXL",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "XXL",
+              "sizes": "XXL|54"
+            }
+          }
+        ],
+        "джинсы": [
+          {
+            "sizes": [
+              "25",
+              "40"
+            ],
+            "original": "25",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "25",
+              "sizes": "25|40"
+            }
+          },
+          {
+            "sizes": [
+              "26",
+              "42"
+            ],
+            "original": "26",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "26",
+              "sizes": "26|42"
+            }
+          }
+        ],
+        "юбки": [
+          {
+            "sizes": [
+              "M",
+              "46"
+            ],
+            "original": "M",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "M",
+              "sizes": "M|46"
+            }
+          },
+          {
+            "sizes": [
+              "M",
+              "46"
+            ],
+            "original": "M",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "M",
+              "sizes": "M|46"
+            }
+          }
+        ],
+        "платья": [
+          {
+            "sizes": [
+              "L",
+              "48"
+            ],
+            "original": "L",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "L",
+              "sizes": "L|48"
+            }
+          },
+          {
+            "sizes": [
+              "XL",
+              "50"
+            ],
+            "original": "XL",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "XL",
+              "sizes": "XL|50"
+            }
+          }
+        ],
+        "рубашки": [
+          {
+            "sizes": [
+              "XL",
+              "50"
+            ],
+            "original": "XL",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "XL",
+              "sizes": "XL|50"
+            }
+          },
+          {
+            "sizes": [
+              "S",
+              "44"
+            ],
+            "original": "S",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "S",
+              "sizes": "S|44"
+            }
+          }
+        ],
+        "худи": [
+          {
+            "sizes": [
+              "L",
+              "50"
+            ],
+            "original": "L",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "L",
+              "sizes": "L|50"
+            }
+          },
+          {
+            "sizes": [
+              "S",
+              "46"
+            ],
+            "original": "S",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "S",
+              "sizes": "S|46"
+            }
+          }
+        ],
+        "шорты": [
+          {
+            "sizes": [
+              "S",
+              "44"
+            ],
+            "original": "S",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "S",
+              "sizes": "S|44"
+            }
+          },
+          {
+            "sizes": [
+              "XS",
+              "42"
+            ],
+            "original": "XS",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "XS",
+              "sizes": "XS|42"
+            }
+          }
+        ],
+        "костюмы": [
+          {
+            "sizes": [
+              "L",
+              "48"
+            ],
+            "original": "L",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "L",
+              "sizes": "L|48"
+            }
+          },
+          {
+            "sizes": [
+              "M",
+              "46"
+            ],
+            "original": "M",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "M",
+              "sizes": "M|46"
+            }
+          }
+        ],
+        "комбинезоны": [
+          {
+            "sizes": [
+              "S",
+              "44"
+            ],
+            "original": "S",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "S",
+              "sizes": "S|44"
+            }
+          },
+          {
+            "sizes": [
+              "M",
+              "46"
+            ],
+            "original": "M",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "M",
+              "sizes": "M|46"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "source": "shoppinglive",
+      "active": 34258,
+      "systems": [
+        {
+          "category": "шорты",
+          "system": "unknown",
+          "count": 141
+        },
+        {
+          "category": "обувь",
+          "system": "unknown",
+          "count": 9351
+        },
+        {
+          "category": "верхний_слой",
+          "system": "LETTER",
+          "count": 346
+        },
+        {
+          "category": "футболки",
+          "system": "unknown",
+          "count": 2946
+        },
+        {
+          "category": "футболки",
+          "system": "LETTER",
+          "count": 207
+        },
+        {
+          "category": "верхний_слой",
+          "system": "unknown",
+          "count": 4527
+        },
+        {
+          "category": "платья",
+          "system": "unknown",
+          "count": 1254
+        },
+        {
+          "category": "юбки",
+          "system": "unknown",
+          "count": 1027
+        },
+        {
+          "category": "рубашки",
+          "system": "unknown",
+          "count": 3348
+        },
+        {
+          "category": "джинсы",
+          "system": "unknown",
+          "count": 1144
+        },
+        {
+          "category": "джемперы",
+          "system": "unknown",
+          "count": 3187
+        },
+        {
+          "category": "худи",
+          "system": "unknown",
+          "count": 1298
+        },
+        {
+          "category": "рубашки",
+          "system": "LETTER",
+          "count": 546
+        },
+        {
+          "category": "шорты",
+          "system": "LETTER",
+          "count": 36
+        },
+        {
+          "category": "брюки",
+          "system": "unknown",
+          "count": 4150
+        },
+        {
+          "category": "джемперы",
+          "system": "LETTER",
+          "count": 224
+        },
+        {
+          "category": "брюки",
+          "system": "LETTER",
+          "count": 155
+        },
+        {
+          "category": "платья",
+          "system": "LETTER",
+          "count": 219
+        },
+        {
+          "category": "худи",
+          "system": "LETTER",
+          "count": 27
+        },
+        {
+          "category": "юбки",
+          "system": "LETTER",
+          "count": 120
+        },
+        {
+          "category": "джинсы",
+          "system": "LETTER",
+          "count": 5
+        }
+      ],
+      "examples": {
+        "шорты": [
+          {
+            "sizes": [
+              "44"
+            ],
+            "original": "44",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "44",
+              "sizes": "44"
+            }
+          },
+          {
+            "sizes": [
+              "L"
+            ],
+            "original": "L",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "L",
+              "sizes": "L"
+            }
+          }
+        ],
+        "обувь": [
+          {
+            "sizes": [
+              "37"
+            ],
+            "original": "37",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "37",
+              "sizes": "37"
+            }
+          },
+          {
+            "sizes": [
+              "36"
+            ],
+            "original": "36",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "36",
+              "sizes": "36"
+            }
+          }
+        ],
+        "верхний_слой": [
+          {
+            "sizes": [
+              "S"
+            ],
+            "original": "S",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "S",
+              "sizes": "S"
+            }
+          },
+          {
+            "sizes": [
+              "S"
+            ],
+            "original": "S",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "S",
+              "sizes": "S"
+            }
+          }
+        ],
+        "футболки": [
+          {
+            "sizes": [
+              "44"
+            ],
+            "original": "44",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "44",
+              "sizes": "44"
+            }
+          },
+          {
+            "sizes": [
+              "L"
+            ],
+            "original": "L",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "L",
+              "sizes": "L"
+            }
+          }
+        ],
+        "платья": [
+          {
+            "sizes": [
+              "50"
+            ],
+            "original": "50",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "50",
+              "sizes": "50"
+            }
+          },
+          {
+            "sizes": [
+              "44"
+            ],
+            "original": "44",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "44",
+              "sizes": "44"
+            }
+          }
+        ],
+        "юбки": [
+          {
+            "sizes": [
+              "48"
+            ],
+            "original": "48",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "48",
+              "sizes": "48"
+            }
+          },
+          {
+            "sizes": [
+              "44"
+            ],
+            "original": "44",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "44",
+              "sizes": "44"
+            }
+          }
+        ],
+        "рубашки": [
+          {
+            "sizes": [
+              "42"
+            ],
+            "original": "42",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "42",
+              "sizes": "42"
+            }
+          },
+          {
+            "sizes": [
+              "48"
+            ],
+            "original": "48",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "48",
+              "sizes": "48"
+            }
+          }
+        ],
+        "джинсы": [
+          {
+            "sizes": [
+              "52"
+            ],
+            "original": "52",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "52",
+              "sizes": "52"
+            }
+          },
+          {
+            "sizes": [
+              "48"
+            ],
+            "original": "48",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "48",
+              "sizes": "48"
+            }
+          }
+        ],
+        "джемперы": [
+          {
+            "sizes": [
+              "48"
+            ],
+            "original": "48",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "48",
+              "sizes": "48"
+            }
+          },
+          {
+            "sizes": [
+              "56"
+            ],
+            "original": "56",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "56",
+              "sizes": "56"
+            }
+          }
+        ],
+        "худи": [
+          {
+            "sizes": [
+              "48"
+            ],
+            "original": "48",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "48",
+              "sizes": "48"
+            }
+          },
+          {
+            "sizes": [
+              "48"
+            ],
+            "original": "48",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "48",
+              "sizes": "48"
+            }
+          }
+        ],
+        "брюки": [
+          {
+            "sizes": [
+              "42"
+            ],
+            "original": "42",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "42",
+              "sizes": "42"
+            }
+          },
+          {
+            "sizes": [
+              "38"
+            ],
+            "original": "38",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "38",
+              "sizes": "38"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "source": "serginnetti",
+      "active": 12340,
+      "systems": [
+        {
+          "category": "верхний_слой",
+          "system": "unknown",
+          "count": 1851
+        },
+        {
+          "category": "шорты",
+          "system": "unknown",
+          "count": 248
+        },
+        {
+          "category": "брюки",
+          "system": "unknown",
+          "count": 1945
+        },
+        {
+          "category": "футболки",
+          "system": "unknown",
+          "count": 1706
+        },
+        {
+          "category": "юбки",
+          "system": "unknown",
+          "count": 1220
+        },
+        {
+          "category": "джемперы",
+          "system": "unknown",
+          "count": 1230
+        },
+        {
+          "category": "платья",
+          "system": "unknown",
+          "count": 2130
+        },
+        {
+          "category": "рубашки",
+          "system": "unknown",
+          "count": 1766
+        },
+        {
+          "category": "джинсы",
+          "system": "unknown",
+          "count": 209
+        },
+        {
+          "category": "худи",
+          "system": "unknown",
+          "count": 35
+        }
+      ],
+      "examples": {
+        "верхний_слой": [
+          {
+            "sizes": [
+              "40"
+            ],
+            "original": "40",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "40",
+              "sizes": "40"
+            }
+          },
+          {
+            "sizes": [
+              "42"
+            ],
+            "original": "42",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "42",
+              "sizes": "42"
+            }
+          }
+        ],
+        "шорты": [
+          {
+            "sizes": [
+              "48"
+            ],
+            "original": "48",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "48",
+              "sizes": "48"
+            }
+          },
+          {
+            "sizes": [
+              "50"
+            ],
+            "original": "50",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "50",
+              "sizes": "50"
+            }
+          }
+        ],
+        "брюки": [
+          {
+            "sizes": [
+              "40"
+            ],
+            "original": "40",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "40",
+              "sizes": "40"
+            }
+          },
+          {
+            "sizes": [
+              "42"
+            ],
+            "original": "42",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "42",
+              "sizes": "42"
+            }
+          }
+        ],
+        "футболки": [
+          {
+            "sizes": [
+              "40"
+            ],
+            "original": "40",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "40",
+              "sizes": "40"
+            }
+          },
+          {
+            "sizes": [
+              "42"
+            ],
+            "original": "42",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "42",
+              "sizes": "42"
+            }
+          }
+        ],
+        "юбки": [
+          {
+            "sizes": [
+              "40"
+            ],
+            "original": "40",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "40",
+              "sizes": "40"
+            }
+          },
+          {
+            "sizes": [
+              "42"
+            ],
+            "original": "42",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "42",
+              "sizes": "42"
+            }
+          }
+        ],
+        "джемперы": [
+          {
+            "sizes": [
+              "40"
+            ],
+            "original": "40",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "40",
+              "sizes": "40"
+            }
+          },
+          {
+            "sizes": [
+              "42"
+            ],
+            "original": "42",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "42",
+              "sizes": "42"
+            }
+          }
+        ],
+        "платья": [
+          {
+            "sizes": [
+              "40"
+            ],
+            "original": "40",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "40",
+              "sizes": "40"
+            }
+          },
+          {
+            "sizes": [
+              "42"
+            ],
+            "original": "42",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "42",
+              "sizes": "42"
+            }
+          }
+        ],
+        "рубашки": [
+          {
+            "sizes": [
+              "42"
+            ],
+            "original": "42",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "42",
+              "sizes": "42"
+            }
+          },
+          {
+            "sizes": [
+              "50"
+            ],
+            "original": "50",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "50",
+              "sizes": "50"
+            }
+          }
+        ],
+        "джинсы": [
+          {
+            "sizes": [
+              "48"
+            ],
+            "original": "48",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "48",
+              "sizes": "48"
+            }
+          },
+          {
+            "sizes": [
+              "46"
+            ],
+            "original": "46",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "46",
+              "sizes": "46"
+            }
+          }
+        ],
+        "худи": [
+          {
+            "sizes": [
+              "42"
+            ],
+            "original": "42",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "42",
+              "sizes": "42"
+            }
+          },
+          {
+            "sizes": [
+              "44"
+            ],
+            "original": "44",
+            "system": null,
+            "raw_size_fields": {
+              "param_размер": "44",
+              "sizes": "44"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "source": "postmeridiem",
+      "active": 239,
+      "systems": [
+        {
+          "category": "платья",
+          "system": "LETTER",
+          "count": 198
+        },
+        {
+          "category": "юбки",
+          "system": "LETTER",
+          "count": 41
+        }
+      ],
+      "examples": {
+        "платья": [
+          {
+            "sizes": [
+              "XS",
+              "S",
+              "M",
+              "L"
+            ],
+            "original": "XS",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "XS",
+              "sizes": "XS|S|М|L"
+            }
+          },
+          {
+            "sizes": [
+              "XS",
+              "S",
+              "M"
+            ],
+            "original": "XS",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "XS",
+              "sizes": "XS|S|М"
+            }
+          }
+        ],
+        "юбки": [
+          {
+            "sizes": [
+              "XS",
+              "S",
+              "M",
+              "L"
+            ],
+            "original": "XS",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "XS",
+              "sizes": "XS|S|М|L"
+            }
+          },
+          {
+            "sizes": [
+              "XS",
+              "S",
+              "M",
+              "L"
+            ],
+            "original": "XS",
+            "system": "LETTER",
+            "raw_size_fields": {
+              "param_размер": "XS",
+              "sizes": "XS|S|М|L"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "checked_at": "2026-10-06T16:49:51.511Z"
+}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any
 
 from ...catalog_normalize import (
@@ -10,6 +11,7 @@ from ...catalog_normalize import (
   normalize_gender_target,
   normalize_product_colors,
   normalize_sizes,
+  split_size_values,
 )
 from ...models import ProductSource
 from .normalized_product import NormalizedProduct
@@ -34,30 +36,49 @@ def _pick(d: dict[str, Any], *keys: str) -> Any:
 
 
 def _int_price(raw: Any) -> int | None:
-  if raw is None:
+  if raw is None or isinstance(raw, bool):
     return None
-  if isinstance(raw, (int, float)):
-    return int(raw)
-  s = re.sub(r"[^\d]", "", str(raw))
-  if not s:
-    return None
+  s = re.sub(r"[\s\u00a0₽]", "", str(raw)).replace("RUB", "").replace("RUR", "")
+  if "," in s and "." in s:
+    decimal_separator = "," if s.rfind(",") > s.rfind(".") else "."
+    s = s.replace("." if decimal_separator == "," else ",", "")
+  s = s.replace(",", ".")
   try:
-    return int(s)
-  except ValueError:
+    amount = Decimal(s)
+    if not amount.is_finite() or amount < 0 or amount > 10_000_000:
+      return None
+    return int(amount.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+  except (InvalidOperation, ValueError):
     return None
+
+
+def availability_from_row(d: dict[str, Any]) -> str:
+  """Absence of a stock signal is unknown, not an in-stock assertion."""
+  states = []
+  for key in ("available", "availability", "stock", "instock", "in_stock"):
+    raw = d.get(key)
+    if raw is None or str(raw).strip() == "":
+      continue
+    value = str(raw).strip().lower().replace(" ", "_")
+    if value in {"false", "0", "no", "out", "out_of_stock", "нет", "нет_в_наличии"}:
+      states.append("out_of_stock")
+    elif value in {"true", "1", "yes", "in_stock", "instock", "available", "в_наличии", "да"}:
+      states.append("in_stock")
+    elif key == "stock" and value.isdigit() and int(value) > 0:
+      states.append("in_stock")
+    else:
+      states.append("unknown")
+  if "out_of_stock" in states:
+    return "out_of_stock"
+  return "in_stock" if states and all(x == "in_stock" for x in states) else "unknown"
 
 
 def _split_sizes(raw: Any) -> list[str]:
-  if raw is None:
-    return []
-  if isinstance(raw, list):
-    return [str(x).strip() for x in raw if str(x).strip()]
-  parts = re.split(r"[,;/|]", str(raw))
-  return [p.strip() for p in parts if p.strip()]
+  return split_size_values(raw)
 
 
 _SIZE_IN_TITLE_RE = re.compile(
-  r"(?:^|[\s,/\-])(XXS|XS|S|M|L|XL|XXL|XXXL|OS)(?:[\s,./\-]|$)",
+  r"(?:^|[\s,])(XXXS|XXS|XS|S|M|L|XL|XXL|XXXL|OS)(?:([/-])(XXXS|XXS|XS|S|M|L|XL|XXL|XXXL))?(?=[\s,.]|$)",
   re.I,
 )
 
@@ -67,6 +88,8 @@ def _infer_sizes_from_title(title: str) -> list[str]:
   found: list[str] = []
   for m in _SIZE_IN_TITLE_RE.finditer(title or ""):
     s = m.group(1).upper()
+    if m.group(2):
+      s += m.group(2) + m.group(3).upper()
     if s not in found:
       found.append(s)
   return found
@@ -110,8 +133,8 @@ def row_to_normalized(row: dict[str, Any], source: ProductSource) -> NormalizedP
   )
   if external_id is None:
     return None
-  eid = str(external_id).strip()[:128]
-  if not eid:
+  eid = str(external_id).strip()
+  if not eid or len(eid) > 128:
     return None
 
   title = str(_pick(d, "name", "title", "model", "product_name") or "Товар")[:500]
@@ -134,7 +157,9 @@ def row_to_normalized(row: dict[str, Any], source: ProductSource) -> NormalizedP
 
   price = _int_price(_pick(d, "price", "local_price", "current_price")) or 0
   old_price = _int_price(_pick(d, "oldprice", "old_price", "price_old", "baseprice", "base_price"))
-  currency = str(_pick(d, "currencyid", "currency_id", "currency") or "RUB")[:8]
+  currency = str(_pick(d, "currencyid", "currency_id", "currency") or "").strip().upper()[:8]
+  if currency == "RUR":
+    currency = "RUB"
 
   raw_img = _pick(d, "picture", "image", "image_url", "img", "thumbnail", "photo")
   if isinstance(raw_img, list):
@@ -142,7 +167,7 @@ def row_to_normalized(row: dict[str, Any], source: ProductSource) -> NormalizedP
   else:
     img = _normalize_media_url(raw_img)
 
-  pics_src = d.get("pictures")
+  pics_src = d.get("pictures") or (raw_img if isinstance(raw_img, list) else [])
   image_urls: list[str] = []
   if isinstance(pics_src, list):
     for x in pics_src:
@@ -192,12 +217,7 @@ def row_to_normalized(row: dict[str, Any], source: ProductSource) -> NormalizedP
   if not gender_s:
     gender_s = infer_gender_from_text(f"{title} {category} {brand}")
 
-  avail = str(_pick(d, "available", "availability", "stock", "instock", "in_stock") or "").lower()
-  availability_status = None
-  is_likely_available = True
-  if avail in ("false", "0", "no", "out", "out_of_stock", "нет"):
-    availability_status = "out_of_stock"
-    is_likely_available = False
+  availability_status = availability_from_row(d)
 
   discount = _int_price(_pick(d, "discount", "discount_percent", "sale_percent"))
 
@@ -277,6 +297,4 @@ def row_to_normalized(row: dict[str, Any], source: ProductSource) -> NormalizedP
     size_original=size_original,
     color_original=color_original,
   )
-  # сохраняем флаг для импортера
-  n.raw_data["_modish_available_hint"] = is_likely_available
   return n

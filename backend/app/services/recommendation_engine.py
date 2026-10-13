@@ -7,19 +7,20 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from uuid import uuid4
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from ..catalog_normalize import canon_colors_from_text, normalize_category
-from ..models import FitProfile, Product, RecommendationEventV2, StyleProfile, TasteProfile, User
+from ..models import FitProfile, Product, RecommendationEventV2, TasteProfile, User
 from .catalog.rule_filters import load_rules_by_source_id, product_gender_compatible, product_passes_source_rules
 from .catalog.catalog_quality import product_is_feed_eligible
 from .candidate_retrieval_service import retrieve_candidates
 from .catalog_filters import CatalogFilters
 from .feed_filters import product_passes_hard_filters
+from .product_eligibility import evaluate_eligibility
 from .mie_scoring import TasteFeatureMap, compute_mie_score, load_user_taste_feature_map
+from .profile_repository import ensure_style_profile, ensure_taste_profile
 from .recommendation_config import ALGORITHM_VERSION, DEFAULT_RANKING_ALGORITHM
 from ..schemas.photo_analysis import extract_analysis_section
 
@@ -49,57 +50,6 @@ class FeedContext:
   taste_features: TasteFeatureMap = field(default_factory=dict)
   candidate_sources: dict[str, set[str]] = field(default_factory=dict)
   scenario: str = "daily"
-
-
-def ensure_style_profile(db: Session, user_id: str) -> StyleProfile:
-  row = db.execute(select(StyleProfile).where(StyleProfile.user_id == user_id)).scalar_one_or_none()
-  if row:
-    return row
-  now = datetime.now(timezone.utc)
-  row = StyleProfile(
-    id=str(uuid4()),
-    user_id=user_id,
-    style_target="unknown",
-    confidence_score=0.5,
-    profile_json={},
-    created_at=now,
-    updated_at=now,
-  )
-  db.add(row)
-  db.flush()
-  return row
-
-
-def ensure_taste_profile(db: Session, user_id: str) -> TasteProfile:
-  row = db.execute(select(TasteProfile).where(TasteProfile.user_id == user_id)).scalar_one_or_none()
-  if row:
-    return row
-  now = datetime.now(timezone.utc)
-  row = TasteProfile(
-    id=str(uuid4()),
-    user_id=user_id,
-    liked_categories=[],
-    disliked_categories=[],
-    liked_colors=[],
-    disliked_colors=[],
-    liked_brands=[],
-    disliked_brands=[],
-    liked_styles=[],
-    disliked_styles=[],
-    category_weights={},
-    brand_weights={},
-    color_weights={},
-    style_weights={},
-    price_min=0,
-    price_max=10_000,
-    preferred_fit="regular",
-    profile_version=1,
-    created_at=now,
-    updated_at=now,
-  )
-  db.add(row)
-  db.flush()
-  return row
 
 
 def _product_category_norms(product: Product) -> set[str]:
@@ -363,6 +313,13 @@ def generate_feed(
   # PostgreSQL holds this lock until the caller commits; SQLite tests ignore it.
   db.execute(select(User.id).where(User.id == user.id).with_for_update()).scalar_one()
 
+  from ..models import ActivationSession
+  activation = db.get(ActivationSession, user.id)
+  if activation is not None:
+    from .activation_service import personalized_feed
+    return personalized_feed(db, user, activation, limit=limit,
+        exclude_ids=exclude_product_ids or (), filters=filters, source=source, scenario=scenario)
+
   exclude_product_ids = expand_product_exclusions(db, exclude_product_ids)
   excluded_keys: set[str] = set()
   if exclude_product_ids:
@@ -399,6 +356,8 @@ def generate_feed(
 
   filtered: list[Product] = []
   for p in products:
+    if not evaluate_eligibility(p, fit, filters=filters).eligible:
+      continue
     if not product_is_feed_eligible(p):
       continue
     if _is_hidden_category(p):
@@ -417,6 +376,8 @@ def generate_feed(
     from .feed_filters import product_passes_budget, product_passes_size
 
     for p in products:
+      if not evaluate_eligibility(p, fit, filters=filters).eligible:
+        continue
       if _is_hidden_category(p):
         continue
       if not product_is_feed_eligible(p):

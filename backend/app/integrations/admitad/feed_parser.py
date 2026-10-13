@@ -6,6 +6,8 @@ import re
 import xml.etree.ElementTree as ET
 from typing import Any
 
+from ...catalog_normalize import split_size_values
+
 
 def _xml_local_tag(el: ET.Element) -> str:
   return (el.tag or "").split("}")[-1].lower()
@@ -62,7 +64,16 @@ def _yml_offer_to_row(el: ET.Element) -> dict[str, Any] | None:
       pname = (child.attrib.get("name") or "").strip()
       val = "".join(child.itertext()).strip()
       if pname and val:
-        row[_param_row_key(pname)] = val
+        key = _param_row_key(pname)
+        if key in row:
+          previous = row[key] if isinstance(row[key], list) else [row[key]]
+          row[key] = [*previous, val]
+        else:
+          row[key] = val
+        if child.attrib.get("unit"):
+          row[_param_row_key(pname) + "_unit"] = child.attrib["unit"]
+        if pname.strip().lower() in ('размер','size'):
+          row.setdefault(key + '_units', []).append(child.attrib.get('unit') or '')
       continue
     if tag == "picture":
       val = (child.text or "").strip()
@@ -88,8 +99,6 @@ def _yml_offer_to_row(el: ET.Element) -> dict[str, Any] | None:
   if collection_ids:
     row["collectionids"] = collection_ids
 
-  if not row.get("id"):
-    return None
   return row
 
 
@@ -188,12 +197,15 @@ def _expand_admitad_param_column(row: dict[str, Any]) -> dict[str, Any]:
     if not name or not val:
       continue
     if name in ("размер", "size"):
-      for piece_size in re.split(r"[,;]", val):
-        s = piece_size.strip()
-        if s:
-          sizes.append(s)
+      sizes.extend(split_size_values(val))
       continue
-    out[_param_row_key(name)] = val
+    key = _param_row_key(name)
+    if key in {"param_size_system", "param_size_unit", "param_size_units",
+               "param_размер_unit", "param_размер_units"} and key in out:
+      previous = out[key] if isinstance(out[key], list) else [out[key]]
+      out[key] = [*previous, val]
+    else:
+      out[key] = val
   if sizes:
     out[size_key] = sizes[0]
     out["sizes"] = "|".join(sizes)

@@ -1,0 +1,1385 @@
+{
+  "scope": "isolated_postgresql_stored_active_size_fields_read_only",
+  "checked_at": "2026-10-09T06:38:24.674446+00:00",
+  "max_rows": 75000,
+  "processed": 53484,
+  "read_only_transaction": true,
+  "rollback_completed": true,
+  "stock_timestamps_modified": false,
+  "raw_urls_exported": false,
+  "network_feed_requests": false,
+  "buckets": [
+    {
+      "source": "baon",
+      "category": "брюки",
+      "products": {
+        "active_stored": 617,
+        "is_available": 617,
+        "observation_within_72h": 0,
+        "has_known_available_size": 617,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "known": 617,
+        "size_system_unknown": 617
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 617
+      },
+      "availability_by_size_token": {
+        "available": 1234
+      },
+      "explicit_system_by_product": {
+        "unknown": 617
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 617,
+        "feed_raw:sizes": 617,
+        "raw_params:param_размер": 617
+      },
+      "original_size_param_names": {
+        "размер": 1234
+      },
+      "original_size_token_classes": {
+        "letter": 617,
+        "integer": 617
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:30:30.904078+00:00",
+      "observed_newest": "2026-10-06T06:30:30.904078+00:00"
+    },
+    {
+      "source": "baon",
+      "category": "верхний_слой",
+      "products": {
+        "active_stored": 1626,
+        "is_available": 1626,
+        "observation_within_72h": 0,
+        "has_known_available_size": 1626,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "known": 1626,
+        "size_system_unknown": 1626
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 1626
+      },
+      "availability_by_size_token": {
+        "available": 3252
+      },
+      "explicit_system_by_product": {
+        "unknown": 1626
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 1626,
+        "feed_raw:sizes": 1626,
+        "raw_params:param_размер": 1626
+      },
+      "original_size_param_names": {
+        "размер": 3252
+      },
+      "original_size_token_classes": {
+        "letter": 1626,
+        "integer": 1626
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:30:30.904078+00:00",
+      "observed_newest": "2026-10-06T06:30:30.904078+00:00"
+    },
+    {
+      "source": "baon",
+      "category": "джемперы",
+      "products": {
+        "active_stored": 960,
+        "is_available": 960,
+        "observation_within_72h": 0,
+        "has_known_available_size": 960,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "known": 960,
+        "size_system_unknown": 960
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 960
+      },
+      "availability_by_size_token": {
+        "available": 1920
+      },
+      "explicit_system_by_product": {
+        "unknown": 960
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 960,
+        "feed_raw:sizes": 960,
+        "raw_params:param_размер": 960
+      },
+      "original_size_param_names": {
+        "размер": 1920
+      },
+      "original_size_token_classes": {
+        "letter": 960,
+        "integer": 960
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:30:30.904078+00:00",
+      "observed_newest": "2026-10-06T06:30:30.904078+00:00"
+    },
+    {
+      "source": "baon",
+      "category": "джинсы",
+      "products": {
+        "active_stored": 104,
+        "is_available": 104,
+        "observation_within_72h": 0,
+        "has_known_available_size": 0,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "size_system_unknown": 208
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 104
+      },
+      "availability_by_size_token": {
+        "available": 208
+      },
+      "explicit_system_by_product": {
+        "unknown": 104
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 104,
+        "feed_raw:sizes": 104,
+        "raw_params:param_размер": 104
+      },
+      "original_size_param_names": {
+        "размер": 208
+      },
+      "original_size_token_classes": {
+        "integer": 208
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:30:30.904078+00:00",
+      "observed_newest": "2026-10-06T06:30:30.904078+00:00"
+    },
+    {
+      "source": "baon",
+      "category": "комбинезоны",
+      "products": {
+        "active_stored": 14,
+        "is_available": 14,
+        "observation_within_72h": 0,
+        "has_known_available_size": 14,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "known": 14,
+        "size_system_unknown": 14
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 14
+      },
+      "availability_by_size_token": {
+        "available": 28
+      },
+      "explicit_system_by_product": {
+        "unknown": 14
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 14,
+        "feed_raw:sizes": 14,
+        "raw_params:param_размер": 14
+      },
+      "original_size_param_names": {
+        "размер": 28
+      },
+      "original_size_token_classes": {
+        "letter": 14,
+        "integer": 14
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:30:30.904078+00:00",
+      "observed_newest": "2026-10-06T06:30:30.904078+00:00"
+    },
+    {
+      "source": "baon",
+      "category": "костюмы",
+      "products": {
+        "active_stored": 16,
+        "is_available": 16,
+        "observation_within_72h": 0,
+        "has_known_available_size": 16,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "known": 16,
+        "size_system_unknown": 16
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 16
+      },
+      "availability_by_size_token": {
+        "available": 32
+      },
+      "explicit_system_by_product": {
+        "unknown": 16
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 16,
+        "feed_raw:sizes": 16,
+        "raw_params:param_размер": 16
+      },
+      "original_size_param_names": {
+        "размер": 32
+      },
+      "original_size_token_classes": {
+        "letter": 16,
+        "integer": 16
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:30:30.904078+00:00",
+      "observed_newest": "2026-10-06T06:30:30.904078+00:00"
+    },
+    {
+      "source": "baon",
+      "category": "платья",
+      "products": {
+        "active_stored": 768,
+        "is_available": 768,
+        "observation_within_72h": 0,
+        "has_known_available_size": 768,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "known": 768,
+        "size_system_unknown": 768
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 768
+      },
+      "availability_by_size_token": {
+        "available": 1536
+      },
+      "explicit_system_by_product": {
+        "unknown": 768
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 768,
+        "feed_raw:sizes": 768,
+        "raw_params:param_размер": 768
+      },
+      "original_size_param_names": {
+        "размер": 1536
+      },
+      "original_size_token_classes": {
+        "letter": 768,
+        "integer": 768
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:30:30.904078+00:00",
+      "observed_newest": "2026-10-06T06:30:30.904078+00:00"
+    },
+    {
+      "source": "baon",
+      "category": "рубашки",
+      "products": {
+        "active_stored": 334,
+        "is_available": 334,
+        "observation_within_72h": 0,
+        "has_known_available_size": 334,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "known": 334,
+        "size_system_unknown": 334
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 334
+      },
+      "availability_by_size_token": {
+        "available": 668
+      },
+      "explicit_system_by_product": {
+        "unknown": 334
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 334,
+        "feed_raw:sizes": 334,
+        "raw_params:param_размер": 334
+      },
+      "original_size_param_names": {
+        "размер": 668
+      },
+      "original_size_token_classes": {
+        "letter": 334,
+        "integer": 334
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:30:30.904078+00:00",
+      "observed_newest": "2026-10-06T06:30:30.904078+00:00"
+    },
+    {
+      "source": "baon",
+      "category": "футболки",
+      "products": {
+        "active_stored": 1488,
+        "is_available": 1488,
+        "observation_within_72h": 0,
+        "has_known_available_size": 1488,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "known": 1488,
+        "size_system_unknown": 1488
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 1488
+      },
+      "availability_by_size_token": {
+        "available": 2976
+      },
+      "explicit_system_by_product": {
+        "unknown": 1488
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 1488,
+        "feed_raw:sizes": 1488,
+        "raw_params:param_размер": 1488
+      },
+      "original_size_param_names": {
+        "размер": 2976
+      },
+      "original_size_token_classes": {
+        "letter": 1488,
+        "integer": 1488
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:30:30.904078+00:00",
+      "observed_newest": "2026-10-06T06:30:30.904078+00:00"
+    },
+    {
+      "source": "baon",
+      "category": "худи",
+      "products": {
+        "active_stored": 147,
+        "is_available": 147,
+        "observation_within_72h": 0,
+        "has_known_available_size": 147,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "known": 147,
+        "size_system_unknown": 147
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 147
+      },
+      "availability_by_size_token": {
+        "available": 294
+      },
+      "explicit_system_by_product": {
+        "unknown": 147
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 147,
+        "feed_raw:sizes": 147,
+        "raw_params:param_размер": 147
+      },
+      "original_size_param_names": {
+        "размер": 294
+      },
+      "original_size_token_classes": {
+        "letter": 147,
+        "integer": 147
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:30:30.904078+00:00",
+      "observed_newest": "2026-10-06T06:30:30.904078+00:00"
+    },
+    {
+      "source": "baon",
+      "category": "шорты",
+      "products": {
+        "active_stored": 380,
+        "is_available": 380,
+        "observation_within_72h": 0,
+        "has_known_available_size": 352,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "known": 352,
+        "size_system_unknown": 408
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 380
+      },
+      "availability_by_size_token": {
+        "available": 760
+      },
+      "explicit_system_by_product": {
+        "unknown": 380
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 380,
+        "feed_raw:sizes": 380,
+        "raw_params:param_размер": 380
+      },
+      "original_size_param_names": {
+        "размер": 760
+      },
+      "original_size_token_classes": {
+        "letter": 352,
+        "integer": 408
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:30:30.904078+00:00",
+      "observed_newest": "2026-10-06T06:30:30.904078+00:00"
+    },
+    {
+      "source": "baon",
+      "category": "юбки",
+      "products": {
+        "active_stored": 193,
+        "is_available": 193,
+        "observation_within_72h": 0,
+        "has_known_available_size": 193,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "known": 193,
+        "size_system_unknown": 193
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 193
+      },
+      "availability_by_size_token": {
+        "available": 386
+      },
+      "explicit_system_by_product": {
+        "unknown": 193
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 193,
+        "feed_raw:sizes": 193,
+        "raw_params:param_размер": 193
+      },
+      "original_size_param_names": {
+        "размер": 386
+      },
+      "original_size_token_classes": {
+        "letter": 193,
+        "integer": 193
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:30:30.904078+00:00",
+      "observed_newest": "2026-10-06T06:30:30.904078+00:00"
+    },
+    {
+      "source": "postmeridiem",
+      "category": "платья",
+      "products": {
+        "active_stored": 198,
+        "is_available": 198,
+        "observation_within_72h": 198,
+        "has_known_available_size": 198,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "known": 819
+      },
+      "failure_reasons_by_product": {},
+      "availability_by_size_token": {
+        "available": 819
+      },
+      "explicit_system_by_product": {
+        "unknown": 198
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 198,
+        "feed_raw:sizes": 198,
+        "raw_params:param_размер": 198
+      },
+      "original_size_param_names": {
+        "размер": 198
+      },
+      "original_size_token_classes": {
+        "letter": 819
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:39:43.411320+00:00",
+      "observed_newest": "2026-10-06T06:39:43.411320+00:00"
+    },
+    {
+      "source": "postmeridiem",
+      "category": "юбки",
+      "products": {
+        "active_stored": 41,
+        "is_available": 41,
+        "observation_within_72h": 41,
+        "has_known_available_size": 41,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "known": 171
+      },
+      "failure_reasons_by_product": {},
+      "availability_by_size_token": {
+        "available": 171
+      },
+      "explicit_system_by_product": {
+        "unknown": 41
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 41,
+        "feed_raw:sizes": 41,
+        "raw_params:param_размер": 41
+      },
+      "original_size_param_names": {
+        "размер": 41
+      },
+      "original_size_token_classes": {
+        "letter": 171
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:39:43.411320+00:00",
+      "observed_newest": "2026-10-06T06:39:43.411320+00:00"
+    },
+    {
+      "source": "serginnetti",
+      "category": "брюки",
+      "products": {
+        "active_stored": 1945,
+        "is_available": 1945,
+        "observation_within_72h": 0,
+        "has_known_available_size": 0,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "size_system_unknown": 1945
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 1945
+      },
+      "availability_by_size_token": {
+        "available": 1945
+      },
+      "explicit_system_by_product": {
+        "unknown": 1945
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 1945,
+        "feed_raw:sizes": 1945,
+        "raw_params:param_размер": 1945
+      },
+      "original_size_param_names": {
+        "размер": 1945
+      },
+      "original_size_token_classes": {
+        "integer": 1945
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:37:22.427123+00:00",
+      "observed_newest": "2026-10-06T06:37:22.427123+00:00"
+    },
+    {
+      "source": "serginnetti",
+      "category": "верхний_слой",
+      "products": {
+        "active_stored": 1851,
+        "is_available": 1851,
+        "observation_within_72h": 0,
+        "has_known_available_size": 0,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "size_system_unknown": 1851
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 1851
+      },
+      "availability_by_size_token": {
+        "available": 1851
+      },
+      "explicit_system_by_product": {
+        "unknown": 1851
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 1851,
+        "feed_raw:sizes": 1851,
+        "raw_params:param_размер": 1851
+      },
+      "original_size_param_names": {
+        "размер": 1851
+      },
+      "original_size_token_classes": {
+        "integer": 1851
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:37:22.427123+00:00",
+      "observed_newest": "2026-10-06T06:37:22.427123+00:00"
+    },
+    {
+      "source": "serginnetti",
+      "category": "джемперы",
+      "products": {
+        "active_stored": 1230,
+        "is_available": 1230,
+        "observation_within_72h": 0,
+        "has_known_available_size": 0,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "size_system_unknown": 1230
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 1230
+      },
+      "availability_by_size_token": {
+        "available": 1230
+      },
+      "explicit_system_by_product": {
+        "unknown": 1230
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 1230,
+        "feed_raw:sizes": 1230,
+        "raw_params:param_размер": 1230
+      },
+      "original_size_param_names": {
+        "размер": 1230
+      },
+      "original_size_token_classes": {
+        "integer": 1230
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:37:22.427123+00:00",
+      "observed_newest": "2026-10-06T06:37:22.427123+00:00"
+    },
+    {
+      "source": "serginnetti",
+      "category": "джинсы",
+      "products": {
+        "active_stored": 209,
+        "is_available": 209,
+        "observation_within_72h": 0,
+        "has_known_available_size": 0,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "size_system_unknown": 209
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 209
+      },
+      "availability_by_size_token": {
+        "available": 209
+      },
+      "explicit_system_by_product": {
+        "unknown": 209
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 209,
+        "feed_raw:sizes": 209,
+        "raw_params:param_размер": 209
+      },
+      "original_size_param_names": {
+        "размер": 209
+      },
+      "original_size_token_classes": {
+        "integer": 209
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:37:22.427123+00:00",
+      "observed_newest": "2026-10-06T06:37:22.427123+00:00"
+    },
+    {
+      "source": "serginnetti",
+      "category": "платья",
+      "products": {
+        "active_stored": 2130,
+        "is_available": 2130,
+        "observation_within_72h": 0,
+        "has_known_available_size": 0,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "size_system_unknown": 2130
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 2130
+      },
+      "availability_by_size_token": {
+        "available": 2130
+      },
+      "explicit_system_by_product": {
+        "unknown": 2130
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 2130,
+        "feed_raw:sizes": 2130,
+        "raw_params:param_размер": 2130
+      },
+      "original_size_param_names": {
+        "размер": 2130
+      },
+      "original_size_token_classes": {
+        "integer": 2130
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:37:22.427123+00:00",
+      "observed_newest": "2026-10-06T06:37:22.427123+00:00"
+    },
+    {
+      "source": "serginnetti",
+      "category": "рубашки",
+      "products": {
+        "active_stored": 1766,
+        "is_available": 1766,
+        "observation_within_72h": 0,
+        "has_known_available_size": 0,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "size_system_unknown": 1766
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 1766
+      },
+      "availability_by_size_token": {
+        "available": 1766
+      },
+      "explicit_system_by_product": {
+        "unknown": 1766
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 1766,
+        "feed_raw:sizes": 1766,
+        "raw_params:param_размер": 1766
+      },
+      "original_size_param_names": {
+        "размер": 1766
+      },
+      "original_size_token_classes": {
+        "integer": 1766
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:37:22.427123+00:00",
+      "observed_newest": "2026-10-06T06:37:22.427123+00:00"
+    },
+    {
+      "source": "serginnetti",
+      "category": "футболки",
+      "products": {
+        "active_stored": 1706,
+        "is_available": 1706,
+        "observation_within_72h": 0,
+        "has_known_available_size": 0,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "size_system_unknown": 1706
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 1706
+      },
+      "availability_by_size_token": {
+        "available": 1706
+      },
+      "explicit_system_by_product": {
+        "unknown": 1706
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 1706,
+        "feed_raw:sizes": 1706,
+        "raw_params:param_размер": 1706
+      },
+      "original_size_param_names": {
+        "размер": 1706
+      },
+      "original_size_token_classes": {
+        "integer": 1706
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:37:22.427123+00:00",
+      "observed_newest": "2026-10-06T06:37:22.427123+00:00"
+    },
+    {
+      "source": "serginnetti",
+      "category": "худи",
+      "products": {
+        "active_stored": 35,
+        "is_available": 35,
+        "observation_within_72h": 0,
+        "has_known_available_size": 0,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "size_system_unknown": 35
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 35
+      },
+      "availability_by_size_token": {
+        "available": 35
+      },
+      "explicit_system_by_product": {
+        "unknown": 35
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 35,
+        "feed_raw:sizes": 35,
+        "raw_params:param_размер": 35
+      },
+      "original_size_param_names": {
+        "размер": 35
+      },
+      "original_size_token_classes": {
+        "integer": 35
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:37:22.427123+00:00",
+      "observed_newest": "2026-10-06T06:37:22.427123+00:00"
+    },
+    {
+      "source": "serginnetti",
+      "category": "шорты",
+      "products": {
+        "active_stored": 248,
+        "is_available": 248,
+        "observation_within_72h": 0,
+        "has_known_available_size": 0,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "size_system_unknown": 248
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 248
+      },
+      "availability_by_size_token": {
+        "available": 248
+      },
+      "explicit_system_by_product": {
+        "unknown": 248
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 248,
+        "feed_raw:sizes": 248,
+        "raw_params:param_размер": 248
+      },
+      "original_size_param_names": {
+        "размер": 248
+      },
+      "original_size_token_classes": {
+        "integer": 248
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:37:22.427123+00:00",
+      "observed_newest": "2026-10-06T06:37:22.427123+00:00"
+    },
+    {
+      "source": "serginnetti",
+      "category": "юбки",
+      "products": {
+        "active_stored": 1220,
+        "is_available": 1220,
+        "observation_within_72h": 0,
+        "has_known_available_size": 0,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "size_system_unknown": 1220
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 1220
+      },
+      "availability_by_size_token": {
+        "available": 1220
+      },
+      "explicit_system_by_product": {
+        "unknown": 1220
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 1220,
+        "feed_raw:sizes": 1220,
+        "raw_params:param_размер": 1220
+      },
+      "original_size_param_names": {
+        "размер": 1220
+      },
+      "original_size_token_classes": {
+        "integer": 1220
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:37:22.427123+00:00",
+      "observed_newest": "2026-10-06T06:37:22.427123+00:00"
+    },
+    {
+      "source": "shoppinglive",
+      "category": "брюки",
+      "products": {
+        "active_stored": 4305,
+        "is_available": 4305,
+        "observation_within_72h": 0,
+        "has_known_available_size": 155,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "size_system_unknown": 4150,
+        "known": 155
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 4150
+      },
+      "availability_by_size_token": {
+        "available": 4305
+      },
+      "explicit_system_by_product": {
+        "unknown": 4305
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 4305,
+        "feed_raw:sizes": 4305,
+        "raw_params:param_размер": 4305
+      },
+      "original_size_param_names": {
+        "размер": 4305
+      },
+      "original_size_token_classes": {
+        "integer": 4150,
+        "letter": 155
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:32:00.580794+00:00",
+      "observed_newest": "2026-10-06T06:32:00.580794+00:00"
+    },
+    {
+      "source": "shoppinglive",
+      "category": "верхний_слой",
+      "products": {
+        "active_stored": 4873,
+        "is_available": 4873,
+        "observation_within_72h": 0,
+        "has_known_available_size": 346,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "size_system_unknown": 4527,
+        "known": 346
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 4527
+      },
+      "availability_by_size_token": {
+        "available": 4873
+      },
+      "explicit_system_by_product": {
+        "unknown": 4873
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 4873,
+        "feed_raw:sizes": 4873,
+        "raw_params:param_размер": 4873
+      },
+      "original_size_param_names": {
+        "размер": 4873
+      },
+      "original_size_token_classes": {
+        "integer": 4527,
+        "letter": 346
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:32:00.580794+00:00",
+      "observed_newest": "2026-10-06T06:32:00.580794+00:00"
+    },
+    {
+      "source": "shoppinglive",
+      "category": "джемперы",
+      "products": {
+        "active_stored": 3411,
+        "is_available": 3411,
+        "observation_within_72h": 0,
+        "has_known_available_size": 224,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "size_system_unknown": 3187,
+        "known": 224
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 3187
+      },
+      "availability_by_size_token": {
+        "available": 3411
+      },
+      "explicit_system_by_product": {
+        "unknown": 3411
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 3411,
+        "feed_raw:sizes": 3411,
+        "raw_params:param_размер": 3411
+      },
+      "original_size_param_names": {
+        "размер": 3411
+      },
+      "original_size_token_classes": {
+        "integer": 3187,
+        "letter": 224
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:32:00.580794+00:00",
+      "observed_newest": "2026-10-06T06:32:00.580794+00:00"
+    },
+    {
+      "source": "shoppinglive",
+      "category": "джинсы",
+      "products": {
+        "active_stored": 1149,
+        "is_available": 1149,
+        "observation_within_72h": 0,
+        "has_known_available_size": 5,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "size_system_unknown": 1144,
+        "known": 5
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 1144
+      },
+      "availability_by_size_token": {
+        "available": 1149
+      },
+      "explicit_system_by_product": {
+        "unknown": 1149
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 1149,
+        "feed_raw:sizes": 1149,
+        "raw_params:param_размер": 1149
+      },
+      "original_size_param_names": {
+        "размер": 1149
+      },
+      "original_size_token_classes": {
+        "integer": 1144,
+        "letter": 5
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:32:00.580794+00:00",
+      "observed_newest": "2026-10-06T06:32:00.580794+00:00"
+    },
+    {
+      "source": "shoppinglive",
+      "category": "обувь",
+      "products": {
+        "active_stored": 9351,
+        "is_available": 9351,
+        "observation_within_72h": 0,
+        "has_known_available_size": 0,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "size_system_unknown": 9351
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 9351
+      },
+      "availability_by_size_token": {
+        "available": 9351
+      },
+      "explicit_system_by_product": {
+        "unknown": 9351
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 9351,
+        "feed_raw:sizes": 9351,
+        "raw_params:param_размер": 9351
+      },
+      "original_size_param_names": {
+        "размер": 9351
+      },
+      "original_size_token_classes": {
+        "integer": 9351
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:32:00.580794+00:00",
+      "observed_newest": "2026-10-06T06:32:00.580794+00:00"
+    },
+    {
+      "source": "shoppinglive",
+      "category": "платья",
+      "products": {
+        "active_stored": 1473,
+        "is_available": 1473,
+        "observation_within_72h": 0,
+        "has_known_available_size": 219,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "size_system_unknown": 1254,
+        "known": 219
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 1254
+      },
+      "availability_by_size_token": {
+        "available": 1473
+      },
+      "explicit_system_by_product": {
+        "unknown": 1473
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 1473,
+        "feed_raw:sizes": 1473,
+        "raw_params:param_размер": 1473
+      },
+      "original_size_param_names": {
+        "размер": 1473
+      },
+      "original_size_token_classes": {
+        "integer": 1254,
+        "letter": 219
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:32:00.580794+00:00",
+      "observed_newest": "2026-10-06T06:32:00.580794+00:00"
+    },
+    {
+      "source": "shoppinglive",
+      "category": "рубашки",
+      "products": {
+        "active_stored": 3894,
+        "is_available": 3894,
+        "observation_within_72h": 0,
+        "has_known_available_size": 546,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "size_system_unknown": 3348,
+        "known": 546
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 3348
+      },
+      "availability_by_size_token": {
+        "available": 3894
+      },
+      "explicit_system_by_product": {
+        "unknown": 3894
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 3894,
+        "feed_raw:sizes": 3894,
+        "raw_params:param_размер": 3894
+      },
+      "original_size_param_names": {
+        "размер": 3894
+      },
+      "original_size_token_classes": {
+        "integer": 3348,
+        "letter": 546
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:32:00.580794+00:00",
+      "observed_newest": "2026-10-06T06:32:00.580794+00:00"
+    },
+    {
+      "source": "shoppinglive",
+      "category": "футболки",
+      "products": {
+        "active_stored": 3153,
+        "is_available": 3153,
+        "observation_within_72h": 0,
+        "has_known_available_size": 207,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "known": 207,
+        "size_system_unknown": 2946
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 2946
+      },
+      "availability_by_size_token": {
+        "available": 3153
+      },
+      "explicit_system_by_product": {
+        "unknown": 3153
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 3153,
+        "feed_raw:sizes": 3153,
+        "raw_params:param_размер": 3153
+      },
+      "original_size_param_names": {
+        "размер": 3153
+      },
+      "original_size_token_classes": {
+        "letter": 207,
+        "integer": 2946
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:32:00.580794+00:00",
+      "observed_newest": "2026-10-06T06:32:00.580794+00:00"
+    },
+    {
+      "source": "shoppinglive",
+      "category": "худи",
+      "products": {
+        "active_stored": 1325,
+        "is_available": 1325,
+        "observation_within_72h": 0,
+        "has_known_available_size": 27,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "size_system_unknown": 1298,
+        "known": 27
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 1298
+      },
+      "availability_by_size_token": {
+        "available": 1325
+      },
+      "explicit_system_by_product": {
+        "unknown": 1325
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 1325,
+        "feed_raw:sizes": 1325,
+        "raw_params:param_размер": 1325
+      },
+      "original_size_param_names": {
+        "размер": 1325
+      },
+      "original_size_token_classes": {
+        "integer": 1298,
+        "letter": 27
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:32:00.580794+00:00",
+      "observed_newest": "2026-10-06T06:32:00.580794+00:00"
+    },
+    {
+      "source": "shoppinglive",
+      "category": "шорты",
+      "products": {
+        "active_stored": 177,
+        "is_available": 177,
+        "observation_within_72h": 0,
+        "has_known_available_size": 36,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "size_system_unknown": 141,
+        "known": 36
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 141
+      },
+      "availability_by_size_token": {
+        "available": 177
+      },
+      "explicit_system_by_product": {
+        "unknown": 177
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 177,
+        "feed_raw:sizes": 177,
+        "raw_params:param_размер": 177
+      },
+      "original_size_param_names": {
+        "размер": 177
+      },
+      "original_size_token_classes": {
+        "integer": 141,
+        "letter": 36
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:32:00.580794+00:00",
+      "observed_newest": "2026-10-06T06:32:00.580794+00:00"
+    },
+    {
+      "source": "shoppinglive",
+      "category": "юбки",
+      "products": {
+        "active_stored": 1147,
+        "is_available": 1147,
+        "observation_within_72h": 0,
+        "has_known_available_size": 120,
+        "missing_resolved_sizes": 0
+      },
+      "reasons_by_size_token": {
+        "size_system_unknown": 1027,
+        "known": 120
+      },
+      "failure_reasons_by_product": {
+        "size_system_unknown": 1027
+      },
+      "availability_by_size_token": {
+        "available": 1147
+      },
+      "explicit_system_by_product": {
+        "unknown": 1147
+      },
+      "raw_size_field_presence": {
+        "feed_raw:param_размер": 1147,
+        "feed_raw:sizes": 1147,
+        "raw_params:param_размер": 1147
+      },
+      "original_size_param_names": {
+        "размер": 1147
+      },
+      "original_size_token_classes": {
+        "integer": 1027,
+        "letter": 120
+      },
+      "system_candidate_values": {},
+      "detail_key_presence": {},
+      "observed_oldest": "2026-10-06T06:32:00.580794+00:00",
+      "observed_newest": "2026-10-06T06:32:00.580794+00:00"
+    }
+  ],
+  "limits": [
+    "Stored active rows are dated observations; freshness is reported separately.",
+    "System candidate unrecognized values are counted without printing raw values."
+  ]
+}

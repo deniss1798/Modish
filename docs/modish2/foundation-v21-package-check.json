@@ -1,0 +1,8 @@
+{
+  "archive_sha256": "721a10d87ed74de6c2b426b46cbdbdf09bbae5fa5931967a611837277bc90476",
+  "verified_files": 187,
+  "environment": "local_windows_sqlite_not_server_docker",
+  "test_exit_code": 0,
+  "test_summary": "Ran 312 tests in 16.974s",
+  "production_changed": false
+}

@@ -51,7 +51,15 @@ def product_passes_source_rules(product: Product, rules_by_source_id: dict[str, 
         pass
       continue
     if rt == "blocked_category":
-      if rv.lower() in (product.category or "").lower():
+      category_path = (product.category or "").lower()
+      if rv.lower() in category_path:
+        # "Обувь и аксессуары / Обувь / Балетки" is footwear. A broad
+        # accessories ban must not reject the entire shared merchant folder.
+        leaf = category_path.replace('>', '/').rsplit('/', 1)[-1]
+        if (rv.lower() in {'аксессуар', 'аксессуары', 'accessories'}
+            and normalize_category(category_path) == 'обувь'
+            and rv.lower() not in leaf):
+          continue
         return False
       continue
     if rt == "blocked_category_exact" and rv.lower() == (product.category or "").strip().lower():

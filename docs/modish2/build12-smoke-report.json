@@ -1,0 +1,33 @@
+{
+  "transaction_read_only": true,
+  "queries": [
+    {
+      "query": "куртка",
+      "count": 8
+    },
+    {
+      "query": "КУРТКА",
+      "count": 8
+    },
+    {
+      "query": "джинсы",
+      "count": 8
+    },
+    {
+      "query": "BAON",
+      "count": 8
+    },
+    {
+      "query": "чёрные брюки",
+      "count": 8
+    },
+    {
+      "query": "верхняя одежда",
+      "count": 8
+    }
+  ],
+  "result": "passed",
+  "warm_coats": 10,
+  "sandals": 10,
+  "rejected_season_pairs": 100
+}

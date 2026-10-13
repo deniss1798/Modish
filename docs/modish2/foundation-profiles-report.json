@@ -1,0 +1,164 @@
+{
+  "profiles": [
+    {
+      "profile": 1,
+      "size": "XS",
+      "shoe": "36",
+      "budget": "economy",
+      "styles": [
+        "casual",
+        "minimalism"
+      ],
+      "deck": 20,
+      "wow": 0,
+      "feed": 20,
+      "reranked": 10,
+      "viewed": 10,
+      "seconds": 10.49
+    },
+    {
+      "profile": 2,
+      "size": "S",
+      "shoe": "37",
+      "budget": "mass",
+      "styles": [
+        "casual",
+        "smart_casual"
+      ],
+      "deck": 20,
+      "wow": 0,
+      "feed": 20,
+      "reranked": 10,
+      "viewed": 10,
+      "seconds": 13.21
+    },
+    {
+      "profile": 3,
+      "size": "M",
+      "shoe": "38",
+      "budget": "mass",
+      "styles": [
+        "casual",
+        "minimalism"
+      ],
+      "deck": 20,
+      "wow": 0,
+      "feed": 20,
+      "reranked": 10,
+      "viewed": 10,
+      "seconds": 12.25
+    },
+    {
+      "profile": 4,
+      "size": "L",
+      "shoe": "39",
+      "budget": "mass",
+      "styles": [
+        "casual",
+        "smart_casual"
+      ],
+      "deck": 20,
+      "wow": 0,
+      "feed": 20,
+      "reranked": 10,
+      "viewed": 10,
+      "seconds": 11.63
+    },
+    {
+      "profile": 5,
+      "size": "XL",
+      "shoe": "40",
+      "budget": "mid",
+      "styles": [
+        "smart_casual",
+        "elegant"
+      ],
+      "deck": 20,
+      "wow": 0,
+      "feed": 20,
+      "reranked": 10,
+      "viewed": 10,
+      "seconds": 15.37
+    },
+    {
+      "profile": 6,
+      "size": "42",
+      "shoe": "37",
+      "budget": "mass",
+      "result": "failed",
+      "error": "profile_6: insufficient honest Style Swipe cards"
+    },
+    {
+      "profile": 7,
+      "size": "44",
+      "shoe": "38",
+      "budget": "mass",
+      "result": "failed",
+      "error": "profile_7: insufficient honest Style Swipe cards"
+    },
+    {
+      "profile": 8,
+      "size": "46",
+      "shoe": "39",
+      "budget": "mid",
+      "result": "failed",
+      "error": "profile_8: insufficient honest Style Swipe cards"
+    },
+    {
+      "profile": 9,
+      "size": "48",
+      "shoe": "40",
+      "budget": "mid",
+      "result": "failed",
+      "error": "profile_9: insufficient honest Style Swipe cards"
+    },
+    {
+      "profile": 10,
+      "size": "S",
+      "shoe": "38",
+      "budget": "mass",
+      "styles": [
+        "romantic",
+        "elegant"
+      ],
+      "deck": 20,
+      "wow": 0,
+      "feed": 20,
+      "reranked": 10,
+      "viewed": 10,
+      "seconds": 11.74
+    }
+  ],
+  "concurrent_idempotency": true,
+  "catalog_products": 203605,
+  "test_metrics": {
+    "days": 7,
+    "completed_onboarding_users": 6,
+    "started_feed_users": 6,
+    "unique_first20_views": 60,
+    "like_or_save": 60,
+    "dislike": 0,
+    "open_product": 0,
+    "affiliate_click": 0,
+    "reached_card10_users": 6,
+    "like_save_rate": 100.0,
+    "dislike_rate": 0.0,
+    "open_product_rate": 0.0,
+    "affiliate_click_rate": 0.0,
+    "reached_card10_rate": 100.0,
+    "onboarding_to_card10_rate": 100.0,
+    "targets_percent": {
+      "like_save_rate_min": 25,
+      "dislike_rate_max": 35,
+      "open_product_rate_min": 20,
+      "affiliate_click_rate_min": 3,
+      "reached_card10_rate_min": 60
+    },
+    "basis": "Actual unique card views, excluding Style Swipe and server prefetch. Like/Save counted as a union. Card-10 reach is among users who started the feed; onboarding-to-card-10 uses all completed onboarding users in the cohort."
+  },
+  "wow_coverage": 0,
+  "result": "failed",
+  "image_id": "sha256:e743ba8688186f58e9712445f49f29ec3ce7f66655386ef0a0bf8f1b80a29bdb",
+  "production_unchanged": true,
+  "checked_at": "2026-10-06T06:41:50.607578+00:00"
+}

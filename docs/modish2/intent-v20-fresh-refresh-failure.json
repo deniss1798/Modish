@@ -1,0 +1,34 @@
+{
+  "scope": "fresh_four_sources_isolated_v20_experiment",
+  "run_id": "92311f62a8c749d0abca61411f80f434",
+  "started_at": "2026-10-09T07:06:00.845129+00:00",
+  "image_id": "sha256:cfc4376eed5398c2167527779eb0586eb567dad6d7600251abfdaab32ff69fdc",
+  "archive_sha256": "099dafc5f037b8afb6912bf20ed8380c748438e5949bde3d1bb62b347f035644",
+  "helper_sha256": {
+    "download": "b3c876dd959058fa25876026b676209c4c203685f8cc8fe9644d954b72eea626",
+    "import": "6181045401d7eb3dbe702c68ec80d90837b9a4436136bd2914bc67b592ddad8f",
+    "readiness": "7d50e88f82026f5635f259b598e331fecbd1921ae4516f7bee8cecace92e6f69",
+    "inventory": "a0c00d2a00f390407016ab5cd8ff2f1d3dc2d19c5db2b337ec7252f37c53ef87"
+  },
+  "test_pg_container_id": "881ea4c21dc23bbbe79889d3779b2500707af32e4705a619790e680688d6786f",
+  "production_unchanged": true,
+  "production_database_writes": false,
+  "result": "failed",
+  "production_guard_basis": "container_identity_running_state_unchanged_and_all_database_writes_target_exact_internal_test_pg",
+  "configuration_source": "read_only_saved_four_fixed_exports_in_isolated_clone",
+  "phase": "import",
+  "backup": {
+    "filename": "test-before-refresh.dump",
+    "bytes": 199667696,
+    "sha256": "148a6ad09b194f95f2c20129049c0e9df4d8225a984a6fccb252dcb790ece70f",
+    "scope": "existing_isolated_modish_test_only",
+    "toc_verified": true
+  },
+  "error_type": "CalledProcessError",
+  "import_outcome": {
+    "transaction_state": "commit_outcome_unknown",
+    "committed_sources": [],
+    "confirmed_rollback": false,
+    "source": "helper_outcome_unavailable"
+  }
+}

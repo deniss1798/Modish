@@ -1,4 +1,5 @@
 from __future__ import annotations
+from fit_fixtures import confirmed_fit
 
 import json
 import tempfile
@@ -114,7 +115,7 @@ class OfflineBenchmarkTests(unittest.TestCase):
       user = User(id=str(uuid4()), email="benchmark@test.io", password_hash="x")
       db.add(user)
       db.add(
-        FitProfile(
+        confirmed_fit(
           id=str(uuid4()),
           user_id=user.id,
           height_cm=170,
@@ -214,9 +215,10 @@ def _benchmark_product(*, title: str, category: str, updated_at: datetime) -> Pr
     colors=["black"],
     gender_target="womenswear",
     style_tags=["minimalism"],
-    is_available=1,
+    is_available=1, availability_status='in_stock',
     is_active=1,
     is_deleted_from_feed=0,
+    last_seen_in_feed_at=datetime.now(timezone.utc),
     created_at=updated_at,
     updated_at=updated_at,
   )

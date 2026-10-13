@@ -57,7 +57,7 @@ class _SavedScreenState extends State<SavedScreen> {
       key: PageStorageKey('saved-$_looks'),
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       children: [
-        const Text('Сохранённое', style: AppTextStyles.screenTitle),
+        const EditorialHeading('Сохранённое'),
         const SizedBox(height: 20),
         Row(
           children: [

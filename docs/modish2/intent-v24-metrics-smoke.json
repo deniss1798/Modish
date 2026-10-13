@@ -1,0 +1,20 @@
+{
+  "scope": "isolated_postgresql_synthetic_contract_not_real_coverage",
+  "checked_at": "2026-10-12T16:35:02.713413+00:00",
+  "image_id": "sha256:9b9662779677e2bb490efe8b8b82c91ea4bae0b39c445f7079fa115b62e08e6f",
+  "checks_passed": true,
+  "real_stock_timestamps_modified": false,
+  "outfit_funnel": {
+    "generated_outfits": 4,
+    "exposed_outfits": 2,
+    "basis": "Unique intent/outfit pairs; a constituent view or explicit outfit action establishes exposure",
+    "exposure_rate": 0.5,
+    "save_rate": 0.5,
+    "merchant_click_rate": 0.5,
+    "replace_item_rate": 0.5
+  },
+  "task_only_dislike_rate": 1,
+  "task_only_taste_unchanged": true,
+  "replacement_respects_rejected_skus": true,
+  "test_writes_rolled_back": true
+}

@@ -1,0 +1,148 @@
+{
+  "result": "passed",
+  "sources": [
+    {
+      "source": "aimclo",
+      "replayed": 23,
+      "reasons": {
+        "missing_size": 10,
+        "stale_availability": 23,
+        "unrecognized_size": 7,
+        "unknown_gender": 13,
+        "unsupported_category": 5
+      }
+    },
+    {
+      "source": "shoppinglive",
+      "replayed": 16,
+      "reasons": {
+        "unrecognized_size": 6,
+        "stale_availability": 16,
+        "unsupported_category": 7
+      }
+    },
+    {
+      "source": "sportmaster",
+      "replayed": 47,
+      "reasons": {
+        "unsupported_category": 29,
+        "unknown_gender": 6,
+        "missing_size": 12,
+        "stale_availability": 43,
+        "out_of_stock": 3,
+        "childrenswear": 16,
+        "unrecognized_size": 16
+      }
+    },
+    {
+      "source": "vipavenue",
+      "replayed": 26,
+      "reasons": {
+        "childrenswear": 6,
+        "unsupported_category": 14,
+        "unknown_gender": 3,
+        "unrecognized_size": 12,
+        "stale_availability": 14,
+        "out_of_stock": 4,
+        "invalid_price": 1
+      }
+    },
+    {
+      "source": "serginnetti",
+      "replayed": 12,
+      "reasons": {
+        "unsupported_category": 6,
+        "unknown_gender": 3,
+        "missing_size": 3,
+        "stale_availability": 9,
+        "out_of_stock": 3
+      }
+    },
+    {
+      "source": "postmeridiem",
+      "replayed": 24,
+      "reasons": {
+        "stale_availability": 19,
+        "out_of_stock": 3,
+        "unknown_gender": 12,
+        "unrecognized_size": 9,
+        "unsupported_category": 9
+      }
+    },
+    {
+      "source": "demix",
+      "replayed": 34,
+      "reasons": {
+        "childrenswear": 15,
+        "unrecognized_size": 12,
+        "stale_availability": 34,
+        "unsupported_category": 21,
+        "missing_size": 7
+      }
+    },
+    {
+      "source": "tsumoutlet",
+      "replayed": 10,
+      "reasons": {
+        "missing_size": 10,
+        "stale_availability": 10,
+        "unsupported_category": 4,
+        "childrenswear": 4
+      }
+    },
+    {
+      "source": "baon",
+      "replayed": 15,
+      "reasons": {
+        "unsupported_category": 3,
+        "stale_availability": 11,
+        "out_of_stock": 3,
+        "childrenswear": 3,
+        "unknown_gender": 3,
+        "unrecognized_size": 3
+      }
+    },
+    {
+      "source": "mongolshop",
+      "replayed": 45,
+      "reasons": {
+        "unknown_availability": 45,
+        "unsupported_category": 24,
+        "unknown_gender": 25,
+        "missing_size": 6,
+        "unrecognized_size": 15,
+        "childrenswear": 4
+      }
+    },
+    {
+      "source": "fable",
+      "replayed": 31,
+      "reasons": {
+        "out_of_stock": 3,
+        "unsupported_category": 15,
+        "unknown_gender": 16,
+        "missing_size": 3,
+        "stale_availability": 14,
+        "unrecognized_size": 13
+      }
+    }
+  ],
+  "record_ids_preserved": 283,
+  "products_count_preserved": 183543,
+  "unregistered_sources": [
+    {
+      "source": "befree",
+      "products": 7971,
+      "active": 7971,
+      "raw_rows": 7971
+    },
+    {
+      "source": "sela",
+      "products": 1780,
+      "active": 1780,
+      "raw_rows": 1780
+    }
+  ],
+  "image_id": "sha256:9b35ca30c367846b4755768152c664e6f96cd2e82b720002e3947f8f6bc44179",
+  "production_unchanged": true
+}

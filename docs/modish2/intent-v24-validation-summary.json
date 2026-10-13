@@ -1,0 +1,80 @@
+{
+  "package": {
+    "archive_sha256": "b7fb93daf0e66307c32935abf7d034cc365b17cddbad83adcb8c00a9931e22fc",
+    "verified_files": 194,
+    "environment": "local_windows_sqlite_not_server_docker",
+    "test_exit_code": 0,
+    "test_summary": "Ran 367 tests in 41.589s",
+    "production_changed": false
+  },
+  "server": {
+    "image_id": "sha256:9b9662779677e2bb490efe8b8b82c91ea4bae0b39c445f7079fa115b62e08e6f",
+    "unit_tests": {
+      "count": 367,
+      "summary": "Ran 367 tests in 66.051s",
+      "expected_count_from_package": 367,
+      "exit_code": 0
+    },
+    "positive_pg_metrics_passed": true,
+    "production_unchanged": true,
+    "all_returned_items_exact_size_and_fresh": true,
+    "fixed_now_utc": "2026-10-12T16:35:04.704655+00:00",
+    "clock_basis": "current_wall_clock",
+    "rank_changed": true,
+    "admitted_output_counts_unchanged": true,
+    "timing_comparability": "same_protocol_not_same_workload"
+  },
+  "client": {
+    "captured_for": "foundation-v24-client-source",
+    "functional_test_count": 115,
+    "functional_log": ".tmp/intent-v23-flutter.log",
+    "after_final_detail_change": {
+      "test_count": 45,
+      "log": ".tmp/intent-v24-detail.log"
+    },
+    "analysis": "No issues found",
+    "analysis_log": ".tmp/intent-v24-analyze.log",
+    "preview_tests_included": false,
+    "apk_built": false,
+    "deployment": "build13 unchanged"
+  },
+  "client_source_manifest": "intent-v24-client-validation.json",
+  "performance_report": "intent-v24-catalog-report.json",
+  "current_read_only_inventory": {
+    "report": "intent-v24-size-raw-inventory.json",
+    "fresh_available_skus": 54005,
+    "shoe_products": 9452,
+    "known_available_shoe_size_products": 0
+  },
+  "last_full_ten_profile_readiness": {
+    "report": "intent-v20-fresh-retry-20261010-readiness-report.json",
+    "release_gate": {
+      "all_profiles_activation_completed": false,
+      "all_profiles_wow_at_least_3": false,
+      "all_profiles_feed_at_least_10": false,
+      "all_profiles_shoes_and_outerwear": false,
+      "all_profiles_have_office_outfit": false,
+      "all_profiles_wedding_no_heel": false,
+      "all_intent_queries_supported": true,
+      "no_invalid_returned": true,
+      "all_test_writes_rolled_back": true
+    }
+  },
+  "product_ready": false,
+  "deployment": "production build13 unchanged",
+  "apk_built": false,
+  "supplier_request_sent": false,
+  "remaining": [
+    "Source/variant size-unit evidence",
+    "Actual complete outfits and human visual smoke",
+    "Coordinated API/APK release after quality gates"
+  ],
+  "verification_artifact_sha256": {
+    "foundation-v24-server-manifest.json": "70cc0be8718723fcddd1dcb201ed21e8b875845a80a30618dd7c88d27456941e",
+    "intent-v24-stage-report.json": "633db7bc80a8a82e4cc70f7716e552026a429255ebeb08b0e0167c7e474514ce",
+    "intent-v24-catalog-report.json": "4faa079d15421e0ba7784e7a07bc8fa124ce897274425aebaa00c5966871c62b",
+    "intent-v24-metrics-smoke.json": "dded50760ec563e906c43e3c90d71a9113485eb8f05a899c47c80adfc32da532",
+    "intent-v24-size-raw-inventory.json": "1abb8a01a6b9044fca780a35dda6cd673bb535bfa72aebc4ee8a63e596fc5815",
+    "intent-v24-client-validation.json": "e3ce9276ef888be605874d25c77b14dca85209eadcd32706af5a8a4bc31a89a3"
+  }
+}

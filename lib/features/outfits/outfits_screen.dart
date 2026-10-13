@@ -99,17 +99,8 @@ class _OutfitsScreenState extends State<OutfitsScreen> {
       padding: const EdgeInsets.only(bottom: 24),
       children: [
         const Padding(
-          padding: EdgeInsets.fromLTRB(20, 16, 20, 4),
-          child: Text('Образы', style: AppTextStyles.screenTitle),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-          child: Text(
-            _scenario == _OutfitScenario.all
-                ? 'Ваш гардероб возможностей — на каждый случай.'
-                : 'Вещи, которые сочетаются. Образ, который подходит вам.',
-            style: AppTextStyles.bodyMuted,
-          ),
+          padding: EdgeInsets.fromLTRB(20, 16, 20, 20),
+          child: EditorialHeading('Образы'),
         ),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -175,7 +166,7 @@ class OutfitCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scenario = '${outfit['style_direction'] ?? ''}';
-    final title = outfitScenarioLabel(scenario);
+    final title = '${outfit['title'] ?? outfitScenarioLabel(scenario)}';
     final total = (outfit['total_price'] ?? 0).toString();
     final saved = outfit['is_saved'] == true;
     final pmap = outfit['products'] is Map
@@ -201,8 +192,9 @@ class OutfitCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Text(title, style: AppTextStyles.sectionTitle),
-                  const Spacer(),
+                  Expanded(
+                    child: Text(title, style: AppTextStyles.sectionTitle),
+                  ),
                   if (saved)
                     const Icon(
                       Icons.bookmark,

@@ -1,0 +1,50 @@
+{
+  "scope": "fresh_four_sources_isolated_v20_experiment",
+  "run_id": "43080ae69c664cbeb71a9ed161ccc57d",
+  "started_at": "2026-10-12T21:22:37.832515+00:00",
+  "image_id": "sha256:cfc4376eed5398c2167527779eb0586eb567dad6d7600251abfdaab32ff69fdc",
+  "archive_sha256": "099dafc5f037b8afb6912bf20ed8380c748438e5949bde3d1bb62b347f035644",
+  "helper_sha256": {
+    "download": "b3c876dd959058fa25876026b676209c4c203685f8cc8fe9644d954b72eea626",
+    "import": "bdcea122470a88bc6e53943f0675a3953baa07ef74be686ee9ca49322598092f",
+    "readiness": "7d50e88f82026f5635f259b598e331fecbd1921ae4516f7bee8cecace92e6f69",
+    "inventory": "a0c00d2a00f390407016ab5cd8ff2f1d3dc2d19c5db2b337ec7252f37c53ef87"
+  },
+  "test_pg_container_id": "881ea4c21dc23bbbe79889d3779b2500707af32e4705a619790e680688d6786f",
+  "production_unchanged": true,
+  "production_database_writes": false,
+  "result": "fresh_import_and_audit_complete",
+  "production_guard_basis": "container_identity_running_state_unchanged_and_all_database_writes_target_exact_internal_test_pg",
+  "configuration_source": "read_only_saved_four_fixed_exports_in_isolated_clone",
+  "phase": "complete",
+  "backup": {
+    "filename": "test-before-refresh.dump",
+    "bytes": 204889066,
+    "sha256": "3936f010384df3293e17a2ec1a1b0ae96540d1cb720aa87c23e2ed429c74a2cb",
+    "scope": "existing_isolated_modish_test_only",
+    "toc_verified": true
+  },
+  "product_ready": false,
+  "release_gate": {
+    "all_profiles_activation_completed": false,
+    "all_profiles_wow_at_least_3": false,
+    "all_profiles_feed_at_least_10": false,
+    "all_profiles_shoes_and_outerwear": false,
+    "all_profiles_have_office_outfit": false,
+    "all_profiles_wedding_no_heel": false,
+    "all_intent_queries_supported": true,
+    "no_invalid_returned": true,
+    "all_test_writes_rolled_back": true
+  },
+  "catalogue_after_import": {
+    "products": 205524,
+    "products_state_digest": "e650f8826f39252deb154c59c0b73d5e",
+    "catalog_records_state_digest": "26b5f171b6d11af7990d3f70266a907d",
+    "outside_source_products_state_digest": "6368aa507b2522483972b1b3dd59b03b",
+    "outside_catalog_records_state_digest": "d78d3066daae9ec461ee2474b84ed6a1",
+    "outside_sources_state_digest": "554d5cee65b29001f31965e529390114",
+    "users": 57,
+    "shopping_intents": 0
+  },
+  "finished_at": "2026-10-12T21:46:00.567028+00:00"
+}

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from fit_fixtures import confirmed_fit
 
 import unittest
 from datetime import datetime, timezone
@@ -51,9 +52,10 @@ def _product(*, title: str, category: str = "худи", style: str = "streetwear
     fit="oversized",
     silhouette="relaxed",
     style_tags=[style],
-    is_available=1,
+    is_available=1, availability_status='in_stock',
     is_active=1,
     is_deleted_from_feed=0,
+    last_seen_in_feed_at=datetime.now(timezone.utc),
   )
 
 
@@ -67,7 +69,7 @@ class EmbeddingServiceTests(unittest.TestCase):
     self.user = User(id=str(uuid4()), email="embedding@test.io", password_hash="x")
     self.db.add(self.user)
     self.db.add(
-      FitProfile(
+      confirmed_fit(
         id=str(uuid4()),
         user_id=self.user.id,
         height_cm=170,

@@ -1,0 +1,7 @@
+{
+  "scope": "isolated_postgresql_contract",
+  "product_ready": false,
+  "checks_passed": true,
+  "performance_reference": "/opt/modish-releases/20261009-intent-v18/catalog-report.json",
+  "limitation": "This contract smoke does not establish catalogue size coverage or full outfit readiness"
+}

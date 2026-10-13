@@ -1,0 +1,416 @@
+"""Validate immutable v20 in the existing isolated PostgreSQL clone.
+
+No SSH, deployment, migrations, importer or production-container mutations.
+Upload source.tar, this script as stage.py, the corrected v19 metrics helper as
+metrics-smoke.py, and intent_v20_activation_performance.py as
+activation-performance.py to the fixed release directory before invoking it.
+Optionally upload audit_merchant_size_fields_v20.py as size-raw-inventory.py.
+"""
+from __future__ import annotations
+
+import argparse
+from datetime import datetime, timezone
+import hashlib
+import json
+import os
+from pathlib import Path, PurePosixPath
+import re
+import shutil
+import subprocess
+import tarfile
+from urllib.parse import urlsplit
+from uuid import uuid4
+
+
+R = Path('/opt/modish-releases/20261009-intent-v20')
+BASELINE_R = Path('/opt/modish-releases/20261009-intent-v19')
+TEST_ENV = Path('/opt/modish-releases/20260922-foundation/test-api.env')
+PG = 'modish_foundation_test_pg'
+NETWORK = 'modish-foundation-test'
+BASE = 'sha256:4ae234fc8a1f8082bb368f4f617d187a6138bb5848c02af5e9a7a9f15a3d6d7e'
+BASELINE_IMAGE = 'sha256:d6223e79d8537c5324a407155a49d3618a1a6e2f5f0969ac3fb51d254df80457'
+BASELINE_ARCHIVE_SHA = '46fb7ba5335db45f563884a6f90a0496abf262b79a6c8c12e7bd7fca2af3e727'
+TARGET_REVISION = '20261008_0024'
+TAG = 'modish-backend:intent-v20-20261009'
+PRODUCTION_NAMES = ('modish_backend', 'modish_postgres', 'modish_redis')
+os.umask(0o077)
+
+
+def inspect(name):
+    return json.loads(subprocess.check_output(['docker', 'inspect', name]))[0]
+
+
+def run(*args, **kwargs):
+    return subprocess.run(args, check=True, **kwargs)
+
+
+def digest(path):
+    sha = hashlib.sha256()
+    with path.open('rb') as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+            sha.update(chunk)
+    return sha.hexdigest()
+
+
+def db_query(sql):
+    return subprocess.check_output([
+        'docker', 'exec', PG, 'psql', '-U', 'modish_test', '-d', 'modish_test', '-Atc', sql,
+    ], text=True).strip()
+
+
+def production_snapshot():
+    snapshot = {}
+    for name in PRODUCTION_NAMES:
+        container = inspect(name)
+        snapshot[name] = {'id': container['Id'], 'image': container['Image'],
+                          'running': container['State']['Running'],
+                          'started_at': container['State']['StartedAt'],
+                          'restart_count': container['RestartCount']}
+    assert snapshot['modish_backend']['image'] == BASE
+    assert all(container['running'] for container in snapshot.values())
+    return snapshot
+
+
+def guard_scope():
+    assert R == Path('/opt/modish-releases/20261009-intent-v20') and R.is_dir()
+    assert inspect(PG)['State']['Running']
+    network = json.loads(subprocess.check_output(['docker', 'network', 'inspect', NETWORK]))[0]
+    assert network['Internal'], 'An internal test network is required'
+    assert NETWORK in inspect(PG)['NetworkSettings']['Networks']
+    values = dict(line.split('=', 1) for line in TEST_ENV.read_text().splitlines()
+                  if '=' in line and not line.startswith('#'))
+    url = urlsplit(values['DATABASE_URL'].replace('postgresql+psycopg://', 'postgresql://'))
+    assert url.scheme == 'postgresql'
+    assert url.hostname == PG and url.path == '/modish_test' and url.username == 'modish_test'
+    assert db_query('SELECT version_num FROM alembic_version') == TARGET_REVISION
+    assert db_query('SELECT count(*) FROM shopping_intents') == '0'
+
+
+def catalogue_snapshot():
+    # Only aggregates are retained. This hash notices changed source timestamps
+    # or commerce flags between images without logging individual product IDs.
+    return {'products': int(db_query('SELECT count(*) FROM products')),
+            'stock_state_sha256': hashlib.sha256(db_query("""
+                SELECT md5(coalesce(string_agg(
+                    id || ':' || coalesce(last_seen_in_feed_at::text, '') || ':' ||
+                    coalesce(is_active::text, '') || ':' || coalesce(is_available::text, '') || ':' ||
+                    coalesce(is_deleted_from_feed::text, '') || ':' || coalesce(availability_status, ''),
+                    '|' ORDER BY id), '')) FROM products
+            """).encode()).hexdigest()}
+
+
+def fresh_observation_count(as_of):
+    # Parse and canonicalize before embedding a timestamp into fixed audit SQL.
+    stamp = datetime.fromisoformat(as_of)
+    assert stamp.tzinfo is not None and stamp.utcoffset().total_seconds() == 0
+    iso = stamp.isoformat()
+    return int(db_query("SELECT count(*) FROM products WHERE last_seen_in_feed_at >= "
+                        "TIMESTAMPTZ '" + iso + "' - interval '72 hours' AND last_seen_in_feed_at <= "
+                        "TIMESTAMPTZ '" + iso + "' + interval '5 minutes'"))
+
+
+def verified_manifest(path, expected_sha, *, extract=False):
+    assert digest(path) == expected_sha, 'Immutable archive hash does not match'
+    with tarfile.open(path) as archive:
+        names = archive.getnames()
+        assert len(names) == len(set(names)), 'Duplicate archive members are forbidden'
+        manifest_member = archive.getmember('source-manifest.json')
+        assert manifest_member.isfile()
+        manifest = json.load(archive.extractfile(manifest_member))
+        assert manifest['base_image'] == BASE and manifest['migration'] == TARGET_REVISION
+        assert set(names) == set(manifest['files']) | {'source-manifest.json'}
+        for name, expected in manifest['files'].items():
+            member = archive.getmember(name)
+            assert name.startswith('backend/') and member.isfile(), 'Backend regular files only'
+            assert '\\' not in name and '..' not in PurePosixPath(name).parts
+            assert PurePosixPath(name).as_posix() == name
+            target = (R / name).resolve()
+            assert target.is_relative_to(R.resolve())
+            assert name != 'backend/.env' and '/.git/' not in name
+            data = archive.extractfile(member).read()
+            assert hashlib.sha256(data).hexdigest() == expected, 'Archive member hash does not match'
+            if extract:
+                assert not target.exists(), 'Release extraction is immutable'
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(data)
+                target.chmod(member.mode & 0o777)
+    return manifest
+
+
+def verify_image(image, manifest):
+    assert inspect(image)['Id'] == image
+    code = """import json,sys,hashlib
+from pathlib import Path
+m=json.load(sys.stdin)
+assert not Path('/app/.env').exists()
+for name,expected in m['files'].items():
+    assert name.startswith('backend/')
+    assert hashlib.sha256(Path('/app/'+name.removeprefix('backend/')).read_bytes()).hexdigest()==expected
+"""
+    run('docker', 'run', '--rm', '--pull=never', '-i', '--network', 'none',
+        '--entrypoint', 'python', image, '-c', code, input=json.dumps(manifest).encode())
+
+
+def parse_unit_summary(log_path, expected_tests=None):
+    lines = log_path.read_text(errors='replace').splitlines()
+    summaries = [re.fullmatch(r'Ran (\d+) tests? in ([0-9.]+)s', line.strip()) for line in lines]
+    summaries = [match for match in summaries if match is not None]
+    assert len(summaries) == 1 and int(summaries[0].group(1)) > 0, 'No complete unittest summary'
+    assert any(re.fullmatch(r'OK(?: \([^\n]*\))?', line.strip()) for line in lines)
+    actual = int(summaries[0].group(1))
+    if expected_tests is not None:
+        assert actual == expected_tests, 'Package and remote test counts differ'
+    return {'count': actual, 'summary': summaries[0].group(0),
+            'expected_count_from_package': expected_tests, 'exit_code': 0}
+
+
+def pinned_helper(name, expected=None):
+    path = R / name
+    assert path.is_file() and not path.is_symlink()
+    actual = digest(path)
+    if expected is not None:
+        assert actual == expected, 'Uploaded helper hash does not match'
+    return {'filename': name, 'sha256': actual}
+
+
+def run_helper(helper, *, image, archive_sha, output_name, log_name, fixed_now=None,
+               clock_basis='current_wall_clock', args=(), timeout=2400):
+    guard_scope()
+    assert digest(R / helper['filename']) == helper['sha256']
+    assert inspect(image)['Id'] == image
+    container_name = 'modish_intent_v20_audit_' + uuid4().hex
+    command = ['docker', 'run', '--rm', '--pull=never', '--name', container_name,
+               '--cpus=0.75', '--memory=768m',
+               '--network', NETWORK, '--env-file', str(TEST_ENV),
+               '-e', 'PYTHON_DOTENV_DISABLED=1', '-e', 'APP_ENV=test',
+               '-e', 'AUDIT_IMAGE_ID=' + image, '-e', 'AUDIT_ARCHIVE_SHA256=' + archive_sha]
+    if fixed_now:
+        command.extend(['-e', 'AUDIT_FIXED_NOW_UTC=' + fixed_now,
+                        '-e', 'AUDIT_CLOCK_BASIS=' + clock_basis])
+    command.extend(['-v', str(R / helper['filename']) + ':/audit.py:ro',
+                    '--entrypoint', 'python', image, '/audit.py', *args])
+    try:
+        with (R / output_name).open('x') as output, (R / log_name).open('x') as error:
+            run(*command, stdout=output, stderr=error, timeout=timeout)
+    finally:
+        # A Docker CLI timeout does not stop the container. Never leave a test
+        # transaction running, and never remove a container merely by a prefix.
+        remaining = subprocess.run(['docker', 'inspect', container_name], capture_output=True, text=True)
+        if remaining.returncode == 0:
+            container = json.loads(remaining.stdout)[0]
+            assert container['Name'] == '/' + container_name and container['Image'] == image
+            assert container['Config']['Cmd'] == ['/audit.py', *args]
+            assert set(container['NetworkSettings']['Networks']) == {NETWORK}
+            assert any(mount['Source'] == str(R / helper['filename']) and
+                       mount['Destination'] == '/audit.py' and mount['RW'] is False
+                       for mount in container['Mounts'])
+            values = dict(value.split('=', 1) for value in container['Config']['Env'] if '=' in value)
+            url = urlsplit(values['DATABASE_URL'].replace('postgresql+psycopg://', 'postgresql://'))
+            assert url.hostname == PG and url.path == '/modish_test' and url.username == 'modish_test'
+            run('docker', 'rm', '-f', container_name, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    assert digest(R / helper['filename']) == helper['sha256']
+    return json.loads((R / output_name).read_text())
+
+
+def write_report(name, value):
+    with (R / name).open('x') as stream:
+        json.dump(value, stream, indent=2)
+        stream.write('\n')
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('archive_sha256')
+    parser.add_argument('--expected-tests', type=int)
+    parser.add_argument('--runs', type=int, default=3)
+    parser.add_argument('--profile', action='store_true')
+    parser.add_argument('--historical-as-of',
+                        help='Explicit UTC replay time; label historical stock coverage rather than current availability.')
+    parser.add_argument('--metrics-helper-sha256')
+    parser.add_argument('--activation-helper-sha256')
+    parser.add_argument('--inventory-helper-sha256')
+    args = parser.parse_args()
+    for value in (args.archive_sha256, args.metrics_helper_sha256,
+                  args.activation_helper_sha256, args.inventory_helper_sha256):
+        assert value is None or re.fullmatch(r'[0-9a-f]{64}', value)
+    assert args.expected_tests is None or args.expected_tests > 0
+    assert 1 <= args.runs <= 5
+    assert not (R / 'stage-report.json').exists() and not (R / 'stage-failure.json').exists()
+    state = production_snapshot()
+    report = {'checked_at': datetime.now(timezone.utc).isoformat(), 'scope': 'isolated_clone',
+              'archive_sha256': args.archive_sha256, 'production_changed': False,
+              'production_unchanged': False, 'product_ready': False, 'result': 'running'}
+    try:
+        guard_scope()
+        assert shutil.disk_usage(R).free > 3_000_000_000
+        test_pg_id = inspect(PG)['Id']
+        report['test_pg_container_id'] = test_pg_id
+        initial_catalogue = catalogue_snapshot()
+        assert not (R / 'backend').exists(), 'Only a new release workspace can be extracted'
+        manifest = verified_manifest(R / 'source.tar', args.archive_sha256, extract=True)
+        baseline_manifest = verified_manifest(BASELINE_R / 'source.tar', BASELINE_ARCHIVE_SHA)
+        migrations = lambda files: {name: sha for name, sha in files.items()
+                                   if name.startswith('backend/alembic/')}
+        assert migrations(manifest['files']) == migrations(baseline_manifest['files']), \
+            'This release must not change any migration source'
+        report['migration_sources_unchanged_from_v19'] = True
+        verify_image(BASELINE_IMAGE, baseline_manifest)
+        helpers = {'metrics': pinned_helper('metrics-smoke.py', args.metrics_helper_sha256),
+                   'activation': pinned_helper('activation-performance.py', args.activation_helper_sha256)}
+        if (R / 'size-raw-inventory.py').exists():
+            helpers['inventory'] = pinned_helper('size-raw-inventory.py', args.inventory_helper_sha256)
+        elif args.inventory_helper_sha256:
+            raise AssertionError('Pinned size inventory helper is missing')
+        report['helpers'] = helpers
+        # Libraries already exist in deployed build13. Dependency verification
+        # and every unit test run without a network; no package install occurs.
+        dependencies = """from importlib.metadata import version
+from pip._vendor.packaging.requirements import Requirement
+from pathlib import Path
+reqs=[Requirement(s) for s in Path('/check-requirements.txt').read_text().splitlines() if s.strip() and not s.startswith('#')]
+assert all(version(r.name) in r.specifier for r in reqs)
+assert not Path('/app/.env').exists()
+print('image_dependencies_verified')
+"""
+        run('docker', 'run', '--rm', '--pull=never', '--network', 'none',
+            '-v', str(R / 'backend/requirements.txt') + ':/check-requirements.txt:ro',
+            '--entrypoint', 'python', BASE, '-c', dependencies)
+        dependencies_tag = 'modish-backend:intent-v20-dependencies-20261009'
+        run('docker', 'tag', BASE, dependencies_tag)
+        assert inspect(dependencies_tag)['Id'] == BASE
+        dockerfile = R / 'Offline.Dockerfile'
+        with dockerfile.open('x') as stream:
+            stream.write('FROM ' + dependencies_tag + '\nWORKDIR /app\nCOPY . .\n'
+                         'ENV PYTHONUNBUFFERED=1\nCMD ["scripts/entrypoint.sh"]\n')
+        with (R / 'build-offline.log').open('x') as log:
+            run('docker', 'build', '--pull=false', '--network=none', '-f', str(dockerfile),
+                '-t', TAG, str(R / 'backend'), stdout=log, stderr=subprocess.STDOUT)
+        assert inspect(dependencies_tag)['Id'] == BASE
+        image = inspect(TAG)['Id']
+        report['image_id'] = image
+        print('image_built', flush=True)
+        verify_image(image, manifest)
+        print('image_sources_verified', flush=True)
+        with (R / 'unit-tests.log').open('x') as log:
+            run('docker', 'run', '--rm', '--pull=never', '--network', 'none',
+                '-e', 'DATABASE_URL=sqlite:///:memory:', '-e', 'JWT_SECRET=isolated-tests-only',
+                '-e', 'APP_ENV=test', '-e', 'PYTHON_DOTENV_DISABLED=1',
+                '--entrypoint', 'python', image, '-m', 'unittest', 'discover', '-s', 'tests',
+                '-p', 'test_*.py', '-v', stdout=log, stderr=subprocess.STDOUT)
+        report['unit_tests'] = parse_unit_summary(R / 'unit-tests.log', args.expected_tests)
+        print('unit_tests_passed ' + str(report['unit_tests']['count']), flush=True)
+        metrics = run_helper(helpers['metrics'], image=image, archive_sha=args.archive_sha256,
+                             output_name='metrics-smoke.json', log_name='metrics-smoke.log', timeout=180)
+        assert metrics['scope'] == 'isolated_postgresql_synthetic_contract_not_real_coverage'
+        assert metrics['checks_passed'] and metrics['test_writes_rolled_back']
+        assert metrics['task_only_taste_unchanged'] and metrics['replacement_respects_rejected_skus']
+        report['positive_pg_metrics_passed'] = True
+        report['positive_pg_metrics_scope'] = metrics['scope']
+        print('positive_pg_metrics_passed', flush=True)
+        assert catalogue_snapshot() == initial_catalogue
+        wall_clock = datetime.now(timezone.utc)
+        clock_basis = 'current_wall_clock'
+        fixed_now = wall_clock.isoformat()
+        if args.historical_as_of:
+            replay_time = datetime.fromisoformat(args.historical_as_of)
+            assert replay_time.tzinfo is not None and replay_time.utcoffset().total_seconds() == 0
+            assert replay_time < wall_clock, 'Historical replay must precede current wall time'
+            fixed_now = replay_time.isoformat()
+            clock_basis = 'explicit_historical_replay'
+        report.update(fixed_now_utc=fixed_now, clock_basis=clock_basis,
+                      historical_replay=clock_basis == 'explicit_historical_replay',
+                      fresh_observations_at_current_wall_clock=fresh_observation_count(wall_clock.isoformat()),
+                      fresh_observations_at_benchmark_clock=fresh_observation_count(fixed_now))
+        reports = {}
+        for label, checked_image, checked_sha in (
+            ('baseline', BASELINE_IMAGE, BASELINE_ARCHIVE_SHA), ('current', image, args.archive_sha256),
+        ):
+            helper_args = ['--runs', str(args.runs)]
+            if args.profile:
+                helper_args.append('--profile')
+            measured = run_helper(helpers['activation'], image=checked_image, archive_sha=checked_sha,
+                                  fixed_now=fixed_now, args=helper_args,
+                                  clock_basis=clock_basis,
+                                  output_name=label + '-activation-performance.json',
+                                  log_name=label + '-activation-errors.log')
+            assert measured['image_id'] == checked_image and measured['archive_sha256'] == checked_sha
+            assert measured['fixed_now_utc'] == fixed_now and measured['test_writes_rolled_back']
+            assert measured['clock_basis'] == clock_basis
+            assert len(measured['runs']) == args.runs
+            assert measured['catalogue_is_synthetic'] is False
+            assert all(row['catalogue_product_count'] == initial_catalogue['products'] for row in measured['runs'])
+            reports[label] = measured
+            assert inspect(PG)['Id'] == test_pg_id, 'The same test PostgreSQL container must be used'
+            assert catalogue_snapshot() == initial_catalogue
+            print('performance_' + label + '_measured', flush=True)
+        comparisons = []
+        for phase, before in reports['baseline']['medians_seconds'].items():
+            after = reports['current']['medians_seconds'].get(phase)
+            if after is not None:
+                comparisons.append({'phase': phase, 'baseline_median_seconds': before,
+                                    'current_median_seconds': after,
+                                    'speedup': before / after if after > 0 else None})
+        workload_equality = []
+        for before, after in zip(reports['baseline']['runs'], reports['current']['runs']):
+            checks = {'bootstrap_count_equal': before.get('bootstrap_cards') == after.get('bootstrap_cards'),
+                      'deck_hash_equal': before.get('bootstrap_ids_sha256') == after.get('bootstrap_ids_sha256'),
+                      'activation_completion_equal': before.get('activation_completed') == after.get('activation_completed'),
+                      'feed_count_equal': before.get('feed_cards') == after.get('feed_cards'),
+                      'feed_hash_equal': before.get('feed_ids_sha256') == after.get('feed_ids_sha256')}
+            workload_equality.append({'index': before['index'], **checks,
+                                      'all_equal': all(checks.values())})
+        same_results = all(row['all_equal'] for row in workload_equality)
+        catalogue = {'scope': 'isolated_real_catalogue_activation_measurement',
+                     'product_ready': False, 'baseline_image_id': BASELINE_IMAGE,
+                     'baseline_archive_sha256': BASELINE_ARCHIVE_SHA,
+                     'current_image_id': image, 'current_archive_sha256': args.archive_sha256,
+                     'fixed_now_utc': fixed_now, 'comparisons': comparisons,
+                     'clock_basis': clock_basis,
+                     'historical_replay': clock_basis == 'explicit_historical_replay',
+                     'workload_equality': workload_equality,
+                     'deck_and_feed_ids_unchanged': same_results,
+                     'timing_comparability': ('same_selected_deck_and_feed' if same_results else
+                                              'selection_changed_with_size_or_ranking_behavior'),
+                     'baseline': reports['baseline'], 'current': reports['current'],
+                     'limitation': 'Actual-catalogue timing of one controlled LETTER L profile. '
+                                   'No human-feedback, catalogue-coverage or latency-target pass gate.'}
+        write_report('catalog-report.json', catalogue)
+        report['activation_measurement_status'] = reports['current']['measurement_status']
+        report['deck_and_feed_ids_unchanged'] = same_results
+        report['workload_equality'] = workload_equality
+        report['timing_comparability'] = catalogue['timing_comparability']
+        if 'inventory' in helpers:
+            inventory = run_helper(helpers['inventory'], image=image, archive_sha=args.archive_sha256,
+                                   output_name='size-raw-inventory.json',
+                                   log_name='size-raw-inventory-errors.log', timeout=180)
+            assert inventory['scope'] == 'isolated_postgresql_stored_active_size_fields_read_only'
+            assert inventory['read_only_transaction'] and inventory['rollback_completed']
+            assert inventory['stock_timestamps_modified'] is False
+            report['size_raw_inventory_report'] = 'size-raw-inventory.json'
+            print('catalog_size_inventory_measured', flush=True)
+        assert catalogue_snapshot() == initial_catalogue
+        guard_scope()
+        assert inspect(PG)['Id'] == test_pg_id
+        assert digest(R / 'source.tar') == args.archive_sha256
+        assert digest(BASELINE_R / 'source.tar') == BASELINE_ARCHIVE_SHA
+        assert production_snapshot() == state
+        report.update(test_revision=TARGET_REVISION,
+                      migration_roundtrip='not_repeated_no_migration_change',
+                      production_unchanged=True, result='validation_complete_catalogue_readiness_unproven')
+        write_report('stage-report.json', report)
+        print('stage_complete ' + report['result'], flush=True)
+    except Exception as error:
+        report['result'] = 'failed'
+        report['error_type'] = type(error).__name__
+        try:
+            report['production_unchanged'] = production_snapshot() == state
+            report['test_revision'] = db_query('SELECT version_num FROM alembic_version')
+        except Exception as guard_error:
+            report['final_guard_error_type'] = type(guard_error).__name__
+        write_report('stage-failure.json', report)
+        print('stage_failed ' + report['error_type'], flush=True)
+        raise SystemExit(1) from None
+
+
+if __name__ == '__main__':
+    main()

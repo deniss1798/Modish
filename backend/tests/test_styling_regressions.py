@@ -1,3 +1,4 @@
+from fit_fixtures import confirmed_fit
 import unittest
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
@@ -12,6 +13,7 @@ from app.services.product_complements import complementary_products
 from app.services.embedding_service import build_user_taste_embedding, upsert_product_embedding
 from app.services.recommendation_engine import generate_feed
 from app.services.mie_scoring import compute_fit_score
+from app.services.fit_size_profile import update_size_profile
 from app.api.outfits import visible_outfits
 
 
@@ -20,7 +22,8 @@ def product(title='Рубашка мужская', category='рубашки', **
     values = dict(id=pid, external_id=pid, source='vipavenue', title=title, category=category,
         brand='Test', price=2500, image_url=f'https://media2.vipavenue.ru/{pid}.jpg',
         product_url=f'https://vipavenue.ru/product/{pid}/', gender_target='menswear',
-        available_sizes=['XL'], colors=['black'], is_active=1, is_available=1, is_deleted_from_feed=0)
+        available_sizes=['XL'], colors=['black'], is_active=1, is_available=1, availability_status='in_stock', is_deleted_from_feed=0,
+        last_seen_in_feed_at=datetime.now(timezone.utc))
     values.update(kwargs)
     return Product(**values)
 
@@ -31,7 +34,7 @@ class StylingRegressions(unittest.TestCase):
         Base.metadata.create_all(self.engine)
         self.db = sessionmaker(bind=self.engine, autoflush=False)()
         self.user = User(id=str(uuid4()), email='styling@example.test', password_hash='unused')
-        self.fit = FitProfile(id=str(uuid4()), user_id=self.user.id, height_cm=180,
+        self.fit = confirmed_fit(id=str(uuid4()), user_id=self.user.id, height_cm=180,
             gender_target='menswear', clothing_size='XL', budget_max=30000)
         self.db.add(self.user); self.db.flush(); self.db.add(self.fit); self.db.flush()
 
@@ -74,10 +77,22 @@ class StylingRegressions(unittest.TestCase):
         self.assertFalse(scenario_product_ok(product('Майка в рубчик'), 'evening'))
         self.assertFalse(pair_compatible(product('Футболка'), product('Ботинки на овчине','обувь')))
 
+    def test_winter_boots_do_not_complete_a_summer_look(self):
+        for title in ('Дутики-ботинки с искусственным мехом', 'Дутики-сапоги с антигололедной вставкой', 'Зимние ботинки'):
+            shoe = product(title, 'обувь')
+            for name, category in [('Сарафан BAON', 'платья'), ('Футболка кор.рук. BAON', 'футболки'), ('Платье на бретелях', 'платья'), ('Платье BAON', 'платья')]:
+                summer = product(name, category)
+                self.assertFalse(pair_compatible(summer, shoe))
+                self.assertFalse(pair_compatible(shoe, summer))
+            self.assertTrue(pair_compatible(product('Брюки шерстяные', 'брюки'), shoe))
+            self.assertTrue(pair_compatible(product('Платье теплое шерстяное', 'платья'), shoe))
+        self.assertTrue(pair_compatible(product('Сарафан BAON', 'платья'), product('Балетки кожаные', 'обувь')))
+
     def test_complements_balance_missing_roles_and_never_pad_same_role(self):
         anchor = product('Поло хлопковое', 'другое')
         bottom = product('Брюки хлопковые', 'брюки')
-        shoes = product('Кеды мужские', 'обувь', available_sizes=['42'])
+        shoes = product('Кеды мужские', 'обувь', available_sizes=['42'], feed_raw_json={'size_system': 'EU'})
+        update_size_profile(self.fit, sizes={'shoes': {'value': '42', 'system': 'EU'}})
         kids = product('Брюки для мальчиков', 'брюки')
         self.db.add_all([anchor, bottom, shoes, kids] + [product() for _ in range(8)]); self.db.flush()
         rows = complementary_products(self.db, self.user, anchor)

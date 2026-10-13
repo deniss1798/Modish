@@ -1,4 +1,5 @@
 from __future__ import annotations
+from fit_fixtures import confirmed_fit
 
 import unittest
 from datetime import datetime, timezone
@@ -48,9 +49,10 @@ def _product(
     fit="regular",
     silhouette="straight",
     style_tags=[style],
-    is_available=1,
+    is_available=1, availability_status='in_stock',
     is_active=1,
     is_deleted_from_feed=0,
+    last_seen_in_feed_at=datetime.now(timezone.utc),
     created_at=now,
     updated_at=now,
   )
@@ -66,7 +68,7 @@ class OutfitEngineV2Tests(unittest.TestCase):
     self.user = User(id=str(uuid4()), email="outfit-v2@test.io", password_hash="x")
     self.db.add(self.user)
     self.db.add(
-      FitProfile(
+      confirmed_fit(
         id=str(uuid4()),
         user_id=self.user.id,
         height_cm=170,
@@ -315,7 +317,7 @@ class OutfitEngineV2Tests(unittest.TestCase):
     generate_outfits_v2(self.db, self.user, count=2)
     other = User(id=str(uuid4()), email="other@test.io", password_hash="x")
     self.db.add(other)
-    self.db.add(FitProfile(id=str(uuid4()), user_id=other.id, height_cm=170, gender_target="womenswear", clothing_size="M", budget_max=10000))
+    self.db.add(confirmed_fit(id=str(uuid4()), user_id=other.id, height_cm=170, gender_target="womenswear", clothing_size="M", budget_max=10000))
     self.db.flush()
     self.assertTrue(generate_outfits_v2(self.db, other, count=2))
 

@@ -1,0 +1,1618 @@
+{
+  "scope": "isolated_real_catalogue_controlled_profile",
+  "image_id": "sha256:cfc4376eed5398c2167527779eb0586eb567dad6d7600251abfdaab32ff69fdc",
+  "archive_sha256": "099dafc5f037b8afb6912bf20ed8380c748438e5949bde3d1bb62b347f035644",
+  "fixed_now_utc": "2026-10-09T22:06:25.654082+00:00",
+  "clock_is_fixed_for_read_gates": true,
+  "clock_basis": "current_wall_clock",
+  "historical_replay": false,
+  "catalogue_is_synthetic": false,
+  "profile_and_reactions_are_controlled": true,
+  "profile": {
+    "clothing_size_system": "LETTER",
+    "clothing_size": "L",
+    "shoe_size_system": "EU",
+    "shoe_size": "38",
+    "height_cm": 168,
+    "styles": [
+      "casual",
+      "minimalism"
+    ],
+    "price_segment": "mid"
+  },
+  "reaction_protocol": {
+    "real_style_swipes": 15,
+    "like": 10,
+    "dislike": 5
+  },
+  "stock_timestamps_modified": false,
+  "runs": [
+    {
+      "index": 1,
+      "profiled": false,
+      "activation_completed": true,
+      "test_writes_rolled_back": true,
+      "phases": {
+        "configure": {
+          "seconds": 0.080517,
+          "profiled": false,
+          "sql_execute_seconds": 0.01329,
+          "statements": {
+            "SELECT": 9,
+            "INSERT": 4,
+            "UPDATE": 8
+          }
+        },
+        "cold_deck": {
+          "seconds": 15.08559,
+          "profiled": false,
+          "sql_execute_seconds": 0.192611,
+          "statements": {
+            "SELECT": 21
+          }
+        },
+        "style_swipe_15": {
+          "seconds": 0.302139,
+          "profiled": false,
+          "sql_execute_seconds": 0.138271,
+          "statements": {
+            "SELECT": 150,
+            "INSERT": 60,
+            "UPDATE": 100
+          }
+        },
+        "complete_wow": {
+          "seconds": 80.204418,
+          "profiled": false,
+          "sql_execute_seconds": 0.639514,
+          "statements": {
+            "SELECT": 76,
+            "UPDATE": 2
+          }
+        },
+        "first_feed": {
+          "seconds": 14.658601,
+          "profiled": false,
+          "sql_execute_seconds": 0.227466,
+          "statements": {
+            "SELECT": 15
+          }
+        }
+      },
+      "bootstrap_cards": 20,
+      "bootstrap_ids_sha256": "57739a621bc8b98558909c2aaac52c22d07157d682b4b7df12b255930c05c2d7",
+      "eligible_deck_cards_checked": 20,
+      "eligibility_basis": "exact_confirmed_size_for_sold_garment_role_and_fresh_stock",
+      "style_swipe_rated": 15,
+      "wow_outfits": 0,
+      "feed_cards": 20,
+      "eligible_feed_cards_checked": 20,
+      "feed_ids_sha256": "110c888d8fe154dc4518d18ebea73e7b5e30a330458210a6002248aaf023d057",
+      "learned_taste_from_real_swipes": true,
+      "catalogue_product_count": 204894
+    },
+    {
+      "index": 2,
+      "profiled": false,
+      "activation_completed": true,
+      "test_writes_rolled_back": true,
+      "phases": {
+        "configure": {
+          "seconds": 0.016289,
+          "profiled": false,
+          "sql_execute_seconds": 0.007918,
+          "statements": {
+            "SELECT": 9,
+            "INSERT": 4,
+            "UPDATE": 8
+          }
+        },
+        "cold_deck": {
+          "seconds": 15.54379,
+          "profiled": false,
+          "sql_execute_seconds": 0.178826,
+          "statements": {
+            "SELECT": 21
+          }
+        },
+        "style_swipe_15": {
+          "seconds": 0.272776,
+          "profiled": false,
+          "sql_execute_seconds": 0.123003,
+          "statements": {
+            "SELECT": 150,
+            "INSERT": 60,
+            "UPDATE": 95
+          }
+        },
+        "complete_wow": {
+          "seconds": 79.658253,
+          "profiled": false,
+          "sql_execute_seconds": 0.58455,
+          "statements": {
+            "SELECT": 76,
+            "UPDATE": 2
+          }
+        },
+        "first_feed": {
+          "seconds": 15.60703,
+          "profiled": false,
+          "sql_execute_seconds": 0.184837,
+          "statements": {
+            "SELECT": 15
+          }
+        }
+      },
+      "bootstrap_cards": 20,
+      "bootstrap_ids_sha256": "57739a621bc8b98558909c2aaac52c22d07157d682b4b7df12b255930c05c2d7",
+      "eligible_deck_cards_checked": 20,
+      "eligibility_basis": "exact_confirmed_size_for_sold_garment_role_and_fresh_stock",
+      "style_swipe_rated": 15,
+      "wow_outfits": 0,
+      "feed_cards": 20,
+      "eligible_feed_cards_checked": 20,
+      "feed_ids_sha256": "110c888d8fe154dc4518d18ebea73e7b5e30a330458210a6002248aaf023d057",
+      "learned_taste_from_real_swipes": true,
+      "catalogue_product_count": 204894
+    },
+    {
+      "index": 3,
+      "profiled": false,
+      "activation_completed": true,
+      "test_writes_rolled_back": true,
+      "phases": {
+        "configure": {
+          "seconds": 0.016702,
+          "profiled": false,
+          "sql_execute_seconds": 0.008594,
+          "statements": {
+            "SELECT": 9,
+            "INSERT": 4,
+            "UPDATE": 8
+          }
+        },
+        "cold_deck": {
+          "seconds": 15.830098,
+          "profiled": false,
+          "sql_execute_seconds": 0.18141,
+          "statements": {
+            "SELECT": 21
+          }
+        },
+        "style_swipe_15": {
+          "seconds": 0.255601,
+          "profiled": false,
+          "sql_execute_seconds": 0.112256,
+          "statements": {
+            "SELECT": 150,
+            "INSERT": 60,
+            "UPDATE": 101
+          }
+        },
+        "complete_wow": {
+          "seconds": 76.483592,
+          "profiled": false,
+          "sql_execute_seconds": 0.589865,
+          "statements": {
+            "SELECT": 76,
+            "UPDATE": 2
+          }
+        },
+        "first_feed": {
+          "seconds": 14.435524,
+          "profiled": false,
+          "sql_execute_seconds": 0.174032,
+          "statements": {
+            "SELECT": 15
+          }
+        }
+      },
+      "bootstrap_cards": 20,
+      "bootstrap_ids_sha256": "57739a621bc8b98558909c2aaac52c22d07157d682b4b7df12b255930c05c2d7",
+      "eligible_deck_cards_checked": 20,
+      "eligibility_basis": "exact_confirmed_size_for_sold_garment_role_and_fresh_stock",
+      "style_swipe_rated": 15,
+      "wow_outfits": 0,
+      "feed_cards": 20,
+      "eligible_feed_cards_checked": 20,
+      "feed_ids_sha256": "110c888d8fe154dc4518d18ebea73e7b5e30a330458210a6002248aaf023d057",
+      "learned_taste_from_real_swipes": true,
+      "catalogue_product_count": 204894
+    }
+  ],
+  "profile_run": {
+    "index": 4,
+    "profiled": true,
+    "activation_completed": true,
+    "test_writes_rolled_back": true,
+    "phases": {
+      "configure": {
+        "seconds": 0.029516,
+        "profiled": true,
+        "sql_execute_seconds": 0.011001,
+        "statements": {
+          "SELECT": 9,
+          "INSERT": 4,
+          "UPDATE": 8
+        },
+        "cumulative_top": [
+          {
+            "file": "audit.py",
+            "line": 167,
+            "function": "<lambda>",
+            "primitive_calls": 1,
+            "total_calls": 1,
+            "own_seconds": 2.8e-05,
+            "cumulative_seconds": 0.02943
+          },
+          {
+            "file": "app/services/activation_service.py",
+            "line": 201,
+            "function": "configure",
+            "primitive_calls": 1,
+            "total_calls": 1,
+            "own_seconds": 0.000125,
+            "cumulative_seconds": 0.029387
+          },
+          {
+            "file": "base.py",
+            "line": 1375,
+            "function": "execute",
+            "primitive_calls": 21,
+            "total_calls": 21,
+            "own_seconds": 7.5e-05,
+            "cumulative_seconds": 0.016893
+          },
+          {
+            "file": "elements.py",
+            "line": 517,
+            "function": "_execute_on_connection",
+            "primitive_calls": 21,
+            "total_calls": 21,
+            "own_seconds": 5.4e-05,
+            "cumulative_seconds": 0.016818
+          },
+          {
+            "file": "base.py",
+            "line": 1591,
+            "function": "_execute_clauseelement",
+            "primitive_calls": 21,
+            "total_calls": 21,
+            "own_seconds": 0.000402,
+            "cumulative_seconds": 0.016764
+          },
+          {
+            "file": "base.py",
+            "line": 1791,
+            "function": "_execute_context",
+            "primitive_calls": 21,
+            "total_calls": 21,
+            "own_seconds": 0.00017,
+            "cumulative_seconds": 0.014766
+          },
+          {
+            "file": "session.py",
+            "line": 4301,
+            "function": "flush",
+            "primitive_calls": 6,
+            "total_calls": 6,
+            "own_seconds": 7.1e-05,
+            "cumulative_seconds": 0.014329
+          },
+          {
+            "file": "session.py",
+            "line": 4350,
+            "function": "_flush",
+            "primitive_calls": 6,
+            "total_calls": 6,
+            "own_seconds": 0.0002,
+            "cumulative_seconds": 0.014243
+          },
+          {
+            "file": "base.py",
+            "line": 1850,
+            "function": "_exec_single_context",
+            "primitive_calls": 21,
+            "total_calls": 21,
+            "own_seconds": 0.000359,
+            "cumulative_seconds": 0.013159
+          },
+          {
+            "file": "unitofwork.py",
+            "line": 441,
+            "function": "execute",
+            "primitive_calls": 6,
+            "total_calls": 6,
+            "own_seconds": 7e-05,
+            "cumulative_seconds": 0.012512
+          },
+          {
+            "file": "unitofwork.py",
+            "line": 640,
+            "function": "execute",
+            "primitive_calls": 12,
+            "total_calls": 12,
+            "own_seconds": 4.7e-05,
+            "cumulative_seconds": 0.011033
+          },
+          {
+            "file": "persistence.py",
+            "line": 40,
+            "function": "save_obj",
+            "primitive_calls": 12,
+            "total_calls": 12,
+            "own_seconds": 0.000336,
+            "cumulative_seconds": 0.010985
+          },
+          {
+            "file": "default.py",
+            "line": 950,
+            "function": "do_execute",
+            "primitive_calls": 21,
+            "total_calls": 21,
+            "own_seconds": 3.2e-05,
+            "cumulative_seconds": 0.010333
+          },
+          {
+            "file": "cursor.py",
+            "line": 80,
+            "function": "execute",
+            "primitive_calls": 21,
+            "total_calls": 21,
+            "own_seconds": 9.6e-05,
+            "cumulative_seconds": 0.010301
+          },
+          {
+            "file": "connection.py",
+            "line": 445,
+            "function": "wait",
+            "primitive_calls": 21,
+            "total_calls": 21,
+            "own_seconds": 0.006251,
+            "cumulative_seconds": 0.010189
+          },
+          {
+            "file": "session.py",
+            "line": 2136,
+            "function": "_execute_internal",
+            "primitive_calls": 9,
+            "total_calls": 9,
+            "own_seconds": 0.000131,
+            "cumulative_seconds": 0.009907
+          },
+          {
+            "file": "context.py",
+            "line": 296,
+            "function": "orm_execute_statement",
+            "primitive_calls": 9,
+            "total_calls": 9,
+            "own_seconds": 3e-05,
+            "cumulative_seconds": 0.00911
+          },
+          {
+            "file": "app/services/profile_repository.py",
+            "line": 62,
+            "function": "load_preferences",
+            "primitive_calls": 1,
+            "total_calls": 1,
+            "own_seconds": 2.3e-05,
+            "cumulative_seconds": 0.007642
+          }
+        ],
+        "focused_calls": [
+          {
+            "file": "app/services/catalog/size_resolver.py",
+            "line": 54,
+            "function": "resolve_size",
+            "primitive_calls": 4,
+            "total_calls": 4,
+            "own_seconds": 5.9e-05,
+            "cumulative_seconds": 0.00029
+          },
+          {
+            "file": "app/services/fit_size_profile.py",
+            "line": 12,
+            "function": "size_profile_to_api",
+            "primitive_calls": 1,
+            "total_calls": 1,
+            "own_seconds": 1.4e-05,
+            "cumulative_seconds": 0.000132
+          },
+          {
+            "file": "app/catalog_normalize.py",
+            "line": 494,
+            "function": "normalize_category",
+            "primitive_calls": 9,
+            "total_calls": 9,
+            "own_seconds": 4.3e-05,
+            "cumulative_seconds": 6.2e-05
+          }
+        ]
+      },
+      "cold_deck": {
+        "seconds": 42.546968,
+        "profiled": true,
+        "sql_execute_seconds": 0.200621,
+        "statements": {
+          "SELECT": 21
+        },
+        "cumulative_top": [
+          {
+            "file": "audit.py",
+            "line": 172,
+            "function": "<lambda>",
+            "primitive_calls": 1,
+            "total_calls": 1,
+            "own_seconds": 0.003297,
+            "cumulative_seconds": 42.54688
+          },
+          {
+            "file": "app/services/activation_service.py",
+            "line": 252,
+            "function": "swipe_deck",
+            "primitive_calls": 1,
+            "total_calls": 1,
+            "own_seconds": 0.000672,
+            "cumulative_seconds": 42.542948
+          },
+          {
+            "file": "app/services/activation_service.py",
+            "line": 66,
+            "function": "candidate_pool",
+            "primitive_calls": 1,
+            "total_calls": 1,
+            "own_seconds": 0.180236,
+            "cumulative_seconds": 42.522219
+          },
+          {
+            "file": "app/services/activation_policy.py",
+            "line": 31,
+            "function": "product_ok",
+            "primitive_calls": 26523,
+            "total_calls": 26523,
+            "own_seconds": 0.448806,
+            "cumulative_seconds": 27.425902
+          },
+          {
+            "file": "app/services/product_eligibility.py",
+            "line": 17,
+            "function": "evaluate_eligibility",
+            "primitive_calls": 25636,
+            "total_calls": 25636,
+            "own_seconds": 0.171605,
+            "cumulative_seconds": 20.906367
+          },
+          {
+            "file": "app/services/catalog/size_resolver.py",
+            "line": 128,
+            "function": "exact_size_match",
+            "primitive_calls": 25112,
+            "total_calls": 25112,
+            "own_seconds": 0.13047,
+            "cumulative_seconds": 13.057835
+          },
+          {
+            "file": "app/services/catalog/size_resolver.py",
+            "line": 96,
+            "function": "resolve_product_sizes",
+            "primitive_calls": 25112,
+            "total_calls": 25112,
+            "own_seconds": 0.654447,
+            "cumulative_seconds": 11.205958
+          },
+          {
+            "file": "app/services/product_identity.py",
+            "line": 18,
+            "function": "product_identity_keys",
+            "primitive_calls": 27199,
+            "total_calls": 27199,
+            "own_seconds": 0.634664,
+            "cumulative_seconds": 7.431026
+          },
+          {
+            "file": "result.py",
+            "line": 526,
+            "function": "iterrows",
+            "primitive_calls": 27209,
+            "total_calls": 27209,
+            "own_seconds": 0.063648,
+            "cumulative_seconds": 6.374918
+          },
+          {
+            "file": "loading.py",
+            "line": 208,
+            "function": "chunks",
+            "primitive_calls": 173,
+            "total_calls": 173,
+            "own_seconds": 0.262737,
+            "cumulative_seconds": 6.318677
+          },
+          {
+            "file": "connection.py",
+            "line": 445,
+            "function": "wait",
+            "primitive_calls": 178,
+            "total_calls": 178,
+            "own_seconds": 1.751063,
+            "cumulative_seconds": 6.008699
+          },
+          {
+            "file": "_server_cursor.py",
+            "line": 117,
+            "function": "fetchmany",
+            "primitive_calls": 154,
+            "total_calls": 154,
+            "own_seconds": 0.001987,
+            "cumulative_seconds": 5.808106
+          },
+          {
+            "file": "app/services/catalog/rule_filters.py",
+            "line": 91,
+            "function": "product_gender_compatible",
+            "primitive_calls": 25636,
+            "total_calls": 25636,
+            "own_seconds": 0.14962,
+            "cumulative_seconds": 5.562057
+          },
+          {
+            "file": "~",
+            "line": 0,
+            "function": "<method 'join' of 'str' objects>",
+            "primitive_calls": 236092,
+            "total_calls": 236092,
+            "own_seconds": 0.727066,
+            "cumulative_seconds": 5.067529
+          },
+          {
+            "file": "result.py",
+            "line": 1346,
+            "function": "fetchmany",
+            "primitive_calls": 144,
+            "total_calls": 144,
+            "own_seconds": 0.000711,
+            "cumulative_seconds": 5.017276
+          },
+          {
+            "file": "result.py",
+            "line": 705,
+            "function": "manyrows",
+            "primitive_calls": 144,
+            "total_calls": 144,
+            "own_seconds": 0.009074,
+            "cumulative_seconds": 5.016417
+          },
+          {
+            "file": "cursor.py",
+            "line": 2137,
+            "function": "_fetchmany_impl",
+            "primitive_calls": 144,
+            "total_calls": 144,
+            "own_seconds": 0.000706,
+            "cumulative_seconds": 5.007344
+          },
+          {
+            "file": "cursor.py",
+            "line": 1247,
+            "function": "fetchmany",
+            "primitive_calls": 144,
+            "total_calls": 144,
+            "own_seconds": 0.00817,
+            "cumulative_seconds": 5.006638
+          }
+        ],
+        "focused_calls": [
+          {
+            "file": "app/services/activation_service.py",
+            "line": 252,
+            "function": "swipe_deck",
+            "primitive_calls": 1,
+            "total_calls": 1,
+            "own_seconds": 0.000672,
+            "cumulative_seconds": 42.542948
+          },
+          {
+            "file": "app/services/activation_service.py",
+            "line": 66,
+            "function": "candidate_pool",
+            "primitive_calls": 1,
+            "total_calls": 1,
+            "own_seconds": 0.180236,
+            "cumulative_seconds": 42.522219
+          },
+          {
+            "file": "app/services/activation_policy.py",
+            "line": 31,
+            "function": "product_ok",
+            "primitive_calls": 26523,
+            "total_calls": 26523,
+            "own_seconds": 0.448806,
+            "cumulative_seconds": 27.425902
+          },
+          {
+            "file": "app/services/product_eligibility.py",
+            "line": 17,
+            "function": "evaluate_eligibility",
+            "primitive_calls": 25636,
+            "total_calls": 25636,
+            "own_seconds": 0.171605,
+            "cumulative_seconds": 20.906367
+          },
+          {
+            "file": "app/services/catalog/size_resolver.py",
+            "line": 128,
+            "function": "exact_size_match",
+            "primitive_calls": 25112,
+            "total_calls": 25112,
+            "own_seconds": 0.13047,
+            "cumulative_seconds": 13.057835
+          },
+          {
+            "file": "app/services/catalog/size_resolver.py",
+            "line": 96,
+            "function": "resolve_product_sizes",
+            "primitive_calls": 25112,
+            "total_calls": 25112,
+            "own_seconds": 0.654447,
+            "cumulative_seconds": 11.205958
+          },
+          {
+            "file": "app/services/catalog/size_resolver.py",
+            "line": 54,
+            "function": "resolve_size",
+            "primitive_calls": 51324,
+            "total_calls": 51324,
+            "own_seconds": 0.425661,
+            "cumulative_seconds": 3.165467
+          },
+          {
+            "file": "app/services/garment_roles.py",
+            "line": 5,
+            "function": "product_role",
+            "primitive_calls": 51436,
+            "total_calls": 51436,
+            "own_seconds": 0.650506,
+            "cumulative_seconds": 3.151829
+          },
+          {
+            "file": "app/services/fit_size_profile.py",
+            "line": 45,
+            "function": "requested_size_for_product",
+            "primitive_calls": 25112,
+            "total_calls": 25112,
+            "own_seconds": 0.114312,
+            "cumulative_seconds": 1.720935
+          },
+          {
+            "file": "app/catalog_normalize.py",
+            "line": 494,
+            "function": "normalize_category",
+            "primitive_calls": 206887,
+            "total_calls": 206887,
+            "own_seconds": 0.642035,
+            "cumulative_seconds": 1.197524
+          },
+          {
+            "file": "app/services/personalization_scoring.py",
+            "line": 26,
+            "function": "_base_affinity",
+            "primitive_calls": 351,
+            "total_calls": 351,
+            "own_seconds": 0.005186,
+            "cumulative_seconds": 0.044504
+          }
+        ]
+      },
+      "style_swipe_15": {
+        "seconds": 0.477484,
+        "profiled": true,
+        "sql_execute_seconds": 0.171635,
+        "statements": {
+          "SELECT": 150,
+          "INSERT": 60,
+          "UPDATE": 97
+        },
+        "cumulative_top": [
+          {
+            "file": "audit.py",
+            "line": 185,
+            "function": "style_swipe",
+            "primitive_calls": 1,
+            "total_calls": 1,
+            "own_seconds": 8.1e-05,
+            "cumulative_seconds": 0.477399
+          },
+          {
+            "file": "app/services/activation_service.py",
+            "line": 272,
+            "function": "swipe_feedback",
+            "primitive_calls": 15,
+            "total_calls": 15,
+            "own_seconds": 0.001331,
+            "cumulative_seconds": 0.477266
+          },
+          {
+            "file": "app/services/product_event_service.py",
+            "line": 28,
+            "function": "record_product_event",
+            "primitive_calls": 15,
+            "total_calls": 15,
+            "own_seconds": 0.005106,
+            "cumulative_seconds": 0.43338
+          },
+          {
+            "file": "base.py",
+            "line": 1375,
+            "function": "execute",
+            "primitive_calls": 307,
+            "total_calls": 307,
+            "own_seconds": 0.001017,
+            "cumulative_seconds": 0.270219
+          },
+          {
+            "file": "elements.py",
+            "line": 517,
+            "function": "_execute_on_connection",
+            "primitive_calls": 307,
+            "total_calls": 307,
+            "own_seconds": 0.000647,
+            "cumulative_seconds": 0.269203
+          },
+          {
+            "file": "base.py",
+            "line": 1591,
+            "function": "_execute_clauseelement",
+            "primitive_calls": 307,
+            "total_calls": 307,
+            "own_seconds": 0.00412,
+            "cumulative_seconds": 0.268556
+          },
+          {
+            "file": "app/services/user_twin_service.py",
+            "line": 261,
+            "function": "apply_event_to_user_twin",
+            "primitive_calls": 15,
+            "total_calls": 15,
+            "own_seconds": 0.002125,
+            "cumulative_seconds": 0.242468
+          },
+          {
+            "file": "base.py",
+            "line": 1791,
+            "function": "_execute_context",
+            "primitive_calls": 307,
+            "total_calls": 307,
+            "own_seconds": 0.002006,
+            "cumulative_seconds": 0.238177
+          },
+          {
+            "file": "base.py",
+            "line": 1850,
+            "function": "_exec_single_context",
+            "primitive_calls": 307,
+            "total_calls": 307,
+            "own_seconds": 0.004649,
+            "cumulative_seconds": 0.208334
+          },
+          {
+            "file": "session.py",
+            "line": 2136,
+            "function": "_execute_internal",
+            "primitive_calls": 150,
+            "total_calls": 150,
+            "own_seconds": 0.002009,
+            "cumulative_seconds": 0.17755
+          },
+          {
+            "file": "context.py",
+            "line": 296,
+            "function": "orm_execute_statement",
+            "primitive_calls": 150,
+            "total_calls": 150,
+            "own_seconds": 0.000451,
+            "cumulative_seconds": 0.170216
+          },
+          {
+            "file": "session.py",
+            "line": 4301,
+            "function": "flush",
+            "primitive_calls": 75,
+            "total_calls": 75,
+            "own_seconds": 0.000597,
+            "cumulative_seconds": 0.166192
+          },
+          {
+            "file": "session.py",
+            "line": 4350,
+            "function": "_flush",
+            "primitive_calls": 45,
+            "total_calls": 45,
+            "own_seconds": 0.001977,
+            "cumulative_seconds": 0.165402
+          },
+          {
+            "file": "connection.py",
+            "line": 445,
+            "function": "wait",
+            "primitive_calls": 369,
+            "total_calls": 369,
+            "own_seconds": 0.068492,
+            "cumulative_seconds": 0.159955
+          },
+          {
+            "file": "session.py",
+            "line": 2291,
+            "function": "execute",
+            "primitive_calls": 135,
+            "total_calls": 135,
+            "own_seconds": 0.000257,
+            "cumulative_seconds": 0.153502
+          },
+          {
+            "file": "unitofwork.py",
+            "line": 441,
+            "function": "execute",
+            "primitive_calls": 45,
+            "total_calls": 45,
+            "own_seconds": 0.000533,
+            "cumulative_seconds": 0.149119
+          },
+          {
+            "file": "default.py",
+            "line": 950,
+            "function": "do_execute",
+            "primitive_calls": 276,
+            "total_calls": 276,
+            "own_seconds": 0.000349,
+            "cumulative_seconds": 0.143335
+          },
+          {
+            "file": "cursor.py",
+            "line": 80,
+            "function": "execute",
+            "primitive_calls": 276,
+            "total_calls": 276,
+            "own_seconds": 0.001069,
+            "cumulative_seconds": 0.142987
+          }
+        ],
+        "focused_calls": [
+          {
+            "file": "app/services/user_twin_service.py",
+            "line": 85,
+            "function": "product_taste_features",
+            "primitive_calls": 15,
+            "total_calls": 15,
+            "own_seconds": 0.000568,
+            "cumulative_seconds": 0.017288
+          },
+          {
+            "file": "app/services/catalog/product_dna.py",
+            "line": 226,
+            "function": "reliable_taste_features",
+            "primitive_calls": 15,
+            "total_calls": 15,
+            "own_seconds": 0.000254,
+            "cumulative_seconds": 0.015622
+          },
+          {
+            "file": "app/services/catalog/product_dna.py",
+            "line": 142,
+            "function": "_build_product_dna",
+            "primitive_calls": 15,
+            "total_calls": 15,
+            "own_seconds": 0.001509,
+            "cumulative_seconds": 0.015361
+          },
+          {
+            "file": "app/services/catalog/fashion_taxonomy.py",
+            "line": 136,
+            "function": "normalize_text",
+            "primitive_calls": 971,
+            "total_calls": 971,
+            "own_seconds": 0.001355,
+            "cumulative_seconds": 0.005068
+          },
+          {
+            "file": "app/catalog_normalize.py",
+            "line": 494,
+            "function": "normalize_category",
+            "primitive_calls": 60,
+            "total_calls": 60,
+            "own_seconds": 0.000247,
+            "cumulative_seconds": 0.000418
+          }
+        ]
+      },
+      "complete_wow": {
+        "seconds": 215.716494,
+        "profiled": true,
+        "sql_execute_seconds": 0.738218,
+        "statements": {
+          "SELECT": 76,
+          "UPDATE": 2
+        },
+        "cumulative_top": [
+          {
+            "file": "audit.py",
+            "line": 195,
+            "function": "<lambda>",
+            "primitive_calls": 1,
+            "total_calls": 1,
+            "own_seconds": 3.4e-05,
+            "cumulative_seconds": 215.716405
+          },
+          {
+            "file": "app/services/activation_service.py",
+            "line": 380,
+            "function": "complete_wow",
+            "primitive_calls": 1,
+            "total_calls": 1,
+            "own_seconds": 0.001225,
+            "cumulative_seconds": 215.716361
+          },
+          {
+            "file": "app/services/outfit_engine_v2.py",
+            "line": 579,
+            "function": "generate_outfits_v2",
+            "primitive_calls": 3,
+            "total_calls": 3,
+            "own_seconds": 0.020222,
+            "cumulative_seconds": 215.705706
+          },
+          {
+            "file": "app/services/outfit_engine_v2.py",
+            "line": 237,
+            "function": "_build_slot_candidates",
+            "primitive_calls": 3,
+            "total_calls": 3,
+            "own_seconds": 0.003864,
+            "cumulative_seconds": 215.656055
+          },
+          {
+            "file": "app/services/activation_service.py",
+            "line": 66,
+            "function": "candidate_pool",
+            "primitive_calls": 3,
+            "total_calls": 3,
+            "own_seconds": 0.736021,
+            "cumulative_seconds": 215.55731
+          },
+          {
+            "file": "app/services/activation_policy.py",
+            "line": 31,
+            "function": "product_ok",
+            "primitive_calls": 136665,
+            "total_calls": 136665,
+            "own_seconds": 2.498868,
+            "cumulative_seconds": 136.904207
+          },
+          {
+            "file": "app/services/product_eligibility.py",
+            "line": 17,
+            "function": "evaluate_eligibility",
+            "primitive_calls": 128430,
+            "total_calls": 128430,
+            "own_seconds": 0.798272,
+            "cumulative_seconds": 104.5896
+          },
+          {
+            "file": "app/services/catalog/size_resolver.py",
+            "line": 128,
+            "function": "exact_size_match",
+            "primitive_calls": 126792,
+            "total_calls": 126792,
+            "own_seconds": 0.841357,
+            "cumulative_seconds": 64.964555
+          },
+          {
+            "file": "app/services/catalog/size_resolver.py",
+            "line": 96,
+            "function": "resolve_product_sizes",
+            "primitive_calls": 126792,
+            "total_calls": 126792,
+            "own_seconds": 3.207197,
+            "cumulative_seconds": 55.379943
+          },
+          {
+            "file": "app/services/product_identity.py",
+            "line": 18,
+            "function": "product_identity_keys",
+            "primitive_calls": 142371,
+            "total_calls": 142371,
+            "own_seconds": 3.512017,
+            "cumulative_seconds": 36.142892
+          },
+          {
+            "file": "result.py",
+            "line": 526,
+            "function": "iterrows",
+            "primitive_calls": 142470,
+            "total_calls": 142470,
+            "own_seconds": 0.127622,
+            "cumulative_seconds": 32.744671
+          },
+          {
+            "file": "loading.py",
+            "line": 208,
+            "function": "chunks",
+            "primitive_calls": 851,
+            "total_calls": 851,
+            "own_seconds": 1.557613,
+            "cumulative_seconds": 32.643143
+          },
+          {
+            "file": "connection.py",
+            "line": 445,
+            "function": "wait",
+            "primitive_calls": 897,
+            "total_calls": 897,
+            "own_seconds": 8.380459,
+            "cumulative_seconds": 30.763434
+          },
+          {
+            "file": "_server_cursor.py",
+            "line": 117,
+            "function": "fetchmany",
+            "primitive_calls": 789,
+            "total_calls": 789,
+            "own_seconds": 0.010339,
+            "cumulative_seconds": 29.980451
+          },
+          {
+            "file": "app/services/catalog/rule_filters.py",
+            "line": 91,
+            "function": "product_gender_compatible",
+            "primitive_calls": 128430,
+            "total_calls": 128430,
+            "own_seconds": 0.837447,
+            "cumulative_seconds": 27.929051
+          },
+          {
+            "file": "result.py",
+            "line": 1346,
+            "function": "fetchmany",
+            "primitive_calls": 759,
+            "total_calls": 759,
+            "own_seconds": 0.003326,
+            "cumulative_seconds": 26.208436
+          },
+          {
+            "file": "result.py",
+            "line": 705,
+            "function": "manyrows",
+            "primitive_calls": 759,
+            "total_calls": 759,
+            "own_seconds": 0.051566,
+            "cumulative_seconds": 26.204612
+          },
+          {
+            "file": "cursor.py",
+            "line": 2137,
+            "function": "_fetchmany_impl",
+            "primitive_calls": 759,
+            "total_calls": 759,
+            "own_seconds": 0.003589,
+            "cumulative_seconds": 26.153046
+          }
+        ],
+        "focused_calls": [
+          {
+            "file": "app/services/activation_service.py",
+            "line": 380,
+            "function": "complete_wow",
+            "primitive_calls": 1,
+            "total_calls": 1,
+            "own_seconds": 0.001225,
+            "cumulative_seconds": 215.716361
+          },
+          {
+            "file": "app/services/activation_service.py",
+            "line": 66,
+            "function": "candidate_pool",
+            "primitive_calls": 3,
+            "total_calls": 3,
+            "own_seconds": 0.736021,
+            "cumulative_seconds": 215.55731
+          },
+          {
+            "file": "app/services/activation_policy.py",
+            "line": 31,
+            "function": "product_ok",
+            "primitive_calls": 136665,
+            "total_calls": 136665,
+            "own_seconds": 2.498868,
+            "cumulative_seconds": 136.904207
+          },
+          {
+            "file": "app/services/product_eligibility.py",
+            "line": 17,
+            "function": "evaluate_eligibility",
+            "primitive_calls": 128430,
+            "total_calls": 128430,
+            "own_seconds": 0.798272,
+            "cumulative_seconds": 104.5896
+          },
+          {
+            "file": "app/services/catalog/size_resolver.py",
+            "line": 128,
+            "function": "exact_size_match",
+            "primitive_calls": 126792,
+            "total_calls": 126792,
+            "own_seconds": 0.841357,
+            "cumulative_seconds": 64.964555
+          },
+          {
+            "file": "app/services/catalog/size_resolver.py",
+            "line": 96,
+            "function": "resolve_product_sizes",
+            "primitive_calls": 126792,
+            "total_calls": 126792,
+            "own_seconds": 3.207197,
+            "cumulative_seconds": 55.379943
+          },
+          {
+            "file": "app/services/catalog/size_resolver.py",
+            "line": 54,
+            "function": "resolve_size",
+            "primitive_calls": 258948,
+            "total_calls": 258948,
+            "own_seconds": 2.465337,
+            "cumulative_seconds": 15.282527
+          },
+          {
+            "file": "app/services/garment_roles.py",
+            "line": 5,
+            "function": "product_role",
+            "primitive_calls": 263726,
+            "total_calls": 263726,
+            "own_seconds": 2.793528,
+            "cumulative_seconds": 14.950516
+          },
+          {
+            "file": "app/services/fit_size_profile.py",
+            "line": 45,
+            "function": "requested_size_for_product",
+            "primitive_calls": 126792,
+            "total_calls": 126792,
+            "own_seconds": 0.852508,
+            "cumulative_seconds": 8.723742
+          },
+          {
+            "file": "app/catalog_normalize.py",
+            "line": 494,
+            "function": "normalize_category",
+            "primitive_calls": 1065629,
+            "total_calls": 1065629,
+            "own_seconds": 3.208565,
+            "cumulative_seconds": 5.386202
+          },
+          {
+            "file": "app/services/personalization_scoring.py",
+            "line": 63,
+            "function": "evaluate",
+            "primitive_calls": 2013,
+            "total_calls": 2013,
+            "own_seconds": 0.045351,
+            "cumulative_seconds": 3.80857
+          },
+          {
+            "file": "app/services/catalog/product_dna.py",
+            "line": 226,
+            "function": "reliable_taste_features",
+            "primitive_calls": 1927,
+            "total_calls": 1927,
+            "own_seconds": 0.06065,
+            "cumulative_seconds": 2.561728
+          },
+          {
+            "file": "app/services/catalog/product_dna.py",
+            "line": 142,
+            "function": "_build_product_dna",
+            "primitive_calls": 1927,
+            "total_calls": 1927,
+            "own_seconds": 0.230531,
+            "cumulative_seconds": 2.50019
+          },
+          {
+            "file": "app/services/catalog/fashion_taxonomy.py",
+            "line": 136,
+            "function": "normalize_text",
+            "primitive_calls": 128182,
+            "total_calls": 128182,
+            "own_seconds": 0.168259,
+            "cumulative_seconds": 0.72095
+          },
+          {
+            "file": "app/services/mie_scoring.py",
+            "line": 175,
+            "function": "compute_taste_score",
+            "primitive_calls": 1927,
+            "total_calls": 1927,
+            "own_seconds": 0.267002,
+            "cumulative_seconds": 0.540125
+          },
+          {
+            "file": "app/services/user_twin_service.py",
+            "line": 85,
+            "function": "product_taste_features",
+            "primitive_calls": 1927,
+            "total_calls": 1927,
+            "own_seconds": 0.054661,
+            "cumulative_seconds": 0.223818
+          },
+          {
+            "file": "app/services/personalization_scoring.py",
+            "line": 26,
+            "function": "_base_affinity",
+            "primitive_calls": 1927,
+            "total_calls": 1927,
+            "own_seconds": 0.070143,
+            "cumulative_seconds": 0.222645
+          }
+        ]
+      },
+      "first_feed": {
+        "seconds": 39.242128,
+        "profiled": true,
+        "sql_execute_seconds": 0.206156,
+        "statements": {
+          "SELECT": 15
+        },
+        "cumulative_top": [
+          {
+            "file": "audit.py",
+            "line": 199,
+            "function": "<lambda>",
+            "primitive_calls": 1,
+            "total_calls": 1,
+            "own_seconds": 0.005037,
+            "cumulative_seconds": 39.242028
+          },
+          {
+            "file": "app/services/activation_service.py",
+            "line": 303,
+            "function": "personalized_feed",
+            "primitive_calls": 1,
+            "total_calls": 1,
+            "own_seconds": 0.000987,
+            "cumulative_seconds": 39.236051
+          },
+          {
+            "file": "app/services/activation_service.py",
+            "line": 66,
+            "function": "candidate_pool",
+            "primitive_calls": 1,
+            "total_calls": 1,
+            "own_seconds": 0.097973,
+            "cumulative_seconds": 39.208097
+          },
+          {
+            "file": "app/services/activation_policy.py",
+            "line": 31,
+            "function": "product_ok",
+            "primitive_calls": 25679,
+            "total_calls": 25679,
+            "own_seconds": 0.360761,
+            "cumulative_seconds": 24.040748
+          },
+          {
+            "file": "app/services/product_eligibility.py",
+            "line": 17,
+            "function": "evaluate_eligibility",
+            "primitive_calls": 23225,
+            "total_calls": 23225,
+            "own_seconds": 0.192691,
+            "cumulative_seconds": 18.334284
+          },
+          {
+            "file": "app/services/catalog/size_resolver.py",
+            "line": 128,
+            "function": "exact_size_match",
+            "primitive_calls": 23191,
+            "total_calls": 23191,
+            "own_seconds": 0.099324,
+            "cumulative_seconds": 11.251295
+          },
+          {
+            "file": "app/services/catalog/size_resolver.py",
+            "line": 96,
+            "function": "resolve_product_sizes",
+            "primitive_calls": 23191,
+            "total_calls": 23191,
+            "own_seconds": 0.515856,
+            "cumulative_seconds": 9.591966
+          },
+          {
+            "file": "app/services/product_identity.py",
+            "line": 18,
+            "function": "product_identity_keys",
+            "primitive_calls": 27431,
+            "total_calls": 27431,
+            "own_seconds": 0.70702,
+            "cumulative_seconds": 7.212547
+          },
+          {
+            "file": "result.py",
+            "line": 526,
+            "function": "iterrows",
+            "primitive_calls": 27453,
+            "total_calls": 27453,
+            "own_seconds": 0.018756,
+            "cumulative_seconds": 6.013602
+          },
+          {
+            "file": "loading.py",
+            "line": 208,
+            "function": "chunks",
+            "primitive_calls": 165,
+            "total_calls": 165,
+            "own_seconds": 0.235652,
+            "cumulative_seconds": 6.001321
+          },
+          {
+            "file": "connection.py",
+            "line": 445,
+            "function": "wait",
+            "primitive_calls": 174,
+            "total_calls": 174,
+            "own_seconds": 1.685302,
+            "cumulative_seconds": 5.647707
+          },
+          {
+            "file": "_server_cursor.py",
+            "line": 117,
+            "function": "fetchmany",
+            "primitive_calls": 153,
+            "total_calls": 153,
+            "own_seconds": 0.001913,
+            "cumulative_seconds": 5.434006
+          },
+          {
+            "file": "app/services/catalog/rule_filters.py",
+            "line": 91,
+            "function": "product_gender_compatible",
+            "primitive_calls": 23225,
+            "total_calls": 23225,
+            "own_seconds": 0.159242,
+            "cumulative_seconds": 4.795128
+          },
+          {
+            "file": "result.py",
+            "line": 1346,
+            "function": "fetchmany",
+            "primitive_calls": 147,
+            "total_calls": 147,
+            "own_seconds": 0.000772,
+            "cumulative_seconds": 4.704448
+          },
+          {
+            "file": "result.py",
+            "line": 705,
+            "function": "manyrows",
+            "primitive_calls": 147,
+            "total_calls": 147,
+            "own_seconds": 0.010215,
+            "cumulative_seconds": 4.703595
+          },
+          {
+            "file": "cursor.py",
+            "line": 2137,
+            "function": "_fetchmany_impl",
+            "primitive_calls": 147,
+            "total_calls": 147,
+            "own_seconds": 0.000661,
+            "cumulative_seconds": 4.69338
+          },
+          {
+            "file": "cursor.py",
+            "line": 1247,
+            "function": "fetchmany",
+            "primitive_calls": 147,
+            "total_calls": 147,
+            "own_seconds": 0.008048,
+            "cumulative_seconds": 4.692719
+          },
+          {
+            "file": "~",
+            "line": 0,
+            "function": "<method 'join' of 'str' objects>",
+            "primitive_calls": 229887,
+            "total_calls": 229887,
+            "own_seconds": 0.671568,
+            "cumulative_seconds": 4.545271
+          }
+        ],
+        "focused_calls": [
+          {
+            "file": "app/services/activation_service.py",
+            "line": 303,
+            "function": "personalized_feed",
+            "primitive_calls": 1,
+            "total_calls": 1,
+            "own_seconds": 0.000987,
+            "cumulative_seconds": 39.236051
+          },
+          {
+            "file": "app/services/activation_service.py",
+            "line": 66,
+            "function": "candidate_pool",
+            "primitive_calls": 1,
+            "total_calls": 1,
+            "own_seconds": 0.097973,
+            "cumulative_seconds": 39.208097
+          },
+          {
+            "file": "app/services/activation_policy.py",
+            "line": 31,
+            "function": "product_ok",
+            "primitive_calls": 25679,
+            "total_calls": 25679,
+            "own_seconds": 0.360761,
+            "cumulative_seconds": 24.040748
+          },
+          {
+            "file": "app/services/product_eligibility.py",
+            "line": 17,
+            "function": "evaluate_eligibility",
+            "primitive_calls": 23225,
+            "total_calls": 23225,
+            "own_seconds": 0.192691,
+            "cumulative_seconds": 18.334284
+          },
+          {
+            "file": "app/services/catalog/size_resolver.py",
+            "line": 128,
+            "function": "exact_size_match",
+            "primitive_calls": 23191,
+            "total_calls": 23191,
+            "own_seconds": 0.099324,
+            "cumulative_seconds": 11.251295
+          },
+          {
+            "file": "app/services/catalog/size_resolver.py",
+            "line": 96,
+            "function": "resolve_product_sizes",
+            "primitive_calls": 23191,
+            "total_calls": 23191,
+            "own_seconds": 0.515856,
+            "cumulative_seconds": 9.591966
+          },
+          {
+            "file": "app/services/catalog/size_resolver.py",
+            "line": 54,
+            "function": "resolve_size",
+            "primitive_calls": 47530,
+            "total_calls": 47530,
+            "own_seconds": 0.450126,
+            "cumulative_seconds": 2.69101
+          },
+          {
+            "file": "app/services/garment_roles.py",
+            "line": 5,
+            "function": "product_role",
+            "primitive_calls": 48482,
+            "total_calls": 48482,
+            "own_seconds": 0.467113,
+            "cumulative_seconds": 2.456291
+          },
+          {
+            "file": "app/services/fit_size_profile.py",
+            "line": 45,
+            "function": "requested_size_for_product",
+            "primitive_calls": 23191,
+            "total_calls": 23191,
+            "own_seconds": 0.149951,
+            "cumulative_seconds": 1.485507
+          },
+          {
+            "file": "app/catalog_normalize.py",
+            "line": 494,
+            "function": "normalize_category",
+            "primitive_calls": 198329,
+            "total_calls": 198329,
+            "own_seconds": 0.505584,
+            "cumulative_seconds": 0.911475
+          },
+          {
+            "file": "app/services/personalization_scoring.py",
+            "line": 63,
+            "function": "evaluate",
+            "primitive_calls": 588,
+            "total_calls": 588,
+            "own_seconds": 0.010512,
+            "cumulative_seconds": 0.827142
+          },
+          {
+            "file": "app/services/catalog/product_dna.py",
+            "line": 226,
+            "function": "reliable_taste_features",
+            "primitive_calls": 573,
+            "total_calls": 573,
+            "own_seconds": 0.008581,
+            "cumulative_seconds": 0.599883
+          },
+          {
+            "file": "app/services/catalog/product_dna.py",
+            "line": 142,
+            "function": "_build_product_dna",
+            "primitive_calls": 573,
+            "total_calls": 573,
+            "own_seconds": 0.033477,
+            "cumulative_seconds": 0.591072
+          },
+          {
+            "file": "app/services/catalog/fashion_taxonomy.py",
+            "line": 136,
+            "function": "normalize_text",
+            "primitive_calls": 35659,
+            "total_calls": 35659,
+            "own_seconds": 0.043953,
+            "cumulative_seconds": 0.258799
+          },
+          {
+            "file": "app/services/mie_scoring.py",
+            "line": 175,
+            "function": "compute_taste_score",
+            "primitive_calls": 573,
+            "total_calls": 573,
+            "own_seconds": 0.049244,
+            "cumulative_seconds": 0.100568
+          },
+          {
+            "file": "app/services/personalization_scoring.py",
+            "line": 26,
+            "function": "_base_affinity",
+            "primitive_calls": 573,
+            "total_calls": 573,
+            "own_seconds": 0.037374,
+            "cumulative_seconds": 0.06517
+          },
+          {
+            "file": "app/services/user_twin_service.py",
+            "line": 85,
+            "function": "product_taste_features",
+            "primitive_calls": 573,
+            "total_calls": 573,
+            "own_seconds": 0.01488,
+            "cumulative_seconds": 0.047775
+          }
+        ]
+      }
+    },
+    "bootstrap_cards": 20,
+    "bootstrap_ids_sha256": "57739a621bc8b98558909c2aaac52c22d07157d682b4b7df12b255930c05c2d7",
+    "eligible_deck_cards_checked": 20,
+    "eligibility_basis": "exact_confirmed_size_for_sold_garment_role_and_fresh_stock",
+    "style_swipe_rated": 15,
+    "wow_outfits": 0,
+    "feed_cards": 20,
+    "eligible_feed_cards_checked": 20,
+    "feed_ids_sha256": "110c888d8fe154dc4518d18ebea73e7b5e30a330458210a6002248aaf023d057",
+    "learned_taste_from_real_swipes": true,
+    "catalogue_product_count": 204894
+  },
+  "limitation": "One controlled profile does not establish catalogue coverage, human taste quality or production request latency. CPU quota and SQL/ORM costs apply; SQL timing excludes fetch and object creation.",
+  "clock_modules": [
+    "app.services.activation_service",
+    "app.services.catalog.stock_freshness",
+    "app.services.mie_scoring",
+    "app.services.user_twin_service",
+    "app.services.product_event_service",
+    "app.services.outfit_service",
+    "app.services.outfit_engine_v2",
+    "app.services.candidate_retrieval_service",
+    "app.services.recommendation_engine",
+    "app.services.behavior_profile",
+    "app.api.outfits"
+  ],
+  "test_writes_rolled_back": true,
+  "completed_runs": 3,
+  "medians_seconds": {
+    "configure": 0.016702,
+    "cold_deck": 15.54379,
+    "style_swipe_15": 0.272776,
+    "complete_wow": 79.658253,
+    "first_feed": 14.658601
+  },
+  "measurement_status": "completed_real_activation"
+}

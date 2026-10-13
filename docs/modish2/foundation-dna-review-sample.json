@@ -1,0 +1,1452 @@
+{
+  "scope": "isolated_clone_read_only",
+  "rules_version": "product_dna_rules_v1",
+  "checked_at": "2026-09-25T05:38:09.662765+00:00",
+  "sampling": "same first 25 IDs per source/category as DNA audit; bounded review examples",
+  "sources": [
+    {
+      "source": "baon",
+      "construction_review": [
+        {
+          "id": "0534eaa7-b5dc-4fdc-b092-0706c4f69ef7",
+          "title": "Пуховик облегч. BAON",
+          "category": "верхний_слой",
+          "raw_construction": {
+            "feed_raw_json": {
+              "param_крой": "Прямой"
+            },
+            "raw_params_json": {
+              "param_крой": "Прямой"
+            }
+          },
+          "fit": [],
+          "silhouette": []
+        }
+      ],
+      "conflict_review": []
+    },
+    {
+      "source": "shoppinglive",
+      "construction_review": [
+        {
+          "id": "001278fb-03ca-45bd-8b79-a89f29de205f",
+          "title": "Велюровые брюки прямого кроя с акцентным поясом",
+          "category": "брюки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": [
+            {
+              "value": "straight",
+              "confidence": 0.8,
+              "rule_id": "assertion.silhouette.straight",
+              "rule_version": "product_dna_rules_v1",
+              "evidence": [
+                {
+                  "source": "sold_item_title",
+                  "field": "title",
+                  "raw_value": "велюровые брюки прямого кроя",
+                  "matched_text": "прямого кроя",
+                  "rule_id": "sold_item_title.silhouette.straight",
+                  "rule_version": "product_dna_rules_v1",
+                  "confidence": 0.8
+                }
+              ],
+              "status": "supported"
+            }
+          ]
+        },
+        {
+          "id": "00196204-78a1-483b-885d-169a067903bc",
+          "title": "Брюки прямого силуэта с резинкой на поясе",
+          "category": "брюки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": [
+            {
+              "value": "straight",
+              "confidence": 0.8,
+              "rule_id": "assertion.silhouette.straight",
+              "rule_version": "product_dna_rules_v1",
+              "evidence": [
+                {
+                  "source": "sold_item_title",
+                  "field": "title",
+                  "raw_value": "брюки прямого силуэта",
+                  "matched_text": "прямого силуэта",
+                  "rule_id": "sold_item_title.silhouette.straight",
+                  "rule_version": "product_dna_rules_v1",
+                  "confidence": 0.8
+                }
+              ],
+              "status": "supported"
+            }
+          ]
+        },
+        {
+          "id": "003555af-3327-49e5-ab75-0e9833b7cb84",
+          "title": "Брюки широкого кроя с контрастными лампасами по бокам",
+          "category": "брюки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        },
+        {
+          "id": "004451d5-4c9a-45dc-acdf-3774968ba7fc",
+          "title": "Утепленные брюки зауженного кроя из эластичного трикотажа",
+          "category": "брюки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": [
+            {
+              "value": "tapered",
+              "confidence": 0.8,
+              "rule_id": "assertion.silhouette.tapered",
+              "rule_version": "product_dna_rules_v1",
+              "evidence": [
+                {
+                  "source": "sold_item_title",
+                  "field": "title",
+                  "raw_value": "утепленные брюки зауженного кроя из эластичного трикотажа",
+                  "matched_text": "зауженного",
+                  "rule_id": "sold_item_title.silhouette.tapered",
+                  "rule_version": "product_dna_rules_v1",
+                  "confidence": 0.8
+                }
+              ],
+              "status": "supported"
+            }
+          ]
+        },
+        {
+          "id": "00754a27-ba1f-4d99-bba1-cfc623add113",
+          "title": "Велюровые брюки прямого кроя",
+          "category": "брюки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": [
+            {
+              "value": "straight",
+              "confidence": 0.8,
+              "rule_id": "assertion.silhouette.straight",
+              "rule_version": "product_dna_rules_v1",
+              "evidence": [
+                {
+                  "source": "sold_item_title",
+                  "field": "title",
+                  "raw_value": "велюровые брюки прямого кроя",
+                  "matched_text": "прямого кроя",
+                  "rule_id": "sold_item_title.silhouette.straight",
+                  "rule_version": "product_dna_rules_v1",
+                  "confidence": 0.8
+                }
+              ],
+              "status": "supported"
+            }
+          ]
+        },
+        {
+          "id": "007eb5e1-26d4-4bc4-84c3-05886fc27da3",
+          "title": "Вельветовые брюки стретч прямого кроя",
+          "category": "брюки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": [
+            {
+              "value": "straight",
+              "confidence": 0.8,
+              "rule_id": "assertion.silhouette.straight",
+              "rule_version": "product_dna_rules_v1",
+              "evidence": [
+                {
+                  "source": "sold_item_title",
+                  "field": "title",
+                  "raw_value": "вельветовые брюки стретч прямого кроя",
+                  "matched_text": "прямого кроя",
+                  "rule_id": "sold_item_title.silhouette.straight",
+                  "rule_version": "product_dna_rules_v1",
+                  "confidence": 0.8
+                }
+              ],
+              "status": "supported"
+            }
+          ]
+        },
+        {
+          "id": "00a8f0aa-474d-4774-9746-fc92981fc110",
+          "title": "Брюки прямого кроя из мягкого тенсела",
+          "category": "брюки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": [
+            {
+              "value": "straight",
+              "confidence": 0.8,
+              "rule_id": "assertion.silhouette.straight",
+              "rule_version": "product_dna_rules_v1",
+              "evidence": [
+                {
+                  "source": "sold_item_title",
+                  "field": "title",
+                  "raw_value": "брюки прямого кроя из мягкого тенсела",
+                  "matched_text": "прямого кроя",
+                  "rule_id": "sold_item_title.silhouette.straight",
+                  "rule_version": "product_dna_rules_v1",
+                  "confidence": 0.8
+                }
+              ],
+              "status": "supported"
+            }
+          ]
+        },
+        {
+          "id": "00d6bc40-5538-47a9-8191-c5ab88b9db65",
+          "title": "Брюки прямого облегающего кроя с фигурной кокеткой и барочным принтом",
+          "category": "брюки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [
+            {
+              "value": "slim",
+              "confidence": 0.8,
+              "rule_id": "assertion.fit.slim",
+              "rule_version": "product_dna_rules_v1",
+              "evidence": [
+                {
+                  "source": "sold_item_title",
+                  "field": "title",
+                  "raw_value": "брюки прямого облегающего кроя",
+                  "matched_text": "облегающего",
+                  "rule_id": "sold_item_title.fit.slim",
+                  "rule_version": "product_dna_rules_v1",
+                  "confidence": 0.8
+                }
+              ],
+              "status": "supported"
+            }
+          ],
+          "silhouette": []
+        },
+        {
+          "id": "00e26032-799b-4b25-9805-429438ad5538",
+          "title": "Брюки с посадкой Рена и эластичным поясом на резинке",
+          "category": "брюки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        },
+        {
+          "id": "00f95f29-2fc5-4605-a417-6058071ea936",
+          "title": "Брюки прямого кроя в вертикальную полоску на резинке",
+          "category": "брюки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": [
+            {
+              "value": "straight",
+              "confidence": 0.8,
+              "rule_id": "assertion.silhouette.straight",
+              "rule_version": "product_dna_rules_v1",
+              "evidence": [
+                {
+                  "source": "sold_item_title",
+                  "field": "title",
+                  "raw_value": "брюки прямого кроя в вертикальную полоску на резинке",
+                  "matched_text": "прямого кроя",
+                  "rule_id": "sold_item_title.silhouette.straight",
+                  "rule_version": "product_dna_rules_v1",
+                  "confidence": 0.8
+                }
+              ],
+              "status": "supported"
+            }
+          ]
+        },
+        {
+          "id": "010811b0-cfc0-49c8-ae17-aab45534d398",
+          "title": "Брюки с посадкой Мони и эластичным поясом",
+          "category": "брюки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        },
+        {
+          "id": "012c632d-01bd-4f29-acc3-9435f1bc95ea",
+          "title": "Велюровые брюки прямого кроя",
+          "category": "брюки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": [
+            {
+              "value": "straight",
+              "confidence": 0.8,
+              "rule_id": "assertion.silhouette.straight",
+              "rule_version": "product_dna_rules_v1",
+              "evidence": [
+                {
+                  "source": "sold_item_title",
+                  "field": "title",
+                  "raw_value": "велюровые брюки прямого кроя",
+                  "matched_text": "прямого кроя",
+                  "rule_id": "sold_item_title.silhouette.straight",
+                  "rule_version": "product_dna_rules_v1",
+                  "confidence": 0.8
+                }
+              ],
+              "status": "supported"
+            }
+          ]
+        },
+        {
+          "id": "01345ddc-fa2a-404c-940c-ee8d785aef9b",
+          "title": "Брюки облегающего кроя Хельга с узором &laquo;турецкий огурец&raquo; по всей поверхности",
+          "category": "брюки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [
+            {
+              "value": "slim",
+              "confidence": 0.8,
+              "rule_id": "assertion.fit.slim",
+              "rule_version": "product_dna_rules_v1",
+              "evidence": [
+                {
+                  "source": "sold_item_title",
+                  "field": "title",
+                  "raw_value": "брюки облегающего кроя хельга",
+                  "matched_text": "облегающего",
+                  "rule_id": "sold_item_title.fit.slim",
+                  "rule_version": "product_dna_rules_v1",
+                  "confidence": 0.8
+                }
+              ],
+              "status": "supported"
+            }
+          ],
+          "silhouette": []
+        },
+        {
+          "id": "015b0a9e-fea5-47d3-ad92-e372a945a38c",
+          "title": "Мужские вельветовые брюки прямого кроя",
+          "category": "брюки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": [
+            {
+              "value": "straight",
+              "confidence": 0.8,
+              "rule_id": "assertion.silhouette.straight",
+              "rule_version": "product_dna_rules_v1",
+              "evidence": [
+                {
+                  "source": "sold_item_title",
+                  "field": "title",
+                  "raw_value": "мужские вельветовые брюки прямого кроя",
+                  "matched_text": "прямого кроя",
+                  "rule_id": "sold_item_title.silhouette.straight",
+                  "rule_version": "product_dna_rules_v1",
+                  "confidence": 0.8
+                }
+              ],
+              "status": "supported"
+            }
+          ]
+        },
+        {
+          "id": "00f20ea2-9d42-4b56-8574-626d17e29db6",
+          "title": "Куртка силуэта оверсайз со съемным капюшоном",
+          "category": "верхний_слой",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [
+            {
+              "value": "oversized",
+              "confidence": 0.8,
+              "rule_id": "assertion.fit.oversized",
+              "rule_version": "product_dna_rules_v1",
+              "evidence": [
+                {
+                  "source": "sold_item_title",
+                  "field": "title",
+                  "raw_value": "куртка силуэта оверсайз",
+                  "matched_text": "оверсайз",
+                  "rule_id": "sold_item_title.fit.oversized",
+                  "rule_version": "product_dna_rules_v1",
+                  "confidence": 0.8
+                }
+              ],
+              "status": "supported"
+            }
+          ],
+          "silhouette": []
+        },
+        {
+          "id": "00fccec3-b29f-4512-a323-3b236f76216b",
+          "title": "Двубортный блейзер классического прямого кроя",
+          "category": "верхний_слой",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        },
+        {
+          "id": "013bf2c0-b583-4656-86b0-270739e4eddb",
+          "title": "Блейзер приталенного кроя с бархатистой фактурой",
+          "category": "верхний_слой",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        },
+        {
+          "id": "0151b87a-a3d8-4314-9d9a-aabd3fa40cbb",
+          "title": "Пальто прямого кроя из водоотталкивающего и ветроустойчивого материала",
+          "category": "верхний_слой",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": [
+            {
+              "value": "straight",
+              "confidence": 0.8,
+              "rule_id": "assertion.silhouette.straight",
+              "rule_version": "product_dna_rules_v1",
+              "evidence": [
+                {
+                  "source": "sold_item_title",
+                  "field": "title",
+                  "raw_value": "пальто прямого кроя из водоотталкивающего и ветроустойчивого материала",
+                  "matched_text": "прямого кроя",
+                  "rule_id": "sold_item_title.silhouette.straight",
+                  "rule_version": "product_dna_rules_v1",
+                  "confidence": 0.8
+                }
+              ],
+              "status": "supported"
+            }
+          ]
+        },
+        {
+          "id": "0053c872-2a18-4765-8b7d-c11981bb6f11",
+          "title": "Вязаный пуловер прямого кроя",
+          "category": "джемперы",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        },
+        {
+          "id": "0088071a-447b-479a-b34c-4e2d823d4ea4",
+          "title": "Пуловер прямого кроя с жаккардовым узором",
+          "category": "джемперы",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        }
+      ],
+      "conflict_review": [
+        {
+          "id": "00852697-e158-4861-abf4-a624bde57331",
+          "title": "Брюки из мягкой экокожи",
+          "category": "брюки",
+          "assertions": {
+            "material": [
+              {
+                "value": "faux_leather",
+                "confidence": 0.8,
+                "rule_id": "assertion.material.faux_leather",
+                "rule_version": "product_dna_rules_v1",
+                "evidence": [
+                  {
+                    "source": "sold_item_title",
+                    "field": "title",
+                    "raw_value": "брюки из мягкой экокожи",
+                    "matched_text": "экокожи",
+                    "rule_id": "sold_item_title.material.faux_leather",
+                    "rule_version": "product_dna_rules_v1",
+                    "confidence": 0.8
+                  }
+                ],
+                "status": "conflict"
+              },
+              {
+                "value": "polyester",
+                "confidence": 0.95,
+                "rule_id": "assertion.material.polyester",
+                "rule_version": "product_dna_rules_v1",
+                "evidence": [
+                  {
+                    "source": "raw_attribute",
+                    "field": "feed_raw_json.param_состав",
+                    "raw_value": "60% полиуретан, 40% полиэстер",
+                    "matched_text": "полиэстер",
+                    "rule_id": "raw_attribute.material.polyester",
+                    "rule_version": "product_dna_rules_v1",
+                    "confidence": 0.95
+                  },
+                  {
+                    "source": "raw_attribute",
+                    "field": "raw_params_json.param_состав",
+                    "raw_value": "60% полиуретан, 40% полиэстер",
+                    "matched_text": "полиэстер",
+                    "rule_id": "raw_attribute.material.polyester",
+                    "rule_version": "product_dna_rules_v1",
+                    "confidence": 0.95
+                  },
+                  {
+                    "source": "legacy_model",
+                    "field": "material",
+                    "raw_value": "60% полиуретан, 40% полиэстер",
+                    "matched_text": "полиэстер",
+                    "rule_id": "legacy_model.material.polyester",
+                    "rule_version": "product_dna_rules_v1",
+                    "confidence": 0.35
+                  }
+                ],
+                "status": "conflict"
+              }
+            ]
+          },
+          "blocked_evidence": {}
+        },
+        {
+          "id": "011ca3ae-2f73-469d-bf95-24d61ce75ac6",
+          "title": "Миди-юбка из экокожи высокого качества",
+          "category": "юбки",
+          "assertions": {
+            "material": [
+              {
+                "value": "faux_leather",
+                "confidence": 0.8,
+                "rule_id": "assertion.material.faux_leather",
+                "rule_version": "product_dna_rules_v1",
+                "evidence": [
+                  {
+                    "source": "sold_item_title",
+                    "field": "title",
+                    "raw_value": "миди-юбка из экокожи высокого качества",
+                    "matched_text": "экокожи",
+                    "rule_id": "sold_item_title.material.faux_leather",
+                    "rule_version": "product_dna_rules_v1",
+                    "confidence": 0.8
+                  }
+                ],
+                "status": "conflict"
+              },
+              {
+                "value": "polyester",
+                "confidence": 0.95,
+                "rule_id": "assertion.material.polyester",
+                "rule_version": "product_dna_rules_v1",
+                "evidence": [
+                  {
+                    "source": "raw_attribute",
+                    "field": "feed_raw_json.param_состав",
+                    "raw_value": "100% полиэстер. Покрытие: 100% полиуретан",
+                    "matched_text": "полиэстер",
+                    "rule_id": "raw_attribute.material.polyester",
+                    "rule_version": "product_dna_rules_v1",
+                    "confidence": 0.95
+                  },
+                  {
+                    "source": "raw_attribute",
+                    "field": "raw_params_json.param_состав",
+                    "raw_value": "100% полиэстер. Покрытие: 100% полиуретан",
+                    "matched_text": "полиэстер",
+                    "rule_id": "raw_attribute.material.polyester",
+                    "rule_version": "product_dna_rules_v1",
+                    "confidence": 0.95
+                  },
+                  {
+                    "source": "legacy_model",
+                    "field": "material",
+                    "raw_value": "100% полиэстер. Покрытие: 100% полиуретан",
+                    "matched_text": "полиэстер",
+                    "rule_id": "legacy_model.material.polyester",
+                    "rule_version": "product_dna_rules_v1",
+                    "confidence": 0.35
+                  }
+                ],
+                "status": "conflict"
+              }
+            ]
+          },
+          "blocked_evidence": {}
+        },
+        {
+          "id": "0584d7d4-c906-4119-8d78-fd84cf5040a5",
+          "title": "Юбка миди прямого кроя из экокожи",
+          "category": "юбки",
+          "assertions": {
+            "material": [
+              {
+                "value": "faux_leather",
+                "confidence": 0.8,
+                "rule_id": "assertion.material.faux_leather",
+                "rule_version": "product_dna_rules_v1",
+                "evidence": [
+                  {
+                    "source": "sold_item_title",
+                    "field": "title",
+                    "raw_value": "юбка миди прямого кроя из экокожи",
+                    "matched_text": "экокожи",
+                    "rule_id": "sold_item_title.material.faux_leather",
+                    "rule_version": "product_dna_rules_v1",
+                    "confidence": 0.8
+                  }
+                ],
+                "status": "conflict"
+              },
+              {
+                "value": "polyester",
+                "confidence": 0.95,
+                "rule_id": "assertion.material.polyester",
+                "rule_version": "product_dna_rules_v1",
+                "evidence": [
+                  {
+                    "source": "raw_attribute",
+                    "field": "feed_raw_json.param_состав",
+                    "raw_value": "100% полиэстер",
+                    "matched_text": "полиэстер",
+                    "rule_id": "raw_attribute.material.polyester",
+                    "rule_version": "product_dna_rules_v1",
+                    "confidence": 0.95
+                  },
+                  {
+                    "source": "raw_attribute",
+                    "field": "raw_params_json.param_состав",
+                    "raw_value": "100% полиэстер",
+                    "matched_text": "полиэстер",
+                    "rule_id": "raw_attribute.material.polyester",
+                    "rule_version": "product_dna_rules_v1",
+                    "confidence": 0.95
+                  },
+                  {
+                    "source": "legacy_model",
+                    "field": "material",
+                    "raw_value": "100% полиэстер",
+                    "matched_text": "полиэстер",
+                    "rule_id": "legacy_model.material.polyester",
+                    "rule_version": "product_dna_rules_v1",
+                    "confidence": 0.35
+                  }
+                ],
+                "status": "conflict"
+              }
+            ]
+          },
+          "blocked_evidence": {}
+        }
+      ]
+    },
+    {
+      "source": "serginnetti",
+      "construction_review": [
+        {
+          "id": "0085f531-6c14-4d71-803b-0e0f44a4c2e8",
+          "title": "Брюки прямого силуэта в клетку",
+          "category": "брюки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": [
+            {
+              "value": "straight",
+              "confidence": 0.8,
+              "rule_id": "assertion.silhouette.straight",
+              "rule_version": "product_dna_rules_v1",
+              "evidence": [
+                {
+                  "source": "sold_item_title",
+                  "field": "title",
+                  "raw_value": "брюки прямого силуэта в клетку",
+                  "matched_text": "прямого силуэта",
+                  "rule_id": "sold_item_title.silhouette.straight",
+                  "rule_version": "product_dna_rules_v1",
+                  "confidence": 0.8
+                }
+              ],
+              "status": "supported"
+            }
+          ]
+        },
+        {
+          "id": "008e3b89-e788-4aa2-8422-480385b76478",
+          "title": "Брюки свободного силуэта в желтом цвете",
+          "category": "брюки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        },
+        {
+          "id": "016d40c7-1d96-49a7-b680-7782063fdc1a",
+          "title": "Брюки прямого силуэта в лимонном цвете",
+          "category": "брюки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": [
+            {
+              "value": "straight",
+              "confidence": 0.8,
+              "rule_id": "assertion.silhouette.straight",
+              "rule_version": "product_dna_rules_v1",
+              "evidence": [
+                {
+                  "source": "sold_item_title",
+                  "field": "title",
+                  "raw_value": "брюки прямого силуэта в лимонном цвете",
+                  "matched_text": "прямого силуэта",
+                  "rule_id": "sold_item_title.silhouette.straight",
+                  "rule_version": "product_dna_rules_v1",
+                  "confidence": 0.8
+                }
+              ],
+              "status": "supported"
+            }
+          ]
+        },
+        {
+          "id": "017c53d2-a085-49e0-97dd-ea684483d98b",
+          "title": "Брюки свободного силуэта с принтом",
+          "category": "брюки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        },
+        {
+          "id": "01d82807-8d77-4ed2-ba42-a7c031fecc40",
+          "title": "Брюки под джинсу прямого силуэта",
+          "category": "брюки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        },
+        {
+          "id": "02d0c2e5-67de-480b-a8b6-7cfe87b6e9e7",
+          "title": "Брюки прямого силуэта в оливковом цвете",
+          "category": "брюки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": [
+            {
+              "value": "straight",
+              "confidence": 0.8,
+              "rule_id": "assertion.silhouette.straight",
+              "rule_version": "product_dna_rules_v1",
+              "evidence": [
+                {
+                  "source": "sold_item_title",
+                  "field": "title",
+                  "raw_value": "брюки прямого силуэта в оливковом цвете",
+                  "matched_text": "прямого силуэта",
+                  "rule_id": "sold_item_title.silhouette.straight",
+                  "rule_version": "product_dna_rules_v1",
+                  "confidence": 0.8
+                }
+              ],
+              "status": "supported"
+            }
+          ]
+        },
+        {
+          "id": "02ef2ccb-7b7c-4baa-8d44-3fe149390933",
+          "title": "Прямые брюки светло-лилового цвета",
+          "category": "брюки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        },
+        {
+          "id": "02f15a7b-73a6-44be-92c9-3a42fc63dc32",
+          "title": "Брюки свободного кроя глубокого коричнево-бордового оттенка",
+          "category": "брюки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [
+            {
+              "value": "relaxed",
+              "confidence": 0.8,
+              "rule_id": "assertion.fit.relaxed",
+              "rule_version": "product_dna_rules_v1",
+              "evidence": [
+                {
+                  "source": "sold_item_title",
+                  "field": "title",
+                  "raw_value": "брюки свободного кроя глубокого коричнево-бордового оттенка",
+                  "matched_text": "свободного кроя",
+                  "rule_id": "sold_item_title.fit.relaxed",
+                  "rule_version": "product_dna_rules_v1",
+                  "confidence": 0.8
+                }
+              ],
+              "status": "supported"
+            }
+          ],
+          "silhouette": []
+        },
+        {
+          "id": "03127b90-51bd-43af-90c0-e5f647f0d7fc",
+          "title": "Брюки на резинке прямого силуэта розового цвета",
+          "category": "брюки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": [
+            {
+              "value": "straight",
+              "confidence": 0.8,
+              "rule_id": "assertion.silhouette.straight",
+              "rule_version": "product_dna_rules_v1",
+              "evidence": [
+                {
+                  "source": "sold_item_title",
+                  "field": "title",
+                  "raw_value": "брюки на резинке прямого силуэта розового цвета",
+                  "matched_text": "прямого силуэта",
+                  "rule_id": "sold_item_title.silhouette.straight",
+                  "rule_version": "product_dna_rules_v1",
+                  "confidence": 0.8
+                }
+              ],
+              "status": "supported"
+            }
+          ]
+        },
+        {
+          "id": "03903bdf-0d88-431c-9d89-f521efcc6d36",
+          "title": "Брюки полуприлегающего силуэта песочного цвета",
+          "category": "брюки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        },
+        {
+          "id": "008a48a7-9634-47ad-a610-7a32bacc159f",
+          "title": "Жакет прилегающего силуэта с поясом",
+          "category": "верхний_слой",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        },
+        {
+          "id": "00dd0ce5-e3b8-4c67-bbe8-54f654dba9e4",
+          "title": "Жакет оверсайз силуэта трендового яблочного цвета",
+          "category": "верхний_слой",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [
+            {
+              "value": "oversized",
+              "confidence": 0.8,
+              "rule_id": "assertion.fit.oversized",
+              "rule_version": "product_dna_rules_v1",
+              "evidence": [
+                {
+                  "source": "sold_item_title",
+                  "field": "title",
+                  "raw_value": "жакет оверсайз силуэта трендового яблочного цвета",
+                  "matched_text": "оверсайз",
+                  "rule_id": "sold_item_title.fit.oversized",
+                  "rule_version": "product_dna_rules_v1",
+                  "confidence": 0.8
+                }
+              ],
+              "status": "supported"
+            }
+          ],
+          "silhouette": []
+        },
+        {
+          "id": "01437d46-b8bd-4522-9a17-1fb28d405450",
+          "title": "Жилет свободного силуэта в оливковом цвете",
+          "category": "верхний_слой",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        },
+        {
+          "id": "01e8f680-cab3-4bd5-b40f-c3f3105827df",
+          "title": "Жакет расслабленного силуэта жемчужно-серого цвета",
+          "category": "верхний_слой",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        },
+        {
+          "id": "02490abe-a90e-4f25-88d2-d0f3dc2a26c3",
+          "title": "Рубашка свободного кроя в нежную бежевую клетку",
+          "category": "верхний_слой",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [
+            {
+              "value": "relaxed",
+              "confidence": 0.8,
+              "rule_id": "assertion.fit.relaxed",
+              "rule_version": "product_dna_rules_v1",
+              "evidence": [
+                {
+                  "source": "sold_item_title",
+                  "field": "title",
+                  "raw_value": "рубашка свободного кроя в нежную бежевую клетку",
+                  "matched_text": "свободного кроя",
+                  "rule_id": "sold_item_title.fit.relaxed",
+                  "rule_version": "product_dna_rules_v1",
+                  "confidence": 0.8
+                }
+              ],
+              "status": "supported"
+            }
+          ],
+          "silhouette": []
+        },
+        {
+          "id": "0273905e-b1d0-4aba-a665-1a2498b962ad",
+          "title": "Жилет приталенного силуэта в трендовом оливковом цвете",
+          "category": "верхний_слой",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [
+            {
+              "value": "slim",
+              "confidence": 0.8,
+              "rule_id": "assertion.fit.slim",
+              "rule_version": "product_dna_rules_v1",
+              "evidence": [
+                {
+                  "source": "sold_item_title",
+                  "field": "title",
+                  "raw_value": "жилет приталенного силуэта в трендовом оливковом цвете",
+                  "matched_text": "приталенного",
+                  "rule_id": "sold_item_title.fit.slim",
+                  "rule_version": "product_dna_rules_v1",
+                  "confidence": 0.8
+                }
+              ],
+              "status": "supported"
+            }
+          ],
+          "silhouette": []
+        },
+        {
+          "id": "02d94b73-6ac2-431c-9983-9fe57cd8bc60",
+          "title": "Жилет свободного силуэта в оливковом цвете",
+          "category": "верхний_слой",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        },
+        {
+          "id": "03205207-3657-4022-84b3-0ee9b604c40c",
+          "title": "Жакет оверсайз силуэта голубого цвета в полоску",
+          "category": "верхний_слой",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [
+            {
+              "value": "oversized",
+              "confidence": 0.8,
+              "rule_id": "assertion.fit.oversized",
+              "rule_version": "product_dna_rules_v1",
+              "evidence": [
+                {
+                  "source": "sold_item_title",
+                  "field": "title",
+                  "raw_value": "жакет оверсайз силуэта голубого цвета в полоску",
+                  "matched_text": "оверсайз",
+                  "rule_id": "sold_item_title.fit.oversized",
+                  "rule_version": "product_dna_rules_v1",
+                  "confidence": 0.8
+                }
+              ],
+              "status": "supported"
+            }
+          ],
+          "silhouette": []
+        },
+        {
+          "id": "04155596-3b4b-4f1b-842e-523eff9efa91",
+          "title": "Жакет свободного силуэта в цвете суккулент",
+          "category": "верхний_слой",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        },
+        {
+          "id": "04230216-9dc9-49b9-b47d-05e1c85b0375",
+          "title": "Жакет прямого кроя  с шерстью и шелком",
+          "category": "верхний_слой",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": [
+            {
+              "value": "straight",
+              "confidence": 0.8,
+              "rule_id": "assertion.silhouette.straight",
+              "rule_version": "product_dna_rules_v1",
+              "evidence": [
+                {
+                  "source": "sold_item_title",
+                  "field": "title",
+                  "raw_value": "жакет прямого кроя",
+                  "matched_text": "прямого кроя",
+                  "rule_id": "sold_item_title.silhouette.straight",
+                  "rule_version": "product_dna_rules_v1",
+                  "confidence": 0.8
+                }
+              ],
+              "status": "supported"
+            }
+          ]
+        }
+      ],
+      "conflict_review": [
+        {
+          "id": "00212cb0-0f88-4b4a-9c97-72c6e9b2d55b",
+          "title": "Двубортный жакет в розовую клетку",
+          "category": "верхний_слой",
+          "assertions": {
+            "color": [
+              {
+                "value": "brown",
+                "confidence": 0.95,
+                "rule_id": "assertion.color.brown",
+                "rule_version": "product_dna_rules_v1",
+                "evidence": [
+                  {
+                    "source": "raw_attribute",
+                    "field": "feed_raw_json.param_цвет",
+                    "raw_value": "Коричневый",
+                    "matched_text": "коричневый",
+                    "rule_id": "raw_attribute.color.brown",
+                    "rule_version": "product_dna_rules_v1",
+                    "confidence": 0.95
+                  },
+                  {
+                    "source": "raw_attribute",
+                    "field": "raw_params_json.param_цвет",
+                    "raw_value": "Коричневый",
+                    "matched_text": "коричневый",
+                    "rule_id": "raw_attribute.color.brown",
+                    "rule_version": "product_dna_rules_v1",
+                    "confidence": 0.95
+                  },
+                  {
+                    "source": "legacy_model",
+                    "field": "colors",
+                    "raw_value": "brown",
+                    "matched_text": "brown",
+                    "rule_id": "legacy_model.color.brown",
+                    "rule_version": "product_dna_rules_v1",
+                    "confidence": 0.35
+                  },
+                  {
+                    "source": "legacy_model",
+                    "field": "color_original",
+                    "raw_value": "Коричневый",
+                    "matched_text": "коричневый",
+                    "rule_id": "legacy_model.color.brown",
+                    "rule_version": "product_dna_rules_v1",
+                    "confidence": 0.35
+                  }
+                ],
+                "status": "conflict"
+              },
+              {
+                "value": "pink",
+                "confidence": 0.8,
+                "rule_id": "assertion.color.pink",
+                "rule_version": "product_dna_rules_v1",
+                "evidence": [
+                  {
+                    "source": "sold_item_title",
+                    "field": "title",
+                    "raw_value": "двубортный жакет в розовую клетку",
+                    "matched_text": "розовую",
+                    "rule_id": "sold_item_title.color.pink",
+                    "rule_version": "product_dna_rules_v1",
+                    "confidence": 0.8
+                  }
+                ],
+                "status": "conflict"
+              }
+            ]
+          },
+          "blocked_evidence": {}
+        },
+        {
+          "id": "0f01e850-d0d7-448c-8515-9eaa5ebba819",
+          "title": "Джинсы прямого силуэта в черном цвете",
+          "category": "джинсы",
+          "assertions": {
+            "color": [
+              {
+                "value": "black",
+                "confidence": 0.8,
+                "rule_id": "assertion.color.black",
+                "rule_version": "product_dna_rules_v1",
+                "evidence": [
+                  {
+                    "source": "sold_item_title",
+                    "field": "title",
+                    "raw_value": "джинсы прямого силуэта в черном цвете",
+                    "matched_text": "черном",
+                    "rule_id": "sold_item_title.color.black",
+                    "rule_version": "product_dna_rules_v1",
+                    "confidence": 0.8
+                  }
+                ],
+                "status": "conflict"
+              },
+              {
+                "value": "blue",
+                "confidence": 0.95,
+                "rule_id": "assertion.color.blue",
+                "rule_version": "product_dna_rules_v1",
+                "evidence": [
+                  {
+                    "source": "raw_attribute",
+                    "field": "feed_raw_json.param_цвет",
+                    "raw_value": "Голубой",
+                    "matched_text": "голубой",
+                    "rule_id": "raw_attribute.color.blue",
+                    "rule_version": "product_dna_rules_v1",
+                    "confidence": 0.95
+                  },
+                  {
+                    "source": "raw_attribute",
+                    "field": "raw_params_json.param_цвет",
+                    "raw_value": "Голубой",
+                    "matched_text": "голубой",
+                    "rule_id": "raw_attribute.color.blue",
+                    "rule_version": "product_dna_rules_v1",
+                    "confidence": 0.95
+                  },
+                  {
+                    "source": "legacy_model",
+                    "field": "colors",
+                    "raw_value": "blue",
+                    "matched_text": "blue",
+                    "rule_id": "legacy_model.color.blue",
+                    "rule_version": "product_dna_rules_v1",
+                    "confidence": 0.35
+                  },
+                  {
+                    "source": "legacy_model",
+                    "field": "color_original",
+                    "raw_value": "Голубой",
+                    "matched_text": "голубой",
+                    "rule_id": "legacy_model.color.blue",
+                    "rule_version": "product_dna_rules_v1",
+                    "confidence": 0.35
+                  }
+                ],
+                "status": "conflict"
+              }
+            ]
+          },
+          "blocked_evidence": {}
+        },
+        {
+          "id": "02fc8d8f-5fff-4408-bab8-b8a22133485a",
+          "title": "Топ без рукавов в черном цвете",
+          "category": "футболки",
+          "assertions": {
+            "color": [
+              {
+                "value": "black",
+                "confidence": 0.95,
+                "rule_id": "assertion.color.black",
+                "rule_version": "product_dna_rules_v1",
+                "evidence": [
+                  {
+                    "source": "raw_attribute",
+                    "field": "feed_raw_json.param_цвет",
+                    "raw_value": "Черный",
+                    "matched_text": "черный",
+                    "rule_id": "raw_attribute.color.black",
+                    "rule_version": "product_dna_rules_v1",
+                    "confidence": 0.95
+                  },
+                  {
+                    "source": "raw_attribute",
+                    "field": "raw_params_json.param_цвет",
+                    "raw_value": "Черный",
+                    "matched_text": "черный",
+                    "rule_id": "raw_attribute.color.black",
+                    "rule_version": "product_dna_rules_v1",
+                    "confidence": 0.95
+                  },
+                  {
+                    "source": "legacy_model",
+                    "field": "colors",
+                    "raw_value": "black",
+                    "matched_text": "black",
+                    "rule_id": "legacy_model.color.black",
+                    "rule_version": "product_dna_rules_v1",
+                    "confidence": 0.35
+                  },
+                  {
+                    "source": "legacy_model",
+                    "field": "color_original",
+                    "raw_value": "Черный",
+                    "matched_text": "черный",
+                    "rule_id": "legacy_model.color.black",
+                    "rule_version": "product_dna_rules_v1",
+                    "confidence": 0.35
+                  }
+                ],
+                "status": "conflict"
+              }
+            ]
+          },
+          "blocked_evidence": {
+            "color": [
+              {
+                "source": "sold_item_title",
+                "field": "title",
+                "raw_value": "топ без рукавов в черном цвете",
+                "reasons": [
+                  "negated_dimension"
+                ],
+                "rule_version": "product_dna_rules_v1"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "source": "postmeridiem",
+      "construction_review": [
+        {
+          "id": "0409c52a-2ab3-4f14-81bd-6a96b476d52b",
+          "title": "Платье-бюстье на фигурном корсете из жаккарда",
+          "category": "платья",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        },
+        {
+          "id": "0fa2bdb1-b7f3-456b-95ee-45034c49a1f6",
+          "title": "Платье-миди по фигуре с бантами на плечах",
+          "category": "платья",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        },
+        {
+          "id": "1034c458-dda0-4355-8ae2-436b43ebfa8b",
+          "title": "Платье-миди по фигуре с кружевом и коротким рукавом",
+          "category": "платья",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        },
+        {
+          "id": "0514caef-5f60-4210-834a-2820f51f30ba",
+          "title": "Юбка-миди прямая с кружевом",
+          "category": "юбки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        },
+        {
+          "id": "0aed9fc2-aecf-423e-992c-00faa43ec0cf",
+          "title": "Юбка-макси прямая из бархата",
+          "category": "юбки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        },
+        {
+          "id": "1bbf31bc-b7c6-41c6-ada4-08d9aefab695",
+          "title": "Юбка-макси прямая",
+          "category": "юбки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        },
+        {
+          "id": "1f5942b4-ee80-4153-9c5e-7b0b8b7a1ceb",
+          "title": "Юбка-миди прямая",
+          "category": "юбки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        },
+        {
+          "id": "30e34fc6-c706-4adc-9ac5-7abdacee9b52",
+          "title": "Юбка-миди прямая с кружевом",
+          "category": "юбки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        },
+        {
+          "id": "465aa51f-3775-4400-b6c1-dcd7ecf6c8c9",
+          "title": "Юбка-миди прямая с кружевом",
+          "category": "юбки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        },
+        {
+          "id": "66f1b5e2-55ef-46e7-8028-83ab74d543a3",
+          "title": "Юбка-макси прямая из атласа",
+          "category": "юбки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        },
+        {
+          "id": "7ba46e7d-2340-4f43-bbcf-2714d22a792f",
+          "title": "Юбка-миди прямая",
+          "category": "юбки",
+          "raw_construction": {
+            "feed_raw_json": {},
+            "raw_params_json": {}
+          },
+          "fit": [],
+          "silhouette": []
+        }
+      ],
+      "conflict_review": []
+    }
+  ]
+}

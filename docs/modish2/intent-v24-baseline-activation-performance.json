@@ -1,0 +1,254 @@
+{
+  "scope": "isolated_real_catalogue_controlled_profile",
+  "image_id": "sha256:f7fbd86663730d42c90fc21205d1dc21f32688181b82d5773fae7fc6efeb36c9",
+  "archive_sha256": "8978c0c01c98ec5e6dab97581685d3dd8e466c5d13b5fc659ffe9ec74d1b1392",
+  "fixed_now_utc": "2026-10-12T16:35:04.704655+00:00",
+  "clock_is_fixed_for_read_gates": true,
+  "clock_basis": "current_wall_clock",
+  "historical_replay": false,
+  "catalogue_is_synthetic": false,
+  "profile_and_reactions_are_controlled": true,
+  "profile": {
+    "clothing_size_system": "LETTER",
+    "clothing_size": "L",
+    "shoe_size_system": "EU",
+    "shoe_size": "38",
+    "height_cm": 168,
+    "styles": [
+      "casual",
+      "minimalism"
+    ],
+    "price_segment": "mid"
+  },
+  "reaction_protocol": {
+    "real_style_swipes": 15,
+    "like": 10,
+    "dislike": 5
+  },
+  "stock_timestamps_modified": false,
+  "runs": [
+    {
+      "index": 1,
+      "profiled": false,
+      "activation_completed": true,
+      "test_writes_rolled_back": true,
+      "phases": {
+        "configure": {
+          "seconds": 0.153565,
+          "profiled": false,
+          "sql_execute_seconds": 0.028508,
+          "statements": {
+            "SELECT": 9,
+            "INSERT": 4,
+            "UPDATE": 8
+          }
+        },
+        "cold_deck": {
+          "seconds": 12.034863,
+          "profiled": false,
+          "sql_execute_seconds": 0.277594,
+          "statements": {
+            "SELECT": 21
+          }
+        },
+        "style_swipe_15": {
+          "seconds": 0.346361,
+          "profiled": false,
+          "sql_execute_seconds": 0.161222,
+          "statements": {
+            "SELECT": 150,
+            "INSERT": 60,
+            "UPDATE": 102
+          }
+        },
+        "complete_wow": {
+          "seconds": 19.093013,
+          "profiled": false,
+          "sql_execute_seconds": 1.281811,
+          "statements": {
+            "SELECT": 190,
+            "UPDATE": 2
+          }
+        },
+        "first_feed": {
+          "seconds": 11.667479,
+          "profiled": false,
+          "sql_execute_seconds": 0.20053,
+          "statements": {
+            "SELECT": 15
+          }
+        }
+      },
+      "bootstrap_cards": 20,
+      "bootstrap_ids_sha256": "57739a621bc8b98558909c2aaac52c22d07157d682b4b7df12b255930c05c2d7",
+      "eligible_deck_cards_checked": 20,
+      "eligibility_basis": "exact_confirmed_size_for_sold_garment_role_and_fresh_stock",
+      "style_swipe_rated": 15,
+      "wow_outfits": 0,
+      "wow_items_returned": 0,
+      "eligible_wow_items_checked": 0,
+      "feed_cards": 20,
+      "eligible_feed_cards_checked": 20,
+      "feed_ids_sha256": "110c888d8fe154dc4518d18ebea73e7b5e30a330458210a6002248aaf023d057",
+      "learned_taste_from_real_swipes": true,
+      "catalogue_product_count": 204894
+    },
+    {
+      "index": 2,
+      "profiled": false,
+      "activation_completed": true,
+      "test_writes_rolled_back": true,
+      "phases": {
+        "configure": {
+          "seconds": 0.018017,
+          "profiled": false,
+          "sql_execute_seconds": 0.008487,
+          "statements": {
+            "SELECT": 9,
+            "INSERT": 4,
+            "UPDATE": 8
+          }
+        },
+        "cold_deck": {
+          "seconds": 11.361686,
+          "profiled": false,
+          "sql_execute_seconds": 0.217058,
+          "statements": {
+            "SELECT": 21
+          }
+        },
+        "style_swipe_15": {
+          "seconds": 0.395502,
+          "profiled": false,
+          "sql_execute_seconds": 0.189682,
+          "statements": {
+            "SELECT": 150,
+            "INSERT": 60,
+            "UPDATE": 101
+          }
+        },
+        "complete_wow": {
+          "seconds": 19.548165,
+          "profiled": false,
+          "sql_execute_seconds": 1.259197,
+          "statements": {
+            "SELECT": 190,
+            "UPDATE": 2
+          }
+        },
+        "first_feed": {
+          "seconds": 11.883827,
+          "profiled": false,
+          "sql_execute_seconds": 0.20188,
+          "statements": {
+            "SELECT": 15
+          }
+        }
+      },
+      "bootstrap_cards": 20,
+      "bootstrap_ids_sha256": "57739a621bc8b98558909c2aaac52c22d07157d682b4b7df12b255930c05c2d7",
+      "eligible_deck_cards_checked": 20,
+      "eligibility_basis": "exact_confirmed_size_for_sold_garment_role_and_fresh_stock",
+      "style_swipe_rated": 15,
+      "wow_outfits": 0,
+      "wow_items_returned": 0,
+      "eligible_wow_items_checked": 0,
+      "feed_cards": 20,
+      "eligible_feed_cards_checked": 20,
+      "feed_ids_sha256": "110c888d8fe154dc4518d18ebea73e7b5e30a330458210a6002248aaf023d057",
+      "learned_taste_from_real_swipes": true,
+      "catalogue_product_count": 204894
+    },
+    {
+      "index": 3,
+      "profiled": false,
+      "activation_completed": true,
+      "test_writes_rolled_back": true,
+      "phases": {
+        "configure": {
+          "seconds": 0.022624,
+          "profiled": false,
+          "sql_execute_seconds": 0.010931,
+          "statements": {
+            "SELECT": 9,
+            "INSERT": 4,
+            "UPDATE": 8
+          }
+        },
+        "cold_deck": {
+          "seconds": 11.532511,
+          "profiled": false,
+          "sql_execute_seconds": 0.221246,
+          "statements": {
+            "SELECT": 21
+          }
+        },
+        "style_swipe_15": {
+          "seconds": 0.30598,
+          "profiled": false,
+          "sql_execute_seconds": 0.141409,
+          "statements": {
+            "SELECT": 150,
+            "INSERT": 60,
+            "UPDATE": 100
+          }
+        },
+        "complete_wow": {
+          "seconds": 20.051067,
+          "profiled": false,
+          "sql_execute_seconds": 1.260739,
+          "statements": {
+            "SELECT": 190,
+            "UPDATE": 2
+          }
+        },
+        "first_feed": {
+          "seconds": 11.871157,
+          "profiled": false,
+          "sql_execute_seconds": 0.203636,
+          "statements": {
+            "SELECT": 15
+          }
+        }
+      },
+      "bootstrap_cards": 20,
+      "bootstrap_ids_sha256": "57739a621bc8b98558909c2aaac52c22d07157d682b4b7df12b255930c05c2d7",
+      "eligible_deck_cards_checked": 20,
+      "eligibility_basis": "exact_confirmed_size_for_sold_garment_role_and_fresh_stock",
+      "style_swipe_rated": 15,
+      "wow_outfits": 0,
+      "wow_items_returned": 0,
+      "eligible_wow_items_checked": 0,
+      "feed_cards": 20,
+      "eligible_feed_cards_checked": 20,
+      "feed_ids_sha256": "110c888d8fe154dc4518d18ebea73e7b5e30a330458210a6002248aaf023d057",
+      "learned_taste_from_real_swipes": true,
+      "catalogue_product_count": 204894
+    }
+  ],
+  "profile_run": null,
+  "limitation": "One controlled profile does not establish catalogue coverage, human taste quality or production request latency. CPU quota and SQL/ORM costs apply; SQL timing excludes fetch and object creation.",
+  "clock_modules": [
+    "app.services.activation_service",
+    "app.services.catalog.stock_freshness",
+    "app.services.mie_scoring",
+    "app.services.user_twin_service",
+    "app.services.product_event_service",
+    "app.services.outfit_service",
+    "app.services.outfit_engine_v2",
+    "app.services.candidate_retrieval_service",
+    "app.services.recommendation_engine",
+    "app.services.behavior_profile",
+    "app.api.outfits"
+  ],
+  "test_writes_rolled_back": true,
+  "completed_runs": 3,
+  "medians_seconds": {
+    "configure": 0.022624,
+    "cold_deck": 11.532511,
+    "style_swipe_15": 0.346361,
+    "complete_wow": 19.548165,
+    "first_feed": 11.871157
+  },
+  "measurement_status": "completed_real_activation"
+}

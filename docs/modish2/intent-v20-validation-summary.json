@@ -1,0 +1,41 @@
+{
+  "package": {
+    "archive_sha256": "099dafc5f037b8afb6912bf20ed8380c748438e5949bde3d1bb62b347f035644",
+    "verified_files": 186,
+    "environment": "local_windows_sqlite_not_server_docker",
+    "test_exit_code": 0,
+    "test_summary": "Ran 302 tests in 16.132s",
+    "production_changed": false
+  },
+  "server": {
+    "image_id": "sha256:cfc4376eed5398c2167527779eb0586eb567dad6d7600251abfdaab32ff69fdc",
+    "unit_tests": {
+      "count": 302,
+      "summary": "Ran 302 tests in 41.414s",
+      "expected_count_from_package": 302,
+      "exit_code": 0
+    },
+    "positive_pg_metrics_passed": true,
+    "production_unchanged": true
+  },
+  "flutter": "60 functional tests previously verified; no client source changes this continuation",
+  "product_ready": false,
+  "deployment": "production build13 unchanged",
+  "catalogue_readiness": {
+    "result": "real_catalogue_coverage_failed",
+    "fresh_available_skus": 54005,
+    "release_gate": {
+      "all_profiles_activation_completed": false,
+      "all_profiles_wow_at_least_3": false,
+      "all_profiles_feed_at_least_10": false,
+      "all_profiles_shoes_and_outerwear": false,
+      "all_profiles_have_office_outfit": false,
+      "all_profiles_wedding_no_heel": false,
+      "all_intent_queries_supported": true,
+      "no_invalid_returned": true,
+      "all_test_writes_rolled_back": true
+    },
+    "report": "intent-v20-fresh-retry-20261010-readiness-report.json"
+  },
+  "performance_report": "intent-v20-catalog-report.json"
+}

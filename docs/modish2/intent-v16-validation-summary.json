@@ -1,0 +1,21 @@
+{
+  "archive_sha256": "6726baf5e159a4407628fba0a84cc35d42b2c97294fae1afa355dcd053828d20",
+  "image_id": "sha256:c3a1e0501448a592e303750fb0ba9341cb6e7ba841c4123a434c033d0a2ff55e",
+  "fresh_available_skus": 53484,
+  "known_size_skus": 8639,
+  "unknown_size_or_stock_skus": 44845,
+  "footwear_size_evidence": {
+    "unknown_or_unavailable": 9351
+  },
+  "profiles": 10,
+  "item_queries_with_result": 10,
+  "outfit_queries_with_result": 0,
+  "invalid_returned": 0,
+  "production_changed": false,
+  "product_ready": false,
+  "protocol_limit": "Initial feed counts must be replaced by the supplemental Style Swipe → complete_wow → feed run; synthetic reactions validate coverage, not satisfaction or conversion.",
+  "warm_flow_verified": true,
+  "after_style_swipe_profiles_with_20_cards": 5,
+  "ru_bootstrap_blocked_profiles": 5,
+  "postgresql_metrics_query_passed": true
+}

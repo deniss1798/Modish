@@ -1,3 +1,4 @@
+import '../../core/theme/app_text_styles.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -48,7 +49,11 @@ class VisualAnalysisScreen extends StatelessWidget {
             const Text(
               'Visual Analysis',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 28, color: AppColors.ink, fontFamily: 'Georgia'),
+              style: TextStyle(
+                fontSize: 28,
+                color: AppColors.ink,
+                fontFamily: AppFonts.displayFamily,
+              ),
             ),
             const SizedBox(height: 14),
             SoftCard(
@@ -71,4 +76,3 @@ class VisualAnalysisScreen extends StatelessWidget {
     );
   }
 }
-

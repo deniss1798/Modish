@@ -5,6 +5,7 @@ from typing import Any
 
 from ..catalog_normalize import normalize_interest_category, normalize_style_scenario
 from ..models import FitProfile, Outfit, Recommendation, TasteProfile
+from ..services.fit_size_profile import size_profile_to_api, missing_fit_requirements
 
 
 def as_user_payload(user: Any) -> dict[str, Any]:
@@ -45,6 +46,9 @@ def fit_to_api(fp: FitProfile) -> dict[str, Any]:
     "weight": fp.weight_kg,
     "gender_target": fp.gender_target,
     "clothing_size": fp.clothing_size,
+    "size_profile": size_profile_to_api(fp),
+    "missing_fit_requirements": missing_fit_requirements(fp),
+    "body_measurements": fp.body_measurements_json or {},
     "body_proportions": fp.body_proportions,
     "contrast_level": fp.contrast_level,
     "color_palette": fp.color_palette or [],

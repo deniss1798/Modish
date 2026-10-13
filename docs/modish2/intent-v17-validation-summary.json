@@ -1,0 +1,37 @@
+{
+  "package": "Foundation v17",
+  "archive_sha256": "bff0e63e0b1bb929f463622b0ffeb7182f1934b4cbe6996e3da2dedfbbc75d2b",
+  "verified_files": 184,
+  "local_exact_package_tests": 282,
+  "docker_exact_package_tests": 282,
+  "flutter_tests": 60,
+  "flutter_analyze": "no_issues",
+  "postgresql_metrics_query_passed": true,
+  "migration": "unchanged_20261008_0024_roundtrip_previously_validated_v16",
+  "production_updated": false,
+  "apk_rebuilt": false,
+  "catalogue_ready": false,
+  "latency_comparisons": [
+    {
+      "intent_type": "single_item",
+      "occasion": null,
+      "before_seconds": 1.773008543998003,
+      "after_seconds": 1.6434391848742962,
+      "speedup": 1.078840373477901
+    },
+    {
+      "intent_type": "outfit",
+      "occasion": "office",
+      "before_seconds": 23.30215135961771,
+      "after_seconds": 5.399682642892003,
+      "speedup": 4.315466834017002
+    },
+    {
+      "intent_type": "outfit",
+      "occasion": "wedding",
+      "before_seconds": 22.481785194948316,
+      "after_seconds": 5.347826285287738,
+      "speedup": 4.203910896806307
+    }
+  ]
+}

@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from heapq import nlargest
+from types import SimpleNamespace
 from typing import Any
 
 from sqlalchemy import select
@@ -16,7 +19,7 @@ from .catalog.catalog_quality import product_is_feed_eligible
 from .catalog.rule_filters import product_gender_compatible
 from .feed_filters import product_passes_budget, product_passes_size
 from .recommendation_config import FINAL_SCORE_WEIGHTS, FIT_MIN_THRESHOLD
-from .user_twin_service import product_taste_features
+from .user_twin_service import apply_decay, current_taste_feature, product_taste_features
 
 
 TasteFeatureMap = dict[tuple[str, str], tuple[float, float]]
@@ -43,23 +46,39 @@ def _norm_feature(value: object) -> str:
   return str(value or "").strip().lower()
 
 
-def load_user_taste_feature_map(db: Session, *, user_id: str) -> TasteFeatureMap:
+def load_user_taste_feature_map(db: Session, *, user_id: str, as_of: datetime | None = None) -> TasteFeatureMap:
   rows = db.execute(
     select(UserTasteFeature).where(UserTasteFeature.user_id == user_id)
   ).scalars().all()
   out: TasteFeatureMap = {}
+  checked_at = as_of or datetime.now(timezone.utc)
   for row in rows:
     key = (str(row.feature_type or "").strip(), str(row.feature_value or "").strip().lower())
     if not key[0] or not key[1]:
       continue
-    out[key] = (float(row.preference_score or 0.0), float(row.confidence or 0.0))
+    if not current_taste_feature(*key):
+      continue
+    # Ranking reads must see decay without mutating ORM rows or resetting the
+    # evidence clock. Signals remain the only writes to learned preferences.
+    snapshot = SimpleNamespace(**{name: getattr(row, name) for name in (
+      'preference_score', 'confidence', 'positive_count', 'negative_count',
+      'last_decay_at', 'last_signal_at', 'updated_at', 'created_at')})
+    apply_decay(snapshot, as_of=checked_at)
+    out[key] = (snapshot.preference_score, snapshot.confidence)
+  from .behavior_profile import load_behavior_profile
+  behavior = load_behavior_profile(db, user_id=user_id, as_of=checked_at)
+  taste = db.scalar(select(TasteProfile).where(TasteProfile.user_id == user_id))
+  if taste is not None:
+    taste.behavior_snapshot = behavior
+  for brand, evidence in behavior['brands'].items():
+    out[('brand', brand)] = (evidence['affinity']-evidence['negative_affinity'], evidence['confidence'])
   return out
 
 
 def profile_confidence(taste_features: TasteFeatureMap) -> float:
   if not taste_features:
     return 0.0
-  ranked = sorted((conf for _, conf in taste_features.values()), reverse=True)[:20]
+  ranked = nlargest(20, (conf for _, conf in taste_features.values()))
   if not ranked:
     return 0.0
   return _clamp01(sum(ranked) / len(ranked))
@@ -158,8 +177,10 @@ def compute_taste_score(
   *,
   taste: TasteProfile,
   taste_features: TasteFeatureMap,
+  product_features: dict[str, set[str]] | None = None,
+  confidence: float | None = None,
 ) -> tuple[float, list[str], dict[str, float]]:
-  features = product_taste_features(product)
+  features = product_taste_features(product) if product_features is None else product_features
   type_weights = {
     "item": 1.2,
     "category": 1.0,
@@ -169,6 +190,8 @@ def compute_taste_score(
     "silhouette": 0.5,
     "fit": 0.4,
     "material": 0.35,
+    "pattern": 0.45, "length": 0.4, "sleeve": 0.25,
+    "neckline": 0.3, "rise": 0.3, "texture": 0.3,
     "occasion": 0.35,
     "price_band": 0.25,
   }
@@ -178,7 +201,7 @@ def compute_taste_score(
   strongest_positive = 0.0
   strongest_negative = 0.0
   for feature_type, values in features.items():
-    tw = type_weights.get(feature_type, 0.2)
+    tw = type_weights.get(feature_type, 0.2) / max(1, len(values))
     for value in values:
       possible_weight += tw
       key = (feature_type, str(value).lower())
@@ -215,20 +238,27 @@ def compute_taste_score(
     legacy_weighted += 0.8 * _clamp01(abs(weight) / 12.0) * (1 if weight >= 0 else -1)
     legacy_total += 0.8
   for brand in features.get("brand", set()):
-    weight = _legacy_weight(taste.brand_weights, brand)
+    evidence = getattr(taste, 'behavior_snapshot', {}).get('brands', {}).get(brand)
+    weight = ((evidence['affinity']-evidence['negative_affinity'])*evidence['confidence']*6
+        if evidence else _legacy_weight(taste.brand_weights, brand))
     if weight == 0:
       continue
     legacy_weighted += 0.7 * _clamp01(abs(weight) / 12.0) * (1 if weight >= 0 else -1)
     legacy_total += 0.7
 
-  normalized = (known_weighted / max(known_weight, 1.0)) if known_weight > 0 else 0.0
+  # Preserve a strong known preference even when other dimensions are unknown.
+  # A bounded evidence-breadth factor breaks the old cotton == unknown-fabric
+  # tie when all their other known features have equal preference/confidence.
+  normalized = known_weighted / max(known_weight, 1.0)
+  normalized *= .9 + .1 * min(1.0, known_weight / sum(type_weights.values()))
   legacy_normalized = (legacy_weighted / legacy_total) if legacy_total > 0 else 0.0
-  confidence = profile_confidence(taste_features)
+  confidence = profile_confidence(taste_features) if confidence is None else confidence
   user_twin_share = 1.0 if known_weight > 0 and legacy_total <= 0 else 0.75 if known_weight > 0 else 0.0
   legacy_share = 1.0 - user_twin_share if legacy_total > 0 else 0.0
   combined = normalized * user_twin_share + legacy_normalized * legacy_share
   trust = 0.35 + 0.65 * confidence if known_weight > 0 else 0.35
-  score = _clamp01(0.5 + combined * 0.5 * trust)
+  from .behavior_profile import category_price_adjustment
+  score = _clamp01(0.5 + combined * 0.5 * trust + category_price_adjustment(product, getattr(taste, 'behavior_snapshot', {})))
 
   reasons: list[str] = []
   if strongest_positive > 0.2 or legacy_normalized > 0.2:
@@ -272,6 +302,10 @@ def compute_context_score(
       reasons.append("Подходит под выбранный повод")
   if scenario_norm == "daily" and {"casual", "minimalism", "basic"} & product_styles:
     score += 0.08
+  from .recommendation_context import context_for
+  contextual, context_reasons = context_for(scenario_norm).score(product)
+  score += contextual - .5
+  reasons.extend(context_reasons)
   return _clamp01(score), reasons, {"scenario_match": _clamp01(score)}
 
 

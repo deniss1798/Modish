@@ -1,6 +1,8 @@
 from __future__ import annotations
+from fit_fixtures import confirmed_fit
 
 import unittest
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy import create_engine
@@ -35,9 +37,10 @@ def _product(
     colors=["white"],
     gender_target="womenswear",
     style_tags=["minimalism"],
-    is_available=1,
+    is_available=1, availability_status='in_stock',
     is_active=1,
     is_deleted_from_feed=0,
+    last_seen_in_feed_at=datetime.now(timezone.utc),
   )
 
 
@@ -51,7 +54,7 @@ class RecommendationExclusionTests(unittest.TestCase):
     self.db.add(self.user)
     self.db.flush()
     self.db.add(
-      FitProfile(
+      confirmed_fit(
         id=str(uuid4()),
         user_id=self.user.id,
         height_cm=170,

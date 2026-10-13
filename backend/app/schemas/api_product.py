@@ -3,11 +3,14 @@ from __future__ import annotations
 
 from typing import Any
 from html import unescape
+import hashlib
+import json
 
 from ..models import Product
 from ..catalog_normalize import product_gender_from_model
 from ..services.catalog.affiliate_link_service import resolve_outbound_url
 from ..services.garment_roles import product_role
+from ..services.catalog.stock_freshness import availability_snapshot, stock_observation_problem
 
 # Человекочитаемые названия витрин (source code → подпись в приложении).
 _SHOP_LABEL_BY_SOURCE: dict[str, str] = {
@@ -56,6 +59,10 @@ def shop_label_for_product(p: Product) -> str:
 
 
 def product_to_api(p: Product) -> dict[str, Any]:
+  # Saved items and direct links remain accessible, but an old feed snapshot
+  # cannot keep advertising availability after its observation expires.
+  stock_problem = stock_observation_problem(p)
+  availability = availability_snapshot(p)
   return {
     "id": p.id,
     "external_id": p.external_id,
@@ -71,7 +78,9 @@ def product_to_api(p: Product) -> dict[str, Any]:
     "old_price": p.old_price,
     "discount_percent": _api_discount_percent(p),
     "currency": p.currency,
-    "availability_status": p.availability_status,
+    "availability_status": "unknown" if stock_problem else p.availability_status,
+    "availability_state": availability.state,
+    "availability_confidence": availability.confidence,
     "image_url": p.image_url,
     "product_url": resolve_outbound_url(p),
     "outbound_url": resolve_outbound_url(p),
@@ -92,7 +101,8 @@ def product_to_api(p: Product) -> dict[str, Any]:
     "silhouette": p.silhouette,
     "style_tags": p.style_tags or [],
     "image_quality_score": p.image_quality_score,
-    "is_available": bool(p.is_available),
+    "is_available": availability.available,
+    "availability_reason": availability.reason,
     "last_checked_at": p.last_checked_at.isoformat() if p.last_checked_at else None,
     "is_active": bool(p.is_active),
     "last_seen_in_feed_at": p.last_seen_in_feed_at.isoformat() if p.last_seen_in_feed_at else None,
@@ -106,6 +116,13 @@ def product_to_api(p: Product) -> dict[str, Any]:
     "category_external_id": p.category_external_id,
     "category_name": p.category_name,
     "raw_params_json": p.raw_params_json or {},
+    # Opaque proof version lets the client invalidate explanations when raw
+    # merchant evidence changes without exposing the raw feed to the client.
+    "recommendation_evidence_version": hashlib.sha256(json.dumps({
+      "feed": p.feed_raw_json or {},
+      "params": p.raw_params_json or {},
+      "size_options": p.available_sizes_detailed or [],
+    }, sort_keys=True, ensure_ascii=True, separators=(",", ":")).encode()).hexdigest(),
     "size_original": p.size_original,
     "color_original": p.color_original,
   }

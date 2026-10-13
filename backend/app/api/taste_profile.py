@@ -28,7 +28,8 @@ def taste_profile_me(
   user = user_from_token(credentials, db)
   tp = ensure_taste_profile(db, user.id)
   db.commit()
-  return taste_to_api(tp)
+  from ..services.behavior_profile import load_behavior_profile
+  return {**taste_to_api(tp), 'behavior_profile': load_behavior_profile(db, user_id=user.id)}
 
 
 @router.patch("/taste-profile/me")
@@ -44,4 +45,5 @@ def taste_profile_patch(
   tp.preferred_fit = payload.preferred_fit
   tp.updated_at = datetime.now(timezone.utc)
   db.commit()
-  return taste_to_api(tp)
+  from ..services.behavior_profile import load_behavior_profile
+  return {**taste_to_api(tp), 'behavior_profile': load_behavior_profile(db, user_id=user.id)}

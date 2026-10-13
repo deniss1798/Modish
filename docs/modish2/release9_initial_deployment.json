@@ -1,0 +1,201 @@
+{
+  "started_at": "2026-09-20T20:11:08.571480+00:00",
+  "previous_tag": "modish-backend:release7-20260916",
+  "previous_image": "sha256:0ed3f3b05ebaf071850706d2976423adfa21c6f0b09050b33f87503d2d71d871",
+  "tag": "modish-backend:release9-20260917",
+  "migrations_applied": true,
+  "source_files": 131,
+  "catalog_data_changed": false,
+  "status": "deployed",
+  "image_id": "sha256:367fc511e3a521f576f12be39fec42cc200d49c60550c4a8b6b3f0683241ecdc",
+  "unit_tests": 122,
+  "checks": [
+    {
+      "url": "http://127.0.0.1:8000/health",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:8000/products?limit=2",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:8000/openapi.json",
+      "status": 200
+    },
+    {
+      "url": "https://modish.org.ru/health",
+      "status": 200
+    },
+    {
+      "url": "https://modish.org.ru/products?limit=2",
+      "status": 200
+    },
+    {
+      "url": "https://modish.org.ru/openapi.json",
+      "status": 200
+    }
+  ],
+  "isolated_profiles": [
+    {
+      "profile": 1,
+      "size": "XS",
+      "shoe": "36",
+      "budget": "economy",
+      "styles": [
+        "casual",
+        "minimalism"
+      ],
+      "deck": 19,
+      "wow": 2,
+      "feed": 12,
+      "reranked": 9,
+      "viewed": 10,
+      "seconds": 7.46
+    },
+    {
+      "profile": 2,
+      "size": "S",
+      "shoe": "37",
+      "budget": "mass",
+      "styles": [
+        "casual",
+        "smart_casual"
+      ],
+      "deck": 20,
+      "wow": 3,
+      "feed": 18,
+      "reranked": 10,
+      "viewed": 10,
+      "seconds": 9.52
+    },
+    {
+      "profile": 3,
+      "size": "M",
+      "shoe": "38",
+      "budget": "mass",
+      "styles": [
+        "casual",
+        "minimalism"
+      ],
+      "deck": 20,
+      "wow": 3,
+      "feed": 15,
+      "reranked": 9,
+      "viewed": 10,
+      "seconds": 9.91
+    },
+    {
+      "profile": 4,
+      "size": "L",
+      "shoe": "39",
+      "budget": "mass",
+      "styles": [
+        "casual",
+        "smart_casual"
+      ],
+      "deck": 20,
+      "wow": 3,
+      "feed": 14,
+      "reranked": 9,
+      "viewed": 10,
+      "seconds": 9.59
+    },
+    {
+      "profile": 5,
+      "size": "XL",
+      "shoe": "40",
+      "budget": "mid",
+      "styles": [
+        "smart_casual",
+        "elegant"
+      ],
+      "deck": 20,
+      "wow": 3,
+      "feed": 11,
+      "reranked": 10,
+      "viewed": 10,
+      "seconds": 10.54
+    },
+    {
+      "profile": 6,
+      "size": "42",
+      "shoe": "37",
+      "budget": "mass",
+      "styles": [
+        "casual",
+        "romantic"
+      ],
+      "deck": 20,
+      "wow": 3,
+      "feed": 10,
+      "reranked": 10,
+      "viewed": 10,
+      "seconds": 10.45
+    },
+    {
+      "profile": 7,
+      "size": "44",
+      "shoe": "38",
+      "budget": "mass",
+      "styles": [
+        "minimalism",
+        "smart_casual"
+      ],
+      "deck": 20,
+      "wow": 3,
+      "feed": 14,
+      "reranked": 8,
+      "viewed": 10,
+      "seconds": 11.67
+    },
+    {
+      "profile": 8,
+      "size": "46",
+      "shoe": "39",
+      "budget": "mid",
+      "styles": [
+        "elegant",
+        "romantic"
+      ],
+      "deck": 20,
+      "wow": 3,
+      "feed": 20,
+      "reranked": 10,
+      "viewed": 10,
+      "seconds": 10.93
+    },
+    {
+      "profile": 9,
+      "size": "48",
+      "shoe": "40",
+      "budget": "mid",
+      "styles": [
+        "casual",
+        "minimalism"
+      ],
+      "deck": 20,
+      "wow": 3,
+      "feed": 14,
+      "reranked": 9,
+      "viewed": 10,
+      "seconds": 10.53
+    },
+    {
+      "profile": 10,
+      "size": "S",
+      "shoe": "38",
+      "budget": "mass",
+      "styles": [
+        "romantic",
+        "elegant"
+      ],
+      "deck": 20,
+      "wow": 3,
+      "feed": 20,
+      "reranked": 10,
+      "viewed": 10,
+      "seconds": 9.29
+    }
+  ],
+  "finished_at": "2026-09-20T20:11:50.325794+00:00"
+}

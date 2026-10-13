@@ -1,0 +1,83 @@
+{
+  "checked_at": "2026-10-09T22:56:46.298239+00:00",
+  "scope": "isolated_clone",
+  "archive_sha256": "8978c0c01c98ec5e6dab97581685d3dd8e466c5d13b5fc659ffe9ec74d1b1392",
+  "production_changed": false,
+  "production_unchanged": true,
+  "product_ready": false,
+  "result": "validation_complete_catalogue_readiness_unproven",
+  "test_pg_container_id": "881ea4c21dc23bbbe79889d3779b2500707af32e4705a619790e680688d6786f",
+  "completed_fresh_refresh": {
+    "path": "/opt/modish-releases/20261009-intent-v20/refresh-retry-20261010/refresh-report.json",
+    "sha256": "7f9b8ec2ec072ade23044460f07abf1b2fb428a4cf8ab23a2094d2327dccd41f",
+    "products_after_import": 204894
+  },
+  "migration_sources_unchanged_from_v21": true,
+  "helpers": {
+    "metrics": {
+      "filename": "metrics-smoke.py",
+      "sha256": "e4660f86c5314ca4b0d2d6fb30e578760c68195003f13f40505224631144de37"
+    },
+    "activation": {
+      "filename": "activation-performance.py",
+      "sha256": "8503a07c74d4a7df9a2c602c82a743d970b1f7da979d903269419bb3df0dc425"
+    },
+    "inventory": {
+      "filename": "size-raw-inventory.py",
+      "sha256": "a0c00d2a00f390407016ab5cd8ff2f1d3dc2d19c5db2b337ec7252f37c53ef87"
+    }
+  },
+  "image_id": "sha256:f7fbd86663730d42c90fc21205d1dc21f32688181b82d5773fae7fc6efeb36c9",
+  "unit_tests": {
+    "count": 321,
+    "summary": "Ran 321 tests in 39.732s",
+    "expected_count_from_package": 321,
+    "exit_code": 0
+  },
+  "positive_pg_metrics_passed": true,
+  "positive_pg_metrics_scope": "isolated_postgresql_synthetic_contract_not_real_coverage",
+  "fixed_now_utc": "2026-10-09T22:58:24.125490+00:00",
+  "clock_basis": "current_wall_clock",
+  "historical_replay": false,
+  "fresh_observations_at_current_wall_clock": 64863,
+  "fresh_observations_at_benchmark_clock": 64863,
+  "activation_measurement_status": "completed_real_activation",
+  "deck_and_feed_ids_unchanged": true,
+  "workload_equality": [
+    {
+      "index": 1,
+      "bootstrap_count_equal": true,
+      "deck_hash_equal": true,
+      "activation_completion_equal": true,
+      "wow_outfit_count_equal": true,
+      "feed_count_equal": true,
+      "feed_hash_equal": true,
+      "all_equal": true
+    },
+    {
+      "index": 2,
+      "bootstrap_count_equal": true,
+      "deck_hash_equal": true,
+      "activation_completion_equal": true,
+      "wow_outfit_count_equal": true,
+      "feed_count_equal": true,
+      "feed_hash_equal": true,
+      "all_equal": true
+    },
+    {
+      "index": 3,
+      "bootstrap_count_equal": true,
+      "deck_hash_equal": true,
+      "activation_completion_equal": true,
+      "wow_outfit_count_equal": true,
+      "feed_count_equal": true,
+      "feed_hash_equal": true,
+      "all_equal": true
+    }
+  ],
+  "wow_selection_comparison": "both_images_returned_no_outfits",
+  "timing_comparability": "same_selected_deck_and_feed",
+  "size_raw_inventory_report": "size-raw-inventory.json",
+  "test_revision": "20261008_0024",
+  "migration_roundtrip": "not_repeated_no_migration_change"
+}

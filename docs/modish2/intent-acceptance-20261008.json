@@ -1,0 +1,46 @@
+{
+  "environment": "local_sqlite_isolated_fixtures",
+  "real_catalog_validated": false,
+  "production_changed": false,
+  "scenarios": [
+    {
+      "scenario": "1_exact_size_before_score",
+      "test": "test_shopping_intent.ShoppingIntentTests.test_exact_size_price_color_and_stock_precede_score",
+      "passed": true
+    },
+    {
+      "scenario": "2_hard_budget",
+      "test": "test_shopping_intent.ShoppingIntentTests.test_dress_hard_budget_excludes_12000_before_ranking",
+      "passed": true
+    },
+    {
+      "scenario": "3_no_heels",
+      "test": "test_shopping_intent.ShoppingIntentTests.test_no_heel_requires_explicit_flat_evidence",
+      "passed": true
+    },
+    {
+      "scenario": "4_context_not_taste",
+      "test": "test_personalization_dna_context.PersonalizationDNAContextTests.test_context_changes_order_without_changing_permanent_taste",
+      "passed": true
+    },
+    {
+      "scenario": "5_exposure_aware_brand",
+      "test": "test_behavior_profile.BehaviorProfileTests.test_three_of_four_differs_from_three_of_a_hundred",
+      "passed": true
+    },
+    {
+      "scenario": "6_missing_brand_dna",
+      "test": "test_shopping_intent.ShoppingIntentTests.test_missing_favourite_brand_still_uses_product_dna",
+      "passed": true
+    },
+    {
+      "scenario": "7_too_expensive_session_only",
+      "test": "test_shopping_intent.ShoppingIntentTests.test_task_feedback_is_price_or_session_only_and_never_a_style_dislike",
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "verified_against_package": "foundation-v16",
+  "archive_sha256": "6726baf5e159a4407628fba0a84cc35d42b2c97294fae1afa355dcd053828d20",
+  "verification_basis": "All seven named tests are included in the passing 277-test exact-package run; no production claim"
+}
