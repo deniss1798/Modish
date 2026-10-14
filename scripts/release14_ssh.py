@@ -28,7 +28,7 @@ def digest(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=('prepare', 'status', 'fetch', 'retry_photo', 'resume', 'bounded', 'plan', 'plan_retry', 'activate'))
+    parser.add_argument('operation', choices=('prepare', 'status', 'fetch', 'retry_photo', 'resume', 'bounded', 'plan', 'plan_retry', 'activate', 'proxy_plan', 'proxy_apply', 'verify'))
     parser.add_argument('--archive', default='modish-foundation-v30.tar')
     parser.add_argument('--plan-sha256')
     parser.add_argument('--production-import-approved', action='store_true')
@@ -42,6 +42,12 @@ def main():
         if digest(ROOT / 'docs/modish2/build14-activation-plan.json') != args.plan_sha256 or \
                 digest(ROOT / 'scripts/release14_activation_remote.py') != plan['script_sha256']:
             raise ValueError('reviewed_plan_or_helper_changed')
+    if args.operation == 'proxy_apply':
+        proxy_plan = ROOT / 'docs/modish2/build14-proxy-timeout-plan.json'
+        if not re.fullmatch(r'[0-9a-f]{64}', args.plan_sha256 or '') or digest(proxy_plan) != args.plan_sha256:
+            raise ValueError('exact_reviewed_proxy_plan_required')
+        if json.loads(proxy_plan.read_text())['script_sha256'] != digest(ROOT / 'scripts/release14_proxy_timeout_remote.py'):
+            raise ValueError('proxy_helper_changed')
     listener = socket.socket()
     listener.bind(('127.0.0.1', 0))
     listener.listen(1)
@@ -107,6 +113,53 @@ for name,sha in {**p['hashes'],'source.tar':p['archive_sha']}.items():
 with (r/'prepare-console.log').open('x') as log:
  process=subprocess.Popen(['python3','-u',str(r/'release14_prepare_remote.py'),*p['parameters']],stdin=subprocess.DEVNULL,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
 print(json.dumps({'status':'isolated_preparation_started','pid':process.pid,'production_database_writes':False}))
+""".replace('__PAYLOAD__', repr(payload))
+        elif args.operation == 'verify':
+            helper = ROOT / 'scripts/release14_postdeploy_remote.py'
+            checksum = digest(helper)
+            with client.open_sftp() as sftp:
+                target = REMOTE + '/' + helper.name
+                try:
+                    sftp.lstat(target)
+                except IOError:
+                    pass
+                else:
+                    raise ValueError('immutable_postdeploy_helper_exists')
+                sftp.put(str(helper), target)
+                sftp.chmod(target, 0o600)
+            code = """import hashlib,subprocess
+from pathlib import Path
+r=Path('/opt/modish-releases/20261014-build14')
+helper=r/'release14_postdeploy_remote.py'
+assert hashlib.sha256(helper.read_bytes()).hexdigest()==__HELPER_SHA__
+raise SystemExit(subprocess.call(['python3',str(helper)]))
+""".replace('__HELPER_SHA__', repr(checksum))
+        elif args.operation in ('proxy_plan', 'proxy_apply'):
+            helper = ROOT / 'scripts/release14_proxy_timeout_remote.py'
+            checksum = digest(helper)
+            if args.operation == 'proxy_plan':
+                with client.open_sftp() as sftp:
+                    target = REMOTE + '/' + helper.name
+                    try:
+                        sftp.lstat(target)
+                    except IOError:
+                        pass
+                    else:
+                        raise ValueError('immutable_proxy_helper_exists')
+                    sftp.put(str(helper), target)
+                    sftp.chmod(target, 0o600)
+            payload = json.dumps({'helper_sha': checksum, 'mode': 'plan' if args.operation == 'proxy_plan' else 'apply',
+                                  'plan_sha': args.plan_sha256})
+            code = """import hashlib,json,subprocess
+from pathlib import Path
+r=Path('/opt/modish-releases/20261014-build14')
+p=json.loads(__PAYLOAD__)
+assert r.resolve()==r and not r.is_symlink()
+helper=r/'release14_proxy_timeout_remote.py'
+assert hashlib.sha256(helper.read_bytes()).hexdigest()==p['helper_sha']
+parameters=['python3',str(helper),p['mode']]
+if p['mode']=='apply': parameters+=['--plan-sha256',p['plan_sha']]
+raise SystemExit(subprocess.call(parameters))
 """.replace('__PAYLOAD__', repr(payload))
         elif args.operation == 'activate':
             payload = json.dumps({'plan_sha': args.plan_sha256,
@@ -270,7 +323,7 @@ print(result.read_text())
         else:
             if args.operation == 'fetch':
                 with client.open_sftp() as sftp:
-                    for name in ('prepared-report.json', 'failure-report.json', 'resume-report.json', 'resume-failure-report.json', 'bounded-report.json', 'bounded-failure-report.json', 'activation-plan.json', 'deployment-record.json', 'activation-failure-report.json'):
+                    for name in ('prepared-report.json', 'failure-report.json', 'resume-report.json', 'resume-failure-report.json', 'bounded-report.json', 'bounded-failure-report.json', 'activation-plan.json', 'deployment-record.json', 'activation-failure-report.json', 'proxy-timeout-plan.json', 'proxy-timeout-record.json', 'proxy-timeout-failure.json', 'postdeploy-verification.json'):
                         try:
                             sftp.stat(REMOTE + '/' + name)
                         except IOError:
@@ -292,6 +345,19 @@ labels=backend['Config'].get('Labels') or {}
 result['production_compose']={key:labels.get('com.docker.compose.'+key) for key in ('project','service','project.working_dir','project.config_files')}
 result['production_networks']=sorted(backend['NetworkSettings']['Networks'])
 result['production_image']=backend['Image']
+result['active_activation_workers']=[name for name in subprocess.check_output(['docker','ps','--format','{{.Names}}'],text=True).splitlines() if name.startswith('modish_build14_activation_')]
+if result['active_activation_workers']:
+ metrics=subprocess.check_output(['docker','exec','-e','PGOPTIONS=-c default_transaction_read_only=on -c statement_timeout=5000','modish_postgres','psql','-X','-qAt','-U','modish_user','-d','modish','--set','ON_ERROR_STOP=1','-c',"SELECT json_build_object('active_queries',count(*) FILTER (WHERE state='active'),'lock_waits',count(*) FILTER (WHERE wait_event_type='Lock'),'longest_transaction_seconds',max(extract(epoch FROM now()-xact_start))::integer,'longest_query_seconds',max(extract(epoch FROM now()-query_start))::integer) FROM pg_stat_activity WHERE datname='modish' AND pid<>pg_backend_pid()"],text=True)
+ result['database_activity_summary']=json.loads(metrics)
+ stats=subprocess.check_output(['docker','stats','--no-stream','--format','{{json .}}',*result['active_activation_workers']],text=True)
+ result['activation_worker_resources']=[{key:entry.get(key) for key in ('Name','CPUPerc','MemUsage')} for line in stats.splitlines() if (entry:=json.loads(line))]
+proxy=subprocess.run(['nginx','-T'],capture_output=True,text=True)
+result['proxy_configuration_valid']=proxy.returncode==0
+result['proxy_timeouts']=[]
+for section in re.split(r'# configuration file ',proxy.stdout)[1:]:
+ if re.search(r'server_name\\s+[^;]*\\bmodish\\.org\\.ru\\b',section):
+  filename,_,body=section.partition('\\n')
+  result['proxy_timeouts'].append({'file':filename.rstrip(':'),'resolved':str(Path(filename.rstrip(':')).resolve()),'directives':re.findall(r'^\\s*(proxy_(?:read|send|connect)_timeout\\s+[^;]+;)',body,re.M)})
 if (r/'activation-progress.json').exists():
  progress=json.loads((r/'activation-progress.json').read_text())
  result['activation_progress']={key:progress[key] for key in ('status','phase','updated_at','import_outcome','revision','error_type','guard','failed_phase','api_rollback','checks','outside_sources_unchanged','production_database_and_redis_unchanged') if key in progress}

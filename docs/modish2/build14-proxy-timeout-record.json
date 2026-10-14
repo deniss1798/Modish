@@ -1,0 +1,11 @@
+{
+  "status": "proxy_timeout_updated",
+  "finished_at": "2026-10-14T17:18:52.695394+00:00",
+  "plan_sha256": "8b2895650695c3f4f92f8e124caaab4454f080d2b9483618e2b95d5d363e6d59",
+  "read_timeout_seconds": 240,
+  "nginx_test": "passed",
+  "public_health": 200,
+  "changed_directives": 1,
+  "backup_preserved": true,
+  "catalogue_or_schema_modified": false
+}

@@ -1,0 +1,159 @@
+{
+  "status": "deployed",
+  "phase": "complete",
+  "plan_sha256": "c85ae399d69de47ab3afd91d3cb6d1421bc88407f89f3572de7b60f6d450edef",
+  "candidate_image": "sha256:eeea30209dcaa366fd936b6181ce84d47fc475a342df257893d58bb725dac1ec",
+  "rollback_image": "sha256:112fbcee83e937171121d19a50b5756779ee5b64a38ec7ad5bff99ee1e819c9a",
+  "production_import_approved": true,
+  "import_outcome": "committed",
+  "database_restore_automatic": false,
+  "updated_at": "2026-10-14T17:21:58.452277+00:00",
+  "backup": {
+    "sha256": "331cfb71723019f31c8cc7fdc93d803a997fe36f0712a3fb8ea38dcf9ee983e1",
+    "bytes": 162775689,
+    "consistency": "pg_dump_transaction_snapshot",
+    "location": "activation-private/pre-activation-backup",
+    "restore_automatic": false
+  },
+  "guard_smoke": [
+    {
+      "surface": "local",
+      "health": 200,
+      "openapi": 200,
+      "photo_blocked": true,
+      "unauthenticated_discovery": null
+    },
+    {
+      "surface": "public",
+      "health": 200,
+      "openapi": 200,
+      "photo_blocked": true,
+      "unauthenticated_discovery": null
+    }
+  ],
+  "revision": "20261013_0025",
+  "production_import": {
+    "scope": "build14_four_approved_snapshots_atomic_production_import",
+    "run_id": "43080ae69c664cbeb71a9ed161ccc57d",
+    "image_id": "sha256:eeea30209dcaa366fd936b6181ce84d47fc475a342df257893d58bb725dac1ec",
+    "archive_sha256": "04d9ec34fb32e45823f2b19397e0fd1a0f21d85dd45a487ad0914c7313ad1424",
+    "started_at": "2026-10-14T17:04:25.299845+00:00",
+    "sources": [
+      {
+        "code": "baon",
+        "rows": 8891,
+        "created": 690,
+        "updated": 8091,
+        "quarantined": 110,
+        "missing": 9807,
+        "reasons": {
+          "childrenswear": 63,
+          "unknown_gender": 56,
+          "unrecognized_size": 65,
+          "unsupported_category": 46
+        },
+        "observed_at": "2026-10-12T21:23:01.581921+00:00",
+        "distinct_identified_ids": 8891,
+        "identical_duplicate_rows": 0,
+        "previous_distinct_identified_ids": 0,
+        "snapshot_sha256": "56b4ea0e30e0fc8bbde915dfce7ae30dd0f922bb7a16a7bc3946a0d1782dfa8f",
+        "ordered_row_content_sha256": "17824e9b42d97d75b6e1f93264181b14cb7bd33cd4ccb92fc8062a441c1da8a9"
+      },
+      {
+        "code": "shoppinglive",
+        "rows": 41592,
+        "created": 15124,
+        "updated": 19499,
+        "quarantined": 6969,
+        "missing": 16342,
+        "reasons": {
+          "unsupported_category": 6690,
+          "unrecognized_size": 3934,
+          "childrenswear": 20,
+          "missing_size": 1
+        },
+        "observed_at": "2026-10-12T21:23:11.989083+00:00",
+        "distinct_identified_ids": 41592,
+        "identical_duplicate_rows": 0,
+        "previous_distinct_identified_ids": 0,
+        "snapshot_sha256": "42e59881c5cff6842f6d2d0208c0be0d5084dbc1c357894ed5df96f3b323090d",
+        "ordered_row_content_sha256": "6e45de816188c03c966c935d69a63df9ee0191cae15bce8e761d6b86ea20f353"
+      },
+      {
+        "code": "serginnetti",
+        "rows": 17056,
+        "created": 3605,
+        "updated": 12804,
+        "quarantined": 647,
+        "missing": 1659,
+        "reasons": {
+          "unsupported_category": 642,
+          "unknown_gender": 237,
+          "missing_size": 252,
+          "unrecognized_size": 36
+        },
+        "observed_at": "2026-10-12T21:23:27.246280+00:00",
+        "distinct_identified_ids": 17056,
+        "identical_duplicate_rows": 0,
+        "previous_distinct_identified_ids": 0,
+        "snapshot_sha256": "1af45b682724b95a000ac88fa9d1841a17f9a67f361a5dad446d67690bf1dfee",
+        "ordered_row_content_sha256": "b93c851179fce07c6a202d9fceb9a564d9977f6b17d46479df427ad34825b74a"
+      },
+      {
+        "code": "postmeridiem",
+        "rows": 371,
+        "created": 44,
+        "updated": 217,
+        "quarantined": 110,
+        "missing": 408,
+        "reasons": {
+          "unknown_gender": 106,
+          "unrecognized_size": 10,
+          "unsupported_category": 10,
+          "invalid_image_url": 1
+        },
+        "observed_at": "2026-10-12T21:23:33.731761+00:00",
+        "distinct_identified_ids": 371,
+        "identical_duplicate_rows": 0,
+        "previous_distinct_identified_ids": 0,
+        "snapshot_sha256": "27921393cd62121f80fe32163dde890ba8680d92279ac14d6212bf2b3abf695a",
+        "ordered_row_content_sha256": "5c740d95848c1766abd0a1511ccf234952ef09820cea78606ef2550161413b33"
+      }
+    ],
+    "result": "import_committed",
+    "production_database_connected": true,
+    "stock_observation_basis": "actual_download_request_start_utc",
+    "raw_timestamps_injected": false,
+    "other_sources_modified": false,
+    "single_transaction": true,
+    "committed_sources": [
+      "baon",
+      "shoppinglive",
+      "serginnetti",
+      "postmeridiem"
+    ],
+    "existing_product_ids_preserved": true,
+    "finished_at": "2026-10-14T17:21:45.009563+00:00"
+  },
+  "outside_sources_unchanged": true,
+  "checks": [
+    {
+      "surface": "local",
+      "health": 200,
+      "openapi": 200,
+      "photo_blocked": false,
+      "unauthenticated_discovery": 401
+    },
+    {
+      "surface": "public",
+      "health": 200,
+      "openapi": 200,
+      "photo_blocked": false,
+      "unauthenticated_discovery": 401
+    }
+  ],
+  "image_id": "sha256:eeea30209dcaa366fd936b6181ce84d47fc475a342df257893d58bb725dac1ec",
+  "finished_at": "2026-10-14T17:21:58.452252+00:00",
+  "production_database_and_redis_unchanged": true,
+  "catalogue_full_outfit_readiness": "unproven"
+}

@@ -1,0 +1,16 @@
+{
+  "status": "reviewable_proxy_timeout_plan",
+  "created_at": "2026-10-14T17:15:08.573454+00:00",
+  "target": "/etc/nginx/sites-available/modish",
+  "original_sha256": "841cf2dcac2ab5e771e8758809729ea6df009391b6193a39575d510265071ec7",
+  "candidate_sha256": "baf24d87e4812dc9a0d2aff59d5a5ce32dcd1d8b5f6bc65455aeb2aa551799cb",
+  "script_sha256": "89e689e61d35a7087f4d6d7ec9da93811c72bd92e06945437aa3d83f5477c400",
+  "changed_directives": 1,
+  "read_timeout_before_seconds": 30,
+  "read_timeout_after_seconds": 240,
+  "mode": 420,
+  "uid": 0,
+  "gid": 0,
+  "production_changed": false,
+  "backup": "proxy-private/original.conf"
+}

@@ -30,6 +30,7 @@
     "ui_capture_states": 56,
     "flutter_analyze": "no_issues"
   },
-  "server_activation": "pending_approved_catalogue_import",
-  "build_command": "flutter build apk --release --dart-define=MODISH_API_BASE_URL=https://modish.org.ru"
+  "server_activation": "deployed_build14",
+  "build_command": "flutter build apk --release --dart-define=MODISH_API_BASE_URL=https://modish.org.ru",
+  "server_deployment_record": "build14-deployment-record.json"
 }

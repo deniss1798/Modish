@@ -1,0 +1,59 @@
+{
+  "status": "passed",
+  "finished_at": "2026-10-14T17:32:05.298748+00:00",
+  "api_version": "1.0.0-build14",
+  "image_id": "sha256:eeea30209dcaa366fd936b6181ce84d47fc475a342df257893d58bb725dac1ec",
+  "checks": [
+    {
+      "surface": "local",
+      "health": 200,
+      "openapi": 200,
+      "unauthenticated_catalogue": 401
+    },
+    {
+      "surface": "public",
+      "health": 200,
+      "openapi": 200,
+      "unauthenticated_catalogue": 401
+    }
+  ],
+  "schema": "20261013_0025",
+  "sources": [
+    {
+      "source": "baon",
+      "total_rows": 18677,
+      "fresh_available_rows": 6924,
+      "newest_stock_observation": "2026-10-12T21:23:01.581921+00:00"
+    },
+    {
+      "source": "postmeridiem",
+      "total_rows": 746,
+      "fresh_available_rows": 239,
+      "newest_stock_observation": "2026-10-12T21:23:33.731761+00:00"
+    },
+    {
+      "source": "serginnetti",
+      "total_rows": 18443,
+      "fresh_available_rows": 12457,
+      "newest_stock_observation": "2026-10-12T21:23:27.24628+00:00"
+    },
+    {
+      "source": "shoppinglive",
+      "total_rows": 55271,
+      "fresh_available_rows": 34623,
+      "newest_stock_observation": "2026-10-12T21:23:11.989083+00:00"
+    }
+  ],
+  "source_counts_are_fit_claims": false,
+  "production_database_and_redis_preserved": true,
+  "compose_and_environment_match_plan": true,
+  "backup": {
+    "verified_sha256": "331cfb71723019f31c8cc7fdc93d803a997fe36f0712a3fb8ea38dcf9ee983e1",
+    "actual_location": "activation-private-v2/pre-activation-backup",
+    "bytes": 162775689,
+    "original_report_location_erratum": "activation-private/pre-activation-backup"
+  },
+  "proxy_read_timeout_seconds": 240,
+  "database_writes": false,
+  "external_ai_calls": 0
+}
