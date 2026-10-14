@@ -1,104 +1,186 @@
+// Offline diagnostic previews. Historical release screenshots stay immutable.
 import 'dart:io';
 import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:modish/app.dart';
-import 'package:modish/core/theme/app_colors.dart';
+import 'package:modish/core/theme/app_theme.dart';
 import 'package:modish/features/onboarding/welcome_screen.dart';
 import 'package:modish/features/auth/auth_screen.dart';
-import 'app_regressions_test.dart' show FakeApi, product;
 
-void main() {
-  testWidgets('Release 6 phone layouts fit and render', (tester) async {
+import 'app_regressions_test.dart' show FakeApi, product;
+import 'support/load_app_fonts.dart';
+
+class _NoPreviewHttp extends HttpOverrides {
+  int attempts = 0;
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    attempts++;
+    throw StateError('Preview tests must not create an HTTP client');
+  }
+}
+
+/// Shared by the two old previews. Generic product placeholders are deliberately
+/// not fetched; these captures check layout, not catalogue photography.
+Future<void> renderOfflinePhonePreviews(
+  WidgetTester tester, {
+  required AppController controller,
+  required Map<String, Widget> screens,
+  required String output,
+}) async {
+  final oldHttp = HttpOverrides.current;
+  final noHttp = _NoPreviewHttp();
+  const storageChannel = MethodChannel(
+    'plugins.it_nomads.com/flutter_secure_storage',
+  );
+  final messenger =
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  messenger.setMockMethodCallHandler(storageChannel, (_) async => null);
+  addTearDown(() => messenger.setMockMethodCallHandler(storageChannel, null));
+  var disposed = false;
+  void disposeController() {
+    if (disposed) return;
+    disposed = true;
+    controller.dispose();
+    controller.api.dispose();
+  }
+
+  addTearDown(disposeController);
+  addTearDown(() => HttpOverrides.global = oldHttp);
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+  addTearDown(tester.view.resetPadding);
+  addTearDown(tester.view.resetViewPadding);
+  addTearDown(tester.view.resetViewInsets);
+  HttpOverrides.global = noHttp;
+  try {
+    await tester.runAsync(
+      () => loadAppFonts().timeout(const Duration(seconds: 10)),
+    );
+    // Prime before any screen creates AssetImage streams under the fake clock.
+    // Precache after pumpWidget(screen) can await that clock indefinitely.
+    await tester.pumpWidget(
+      MaterialApp(theme: AppTheme.dark, home: const SizedBox()),
+    );
     await tester.runAsync(() async {
-      await (FontLoader(
-        'MaterialIcons',
-      )..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'))).load();
-      for (final font in {
-        'Arial': 'arial.ttf',
-        'Georgia': 'georgia.ttf',
-      }.entries) {
-        final data = await File('C:/Windows/Fonts/${font.value}').readAsBytes();
-        await (FontLoader(
-          font.key,
-        )..addFont(Future.value(ByteData.sublistView(data)))).load();
+      final context = tester.element(find.byType(SizedBox).last);
+      for (final path in ['assets/images/back.png', 'assets/images/logo.png']) {
+        await precacheImage(
+          AssetImage(path),
+          context,
+        ).timeout(const Duration(seconds: 5));
       }
     });
-    final api = FakeApi()
-      ..rows = [
-        {
-          'product': {
-            ...product('shirt'),
-            'title': 'Рубашка из фактурного хлопка',
-            'brand': 'BAON',
-            'price': 4599,
-            'old_price': 5999,
-            'available_sizes': ['M', 'L', 'XL'],
-          },
-          'reasons': ['Подходит вашему стилю'],
-        },
-      ];
-    final controller = AppController(apiClient: api)
-      ..email = 'style@example.test';
-    await controller.refreshFeedFromUser();
+    await tester.runAsync(
+      () =>
+          controller.refreshFeedFromUser().timeout(const Duration(seconds: 5)),
+    );
     for (final size in [const Size(390, 844), const Size(360, 740)]) {
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
       tester.view.padding = const FakeViewPadding(top: 30, bottom: 24);
-      for (final entry in <String, Widget>{
-        'welcome': WelcomeScreen(controller: controller),
-        'feed': HomeScreen(controller: controller),
-        'auth': AuthScreen(controller: controller),
-      }.entries) {
+      tester.view.viewPadding = const FakeViewPadding(top: 30, bottom: 24);
+      tester.view.viewInsets = const FakeViewPadding();
+      for (final entry in screens.entries) {
         final key = GlobalKey();
         await tester.pumpWidget(
           RepaintBoundary(
             key: key,
             child: MaterialApp(
               debugShowCheckedModeBanner: false,
-              theme: ThemeData(
-                useMaterial3: true,
-                brightness: Brightness.dark,
-                fontFamily: 'Arial',
-                scaffoldBackgroundColor: AppColors.bg,
-                colorScheme: const ColorScheme.dark(
-                  primary: AppColors.accent,
-                  surface: AppColors.card,
-                  onSurface: AppColors.ink,
-                ),
-              ),
+              theme: AppTheme.dark,
               home: entry.value,
             ),
           ),
         );
-        await tester.runAsync(() async {
-          final ctx = tester.element(find.byType(Scaffold).first);
-          await precacheImage(const AssetImage('assets/images/back.png'), ctx);
-          await precacheImage(const AssetImage('assets/images/logo.png'), ctx);
-        });
-        await tester.pumpAndSettle();
-        final layoutError = tester.takeException();
-        expect(layoutError, isNull, reason: '${entry.key} at $size');
+        // Give image decoding a real-clock turn without waiting for continuous
+        // loading/visibility animations to settle indefinitely.
+        await tester.pump(const Duration(milliseconds: 200));
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 80)),
+        );
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(tester.takeException(), isNull, reason: '${entry.key} at $size');
+        expect(
+          noHttp.attempts,
+          0,
+          reason: 'All preview reads must be fake API calls',
+        );
         await tester.runAsync(() async {
           final boundary =
               key.currentContext!.findRenderObject() as RenderRepaintBoundary;
-          final image = await boundary.toImage(pixelRatio: 1);
-          final bytes = (await image.toByteData(
-            format: ui.ImageByteFormat.png,
-          ))!;
-          final file = File(
-            'docs/modish2/build6-preview/${entry.key}-${size.width.toInt()}.png',
-          );
-          await file.parent.create(recursive: true);
-          await file.writeAsBytes(bytes.buffer.asUint8List());
-          image.dispose();
+          final image = await boundary
+              .toImage(pixelRatio: 1)
+              .timeout(const Duration(seconds: 5));
+          try {
+            final bytes = await image
+                .toByteData(format: ui.ImageByteFormat.png)
+                .timeout(const Duration(seconds: 5));
+            expect(bytes, isNotNull);
+            final file = File('$output/${entry.key}-${size.width.toInt()}.png');
+            await file.parent
+                .create(recursive: true)
+                .timeout(const Duration(seconds: 5));
+            await file
+                .writeAsBytes(bytes!.buffer.asUint8List())
+                .timeout(const Duration(seconds: 5));
+          } finally {
+            image.dispose();
+          }
         });
+        await tester.pumpWidget(const SizedBox());
+        await tester.pump();
       }
     }
-    tester.view.resetPhysicalSize();
-    tester.view.resetDevicePixelRatio();
-    tester.view.resetPadding();
-  });
+    expect(noHttp.attempts, 0);
+  } finally {
+    try {
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    } finally {
+      disposeController();
+      HttpOverrides.global = oldHttp;
+    }
+  }
+}
+
+void main() {
+  testWidgets(
+    'Release 6 phone layouts fit and render',
+    (tester) async {
+      final api = FakeApi()
+        ..rows = [
+          {
+            'product': {
+              ...product('shirt'),
+              'title': 'Рубашка из фактурного хлопка',
+              'brand': 'BAON',
+              'price': 4599,
+              'old_price': 5999,
+              'available_sizes': ['M', 'L', 'XL'],
+            },
+            'reasons': ['Подходит вашему стилю'],
+          },
+        ];
+      final controller = AppController(apiClient: api)
+        ..email = 'style@example.test';
+      await renderOfflinePhonePreviews(
+        tester,
+        controller: controller,
+        output: const String.fromEnvironment(
+          'PREVIEW6_OUTPUT',
+          defaultValue: '.tmp/alpha02-preview6',
+        ),
+        screens: {
+          'welcome': WelcomeScreen(controller: controller),
+          'feed': HomeScreen(controller: controller),
+          'auth': AuthScreen(controller: controller),
+        },
+      );
+    },
+    timeout: const Timeout(Duration(minutes: 2)),
+  );
 }

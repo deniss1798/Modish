@@ -499,7 +499,7 @@ class _OnboardingV2ScreenState extends State<OnboardingV2Screen> {
               padding: const EdgeInsets.only(top: 10),
               child: Text(
                 c.styleSwipeRated < c.styleSwipeMinimum
-                    ? 'Ещё ${c.styleSwipeMinimum - c.styleSwipeRated} оценок до ваших образов'
+                    ? 'Ещё ${c.styleSwipeMinimum - c.styleSwipeRated} оценок до завершения настройки вкуса'
                     : 'Найдите хотя бы одну вещь, которая нравится, или измените предпочтения.',
                 textAlign: TextAlign.center,
                 style: AppTextStyles.caption,

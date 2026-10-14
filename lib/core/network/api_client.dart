@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http_parser/http_parser.dart';
 
 import '../config/api_config.dart';
+import 'user_error_message.dart';
 import '../../features/recommendations/models.dart';
 
 /// Базовый URL API.
@@ -1007,66 +1008,6 @@ class ApiClient {
     return Map<String, dynamic>.from(response.data as Map);
   }
 
-  /// Сообщение об ошибке для UI.
-  static String? _detailFromResponse(dynamic data) {
-    if (data is Map && data['detail'] != null) {
-      final detail = data['detail'];
-      if (detail is String && detail.trim().isNotEmpty) {
-        return detail.trim();
-      }
-      if (detail is List && detail.isNotEmpty && detail.first is Map) {
-        final first = detail.first as Map;
-        final msg = '${first['msg'] ?? ''}'.trim();
-        if (msg.isNotEmpty) return msg;
-      }
-    }
-    if (data is String && data.trim().isNotEmpty) {
-      return data.trim();
-    }
-    return null;
-  }
-
-  static String formatError(Object e) {
-    if (e is DioException) {
-      final inner = '${e.error ?? ''}';
-      if (inner.contains('Connection closed') ||
-          inner.contains('Connection reset') ||
-          inner.contains('Software caused connection abort')) {
-        return 'Не удалось подключиться. Проверьте интернет и попробуйте снова.';
-      }
-
-      if (e.type == DioExceptionType.connectionError ||
-          e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.sendTimeout) {
-        return 'Не удалось подключиться. Проверьте интернет и попробуйте снова.';
-      }
-
-      final status = e.response?.statusCode;
-      if (status != null && status >= 500) {
-        return 'Не удалось загрузить данные. Попробуйте снова.';
-      }
-      if (status == 401) return 'Сессия истекла — войдите снова.';
-      if (status == 403) return 'Это действие сейчас недоступно.';
-      final detail = _detailFromResponse(e.response?.data);
-      if (detail != null) {
-        if (detail.contains('недоступен') || detail.contains('недоступ')) {
-          return 'Товар временно недоступен';
-        }
-        return detail;
-      }
-
-      final msg = e.message?.trim();
-      if (msg != null &&
-          msg.isNotEmpty &&
-          !msg.contains('status code of') &&
-          !msg.contains('This exception was thrown')) {
-        return msg;
-      }
-
-      return 'Не удалось выполнить запрос. Проверьте интернет и попробуйте снова.';
-    }
-
-    return e.toString();
-  }
+  /// Safe, actionable UI copy; raw diagnostics belong only in server logs.
+  static String formatError(Object e) => userErrorMessage(e);
 }

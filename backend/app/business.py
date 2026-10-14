@@ -98,19 +98,19 @@ def get_or_refresh_limits(db: Session, user_id: str, *, now: datetime | None = N
 
 def assert_can_analyze(db: Session, user: User) -> UserLimits:
   if not is_plus_available(user):
-    raise PermissionError("Plus недоступен: оформите подписку или дождитесь продления.")
+    raise PermissionError("Анализ фото сейчас недоступен. Продолжите подбор без фото или повторите позже.")
   limits = get_or_refresh_limits(db, user.id)
   if limits.photo_analysis_used >= PLUS_MONTHLY_PHOTO_ANALYSES:
-    raise PermissionError("Лимит фото-анализа на этот месяц исчерпан (Plus: 1 раз в месяц).")
+    raise PermissionError("Лимит анализа фото на этот месяц исчерпан. Продолжите подбор без фото.")
   return limits
 
 
 def assert_can_generate(db: Session, user: User) -> UserLimits:
   if not is_plus_available(user):
-    raise PermissionError("Plus недоступен: генерация карточек только для активного trial или подписки.")
+    raise PermissionError("Новая подборка сейчас недоступна. Продолжите просмотр сохранённых вещей или повторите позже.")
   limits = get_or_refresh_limits(db, user.id)
   if limits.recommendation_batches_used >= PLUS_MONTHLY_GENERATION_BATCHES:
-    raise PermissionError("Лимит генераций на месяц исчерпан (Plus: 5 пачек).")
+    raise PermissionError("Лимит новых подборок на этот месяц исчерпан. Продолжите просмотр сохранённых вещей.")
   return limits
 
 

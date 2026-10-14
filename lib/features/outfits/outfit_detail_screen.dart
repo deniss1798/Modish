@@ -9,7 +9,7 @@ import '../products/models.dart' as prod;
 import '../products/product_detail_screen.dart';
 import 'outfit_presentation.dart';
 
-class OutfitDetailScreen extends StatelessWidget {
+class OutfitDetailScreen extends StatefulWidget {
   const OutfitDetailScreen({
     super.key,
     required this.outfit,
@@ -17,6 +17,28 @@ class OutfitDetailScreen extends StatelessWidget {
   });
   final Map<String, dynamic> outfit;
   final AppController controller;
+
+  @override
+  State<OutfitDetailScreen> createState() => _OutfitDetailScreenState();
+}
+
+class _OutfitDetailScreenState extends State<OutfitDetailScreen> {
+  AppController get controller => widget.controller;
+  Map<String, dynamic> get outfit => widget.outfit;
+  late bool _saved;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _saved = outfit['is_saved'] == true;
+  }
+
+  @override
+  void didUpdateWidget(covariant OutfitDetailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.outfit != outfit) _saved = outfit['is_saved'] == true;
+  }
 
   static const _slots = [
     ('one_piece', 'Платье / комплект'),
@@ -26,13 +48,52 @@ class OutfitDetailScreen extends StatelessWidget {
   ];
 
   Future<void> _toggleSaved(BuildContext context) async {
+    if (_saving || controller.isLoading) return;
     final id = '${outfit['id']}';
-    final saved = outfit['is_saved'] == true;
-    if (saved) {
-      await controller.unsaveOutfit(id);
-      if (context.mounted) Navigator.pop(context);
-    } else {
-      await controller.saveOutfit(id);
+    final saved = _saved;
+    final actionController = controller;
+    final session = actionController.navigationSessionEpoch;
+    final route = ModalRoute.of(context);
+    setState(() => _saving = true);
+    try {
+      final confirmed = saved
+          ? await actionController.unsaveOutfit(id)
+          : await actionController.saveOutfit(id);
+      if (!context.mounted ||
+          !identical(controller, actionController) ||
+          session != actionController.navigationSessionEpoch ||
+          id != '${outfit['id']}') {
+        return;
+      }
+      final error = actionController.error;
+      if (confirmed) setState(() => _saved = !saved);
+      // Opening a product or another route while this request completes must
+      // not let the old detail pop that newer screen or show its old message.
+      if (route?.isCurrent != true) return;
+      if (!confirmed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error ?? 'Не удалось изменить сохранённое. Попробуйте ещё раз.',
+            ),
+          ),
+        );
+        return;
+      }
+      final message = error != null
+          ? '${saved ? 'Образ убран из сохранённого' : 'Образ сохранён'}, но список не удалось обновить. '
+                'Проверьте интернет и откройте «Сохранённое» снова.'
+          : saved
+          ? 'Образ убран из сохранённого'
+          : 'Образ сохранён';
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(SnackBar(content: Text(message)));
+      if (saved) {
+        Navigator.pop(context);
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -57,7 +118,7 @@ class OutfitDetailScreen extends StatelessWidget {
         .replaceAll(RegExp(r'engine:.*'), '')
         .trim();
     final total = (outfit['total_price'] ?? 0).toString();
-    final saved = outfit['is_saved'] == true;
+    final saved = _saved;
     final pmap = outfit['products'] is Map
         ? Map<String, dynamic>.from(outfit['products'] as Map)
         : <String, dynamic>{};
@@ -75,7 +136,7 @@ class OutfitDetailScreen extends StatelessWidget {
           IconButton(
             icon: Icon(saved ? Icons.bookmark : Icons.bookmark_border),
             tooltip: saved ? 'Убрать из сохранённого' : 'Сохранить образ',
-            onPressed: controller.isLoading
+            onPressed: _saving || controller.isLoading
                 ? null
                 : () => _toggleSaved(context),
           ),
@@ -151,7 +212,7 @@ class OutfitDetailScreen extends StatelessWidget {
             const SizedBox(height: 10),
             SecondaryButton(
               label: saved ? 'Убрать из сохранённого' : 'Сохранить образ',
-              onPressed: controller.isLoading
+              onPressed: _saving || controller.isLoading
                   ? null
                   : () => _toggleSaved(context),
             ),
@@ -185,7 +246,9 @@ class OutfitDetailScreen extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            opened > 0 ? 'Открыто ссылок: $opened' : 'Ссылки недоступны',
+            opened > 0
+                ? 'Открыто ссылок: $opened'
+                : 'Не удалось открыть магазины. Попробуйте ещё раз или откройте вещи по отдельности.',
           ),
         ),
       );

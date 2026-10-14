@@ -21,8 +21,8 @@
 | Пункт | Задача | Состояние |
 | --- | --- | --- |
 | 0.1 | Общий exact-size gate и все fallback/legacy пути | Закрыт на локальных критериях; [изменения и приёмка](closed-alpha-01-size-gate.md) |
-| 0.2 | Plus, ложные обещания, понятные ошибки | В работе после приёмки0.1; Plus ещё содержит цену и фиктивное оформление |
-| 0.3 | Секреты/CI, auth rate limit, media/feed SSRF/streaming | Ожидает0.2; login/register exempt, downloader без streaming bound |
+| 0.2 | Plus, ложные обещания, понятные ошибки | Закрыт локально; [изменения и приёмка](closed-alpha-02-ui-errors.md) |
+| 0.3 | Секреты/CI, auth rate limit, media/feed SSRF/streaming | В работе после приёмки0.2; login/register exempt, downloader без streaming bound |
 | 0.4 | Предсказуемая цена и единица хранения | Ожидает0.3; сейчас `Decimal`→целые рубли, копейки требуют явного совместимого контракта |
 | 0.5 | Пол null до явного выбора | Ожидает0.4; ещё есть implicit default/selection paths |
 | 1.1 | Качество первых15–20 карточек | Повторная сквозная приёмка строгой первой сессии |

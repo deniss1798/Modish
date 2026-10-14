@@ -393,7 +393,11 @@ void main() {
         expect(controller.isLoading, isTrue);
         api.onboardingGate!.completeError(Exception('routing unavailable'));
         await auth;
-        expect(controller.error, contains('routing unavailable'));
+        expect(
+          controller.error,
+          'Не удалось выполнить действие. Повторите попытку.',
+        );
+        expect(controller.error, isNot(contains('routing unavailable')));
         expect(controller.token, 'accepted-session');
         expect(controller.stage, AppStage.auth);
         expect(controller.isLoading, isFalse);

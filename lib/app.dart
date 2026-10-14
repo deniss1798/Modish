@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'core/network/api_client.dart';
+import 'core/network/user_error_message.dart';
 import 'core/storage/token_storage.dart';
 import 'core/storage/feed_history.dart';
 import 'core/theme/app_colors.dart';
@@ -407,11 +408,9 @@ class AppController extends ChangeNotifier {
         notifyListeners();
         return;
       }
-    } on TimeoutException catch (e) {
+    } on TimeoutException {
       if (!_isCurrentSession(generation)) return;
-      error =
-          'Медленное соединение (${e.message ?? 'timeout'}). '
-          'Проверьте интернет и войдите снова.';
+      error = 'Медленное соединение. Проверьте интернет и войдите снова.';
     } catch (e) {
       if (!_isCurrentSession(generation)) return;
       if (token == null) {
@@ -809,17 +808,14 @@ class AppController extends ChangeNotifier {
       final healthy = await api.pingHealth();
       if (!_isCurrentSession(generation)) return;
       if (!healthy) {
-        throw Exception(
-          'Сервер не отвечает на ${ApiClient.resolvedBaseUrl()}/health. '
-          'Откройте этот адрес в браузере телефона.',
-        );
+        throw const AppFailure(AppFailureKind.serviceUnavailable);
       }
       final t = await api.register(email, password);
       if (!_isCurrentSession(generation)) return;
       token = t;
       if (!await _persistSession(t, api.refreshToken)) {
         if (!_isCurrentSession(generation)) return;
-        throw Exception('Не удалось сохранить сессию на устройстве');
+        throw const AppFailure(AppFailureKind.sessionStorage);
       }
       if (!_isCurrentSession(generation)) return;
       try {
@@ -836,17 +832,14 @@ class AppController extends ChangeNotifier {
       final healthy = await api.pingHealth();
       if (!_isCurrentSession(generation)) return;
       if (!healthy) {
-        throw Exception(
-          'Сервер не отвечает на ${ApiClient.resolvedBaseUrl()}/health. '
-          'Откройте этот адрес в браузере телефона.',
-        );
+        throw const AppFailure(AppFailureKind.serviceUnavailable);
       }
       final t = await api.login(email, password);
       if (!_isCurrentSession(generation)) return;
       token = t;
       if (!await _persistSession(t, api.refreshToken)) {
         if (!_isCurrentSession(generation)) return;
-        throw Exception('Не удалось сохранить сессию на устройстве');
+        throw const AppFailure(AppFailureKind.sessionStorage);
       }
       if (!_isCurrentSession(generation)) return;
       await _routeAfterAuth();
@@ -1442,24 +1435,53 @@ class AppController extends ChangeNotifier {
     return createdCount;
   }
 
-  Future<void> saveOutfit(String outfitId) async {
+  /// Returns whether the server confirmed the mutation. A subsequent list
+  /// refresh can fail independently; that must not invite a duplicate save.
+  Future<bool> saveOutfit(String outfitId) async {
     final generation = _sessionGeneration;
+    var confirmed = false;
     await _run(() async {
       await api.outfitsSave(outfitId);
       if (!_isCurrentSession(generation)) return;
+      confirmed = true;
+      _applyConfirmedOutfitSave(outfitId, true);
       _invalidateSecondaryReads();
       await _reloadOutfitLists(generation);
     });
+    return confirmed && _isCurrentSession(generation);
   }
 
-  Future<void> unsaveOutfit(String outfitId) async {
+  Future<bool> unsaveOutfit(String outfitId) async {
     final generation = _sessionGeneration;
+    var confirmed = false;
     await _run(() async {
       await api.outfitsUnsave(outfitId);
       if (!_isCurrentSession(generation)) return;
+      confirmed = true;
+      _applyConfirmedOutfitSave(outfitId, false);
       _invalidateSecondaryReads();
       await _reloadOutfitLists(generation);
     });
+    return confirmed && _isCurrentSession(generation);
+  }
+
+  void _applyConfirmedOutfitSave(String outfitId, bool saved) {
+    outfits = [
+      for (final row in outfits)
+        if (row['id'] == outfitId) {...row, 'is_saved': saved} else row,
+    ];
+    savedOutfits = [
+      for (final row in savedOutfits)
+        if (row['id'] != outfitId) row,
+    ];
+    if (saved) {
+      for (final row in outfits) {
+        if (row['id'] == outfitId) {
+          savedOutfits = [...savedOutfits, row];
+          break;
+        }
+      }
+    }
   }
 
   Future<void> unsaveProduct(String productId) async {

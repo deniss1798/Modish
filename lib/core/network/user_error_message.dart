@@ -1,0 +1,156 @@
+import 'dart:async';
+
+import 'package:dio/dio.dart';
+
+enum AppFailureKind { serviceUnavailable, sessionStorage }
+
+/// Local failures have a closed set of reasons, never a displayable raw message.
+final class AppFailure implements Exception {
+  const AppFailure(this.kind);
+  final AppFailureKind kind;
+}
+
+const _retry = 'Не удалось выполнить действие. Повторите попытку.';
+const _connection =
+    'Не удалось подключиться. Проверьте интернет и попробуйте снова.';
+const _service =
+    'Сервис временно недоступен. Попробуйте ещё раз немного позже.';
+
+// Exact known business responses are translated to our own UI copy. Arbitrary
+// server text, validation locations, exception messages and HTML never reach UI.
+const _businessMessages = <String, String>{
+  'Подтвердите размер обуви':
+      'Подтвердите размер обуви в профиле и повторите попытку.',
+  'Подтвердите рост и размеры в профиле. Ваши предпочтения сохранены.':
+      'Подтвердите рост и размеры в профиле. Ваши предпочтения сохранены.',
+  'Сначала настройте стиль и оцените хотя бы 15 вещей в Style Swipe.':
+      'Завершите настройку вкуса: выберите стиль и оцените хотя бы 15 вещей.',
+  'Выберите два или три стиля.': 'Выберите два или три стиля и продолжите.',
+  'Выберите бюджет: economy, mass или mid.':
+      'Выберите бюджет в настройках и продолжите.',
+  'Укажите возрастную группу.': 'Выберите возрастную группу и продолжите.',
+  'Укажите размер одежды и обуви.':
+      'Укажите размер одежды и обуви в профиле и продолжите.',
+  'Первая настройка завершена. Измените параметры в профиле.':
+      'Настройка завершена. Если хотите изменить подборку, откройте параметры в профиле.',
+  'Настройка вкуса уже завершена.':
+      'Настройка вкуса завершена. Вернитесь к подборке.',
+  'Оцените вещь из текущей подборки Style Swipe.':
+      'Обновите подборку и оцените вещь из неё.',
+  'Оцените хотя бы 15 вещей, чтобы мы поняли ваш вкус.':
+      'Оцените хотя бы 15 вещей, затем завершите настройку вкуса.',
+  'Пока ничего не понравилось. Найдите хотя бы одну подходящую вещь или измените предпочтения.':
+      'Пока ничего не понравилось. Найдите хотя бы одну подходящую вещь или измените предпочтения.',
+  'Email уже зарегистрирован':
+      'Этот email уже зарегистрирован. Войдите в аккаунт или укажите другой email.',
+  'Этот запрос уже использован для другого фото.':
+      'Выберите фото заново и повторите анализ.',
+  'Анализ уже выполняется. Подождите и повторите запрос.':
+      'Анализ ещё выполняется. Подождите немного и повторите попытку.',
+  'Результат анализа не подтверждён. Повторный запуск временно недоступен.':
+      'Не удалось получить результат анализа. Продолжите подбор без фото или повторите позже.',
+  'Анализ завершён без результата. Загрузите фото повторно.':
+      'Не удалось получить результат анализа. Выберите фото заново и повторите попытку.',
+  'Результат устарел. Откройте текущий профиль.':
+      'Профиль уже изменился. Откройте текущий профиль.',
+  'Фото пустое.': 'Не удалось прочитать фото. Выберите другое изображение.',
+  'Сначала выполните анализ стиля по фото.':
+      'Сначала выберите фото и запустите анализ стиля.',
+  'Подходящей замены пока нет. Остальные вещи и бюджет сохранены.':
+      'Подходящей замены пока нет. Остальные вещи и бюджет сохранены. Попробуйте изменить пожелания.',
+  'Цена или наличие изменились. Обновите подборку.':
+      'Цена или наличие изменились. Обновите подборку.',
+  'Запрос уже изменён. Обновите результат.':
+      'Запрос уже изменился. Обновите результат и повторите попытку.',
+  'Выберите образ для замены вещи':
+      'Выберите образ, затем укажите вещь для замены.',
+  'Выберите вещь из текущих результатов':
+      'Обновите результаты и выберите вещь из них.',
+  'Выберите образ из текущих результатов':
+      'Обновите результаты и выберите образ из них.',
+  'В этом образе нет выбранной части':
+      'Выберите другую вещь в этом образе для замены.',
+  'Начните новый запрос, чтобы продолжить подбор':
+      'Создайте новый запрос, чтобы продолжить подбор.',
+};
+
+String? _knownBusinessMessage(dynamic data) {
+  if (data is! Map) return null;
+  final detail = data['detail'];
+  if (detail is String) return _businessMessages[detail.trim()];
+  if (detail is List && detail.length == 1 && detail.first is Map) {
+    final msg = (detail.first as Map)['msg'];
+    if (msg is String) return _businessMessages[msg.trim()];
+  }
+  return null;
+}
+
+String userErrorMessage(Object error) {
+  if (error is AppFailure) {
+    return switch (error.kind) {
+      AppFailureKind.serviceUnavailable => _service,
+      AppFailureKind.sessionStorage =>
+        'Не удалось сохранить вход на устройстве. Повторите вход.',
+    };
+  }
+  if (error is TimeoutException) return _connection;
+  if (error is! DioException) return _retry;
+
+  switch (error.type) {
+    case DioExceptionType.connectionError:
+    case DioExceptionType.connectionTimeout:
+    case DioExceptionType.receiveTimeout:
+    case DioExceptionType.sendTimeout:
+      return _connection;
+    case DioExceptionType.badCertificate:
+      return 'Не удалось установить защищённое соединение. Повторите попытку позже.';
+    case DioExceptionType.cancel:
+      return 'Загрузка отменена. Повторите попытку, когда будете готовы.';
+    case DioExceptionType.badResponse:
+    case DioExceptionType.unknown:
+      break;
+  }
+
+  final status = error.response?.statusCode;
+  final path = Uri.tryParse(error.requestOptions.path)?.path ?? '';
+  if (status != null && status >= 500) return _service;
+  if (status == 401) {
+    return path == '/auth/login'
+        ? 'Проверьте email и пароль и попробуйте снова.'
+        : 'Сессия истекла. Войдите снова, чтобы продолжить.';
+  }
+  if (status == 403) {
+    return path == '/onboarding/photo' || path == '/style-profile/analyze'
+        ? 'Анализ фото сейчас недоступен. Продолжите подбор без фото или повторите позже.'
+        : 'Это действие сейчас недоступно. Вернитесь на предыдущий экран или повторите позже.';
+  }
+  if (status == 429) {
+    return 'Слишком много попыток. Подождите немного и попробуйте снова.';
+  }
+  if (status == 413) {
+    return 'Файл слишком большой. Выберите фото размером до 5 МБ.';
+  }
+  if (status == 400 || status == 404 || status == 409 || status == 422) {
+    final known = _knownBusinessMessage(error.response?.data);
+    if (known != null) return known;
+  }
+  if (status == 404 || status == 410) {
+    if (path.startsWith('/shopping-intents')) {
+      return 'Этот запрос завершён или недоступен. Создайте новый запрос.';
+    }
+    return path.startsWith('/products/') || path.startsWith('/catalog/')
+        ? 'Товар недоступен. Вернитесь в каталог и выберите другую вещь.'
+        : 'Подборка недоступна. Вернитесь на предыдущий экран и обновите её.';
+  }
+  // Unknown errors stay safe even when the server sends localized diagnostics.
+  if (status == 400 || status == 409 || status == 422) {
+    if (status == 409) {
+      return 'Данные уже изменились. Обновите экран и повторите попытку.';
+    }
+    if (status == 400) {
+      return 'Не удалось выполнить действие. Обновите экран и повторите попытку.';
+    }
+    return 'Не удалось сохранить данные. Проверьте заполненные поля и повторите попытку.';
+  }
+  return _retry;
+}

@@ -88,10 +88,10 @@ def reserve_photo(credentials, request_id: str, kind: str, content_digest: str) 
       raise HTTPException(status_code=409, detail="Анализ завершён без результата. Загрузите фото повторно.")
 
     if not business.is_plus_available(user, now):
-      raise HTTPException(status_code=403, detail="Plus недоступен: оформите подписку или дождитесь продления.")
+      raise HTTPException(status_code=403, detail="Анализ фото сейчас недоступен. Продолжите подбор без фото или повторите позже.")
     limits = business.get_or_refresh_limits(db, user.id, now=now)
     if limits.photo_analysis_used >= business.PLUS_MONTHLY_PHOTO_ANALYSES:
-      raise HTTPException(status_code=403, detail="Лимит фото-анализа на этот месяц исчерпан (Plus: 1 раз в месяц).")
+      raise HTTPException(status_code=403, detail="Лимит анализа фото на этот месяц исчерпан. Продолжите подбор без фото.")
     generation = 1 + int(db.scalar(select(func.max(PhotoAnalysisReservation.generation)).where(
       PhotoAnalysisReservation.user_id == user.id,
     )) or 0)

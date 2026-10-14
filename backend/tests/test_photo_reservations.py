@@ -90,6 +90,32 @@ class PhotoReservationTests(unittest.IsolatedAsyncioTestCase):
       row = db.scalar(select(UserLimits).where(UserLimits.user_id == self.user_id))
       return row.photo_analysis_used if row else 0
 
+  async def test_photo_denial_has_honest_copy_and_does_not_call_provider(self):
+    for path, target, _ in ENDPOINTS:
+      for exhausted in (False, True):
+        with self.subTest(path=path, exhausted=exhausted):
+          self.make_user()
+          with self.sessions() as db:
+            user = db.get(User, self.user_id)
+            if exhausted:
+              limits = business.get_or_refresh_limits(db, user.id)
+              limits.photo_analysis_used = business.PLUS_MONTHLY_PHOTO_ANALYSES
+            else:
+              user.subscription_status = "inactive"
+              user.trial_ends_at = datetime.now(timezone.utc) - timedelta(days=1)
+            db.commit()
+          before = self.usage()
+          with patch(target) as provider:
+            async with self.client() as client:
+              response = await self.post(client, path)
+          self.assertEqual(response.status_code, 403)
+          detail = response.json()["detail"]
+          self.assertIn("Продолжите подбор без фото", detail)
+          for promise in ("Plus", "подписк", "trial", "пачек"):
+            self.assertNotIn(promise, detail)
+          provider.assert_not_called()
+          self.assertEqual(self.usage(), before)
+
   async def test_both_endpoints_replay_and_check_in_connection_before_provider(self):
     for path, target, result in ENDPOINTS:
       with self.subTest(path=path):

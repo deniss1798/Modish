@@ -8,79 +8,62 @@ class PlusScreen extends StatelessWidget {
   const PlusScreen({super.key, required this.controller});
   final AppController controller;
 
+  Future<void> _returnToApp(BuildContext context) async {
+    if (await Navigator.maybePop(context) || !context.mounted) return;
+    // A direct route has no predecessor. Keep the current session/onboarding
+    // stage rather than sending a cold user straight to the personal feed.
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            AppScope(notifier: controller, child: const RootScreen()),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final b = controller.billing;
-    final status = '${b['status'] ?? 'trial'}';
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
         backgroundColor: AppColors.bg,
         elevation: 0,
-        leading: IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+        title: const Text('Modish'),
+        leading: IconButton(
+          tooltip: 'Вернуться',
+          icon: const Icon(Icons.close),
+          onPressed: () => _returnToApp(context),
+        ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.accent,
-              borderRadius: BorderRadius.circular(20),
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
+            const SoftCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline, color: AppColors.accent, size: 32),
+                  SizedBox(height: 20),
+                  Text(
+                    'Дополнительные возможности недоступны',
+                    style: AppTextStyles.displaySm,
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    'Вернитесь на предыдущий экран, чтобы продолжить пользоваться приложением.',
+                    style: AppTextStyles.bodyMuted,
+                  ),
+                ],
+              ),
             ),
-            child: const Text('Modish Plus', style: TextStyle(color: AppColors.onAccent, fontWeight: FontWeight.w600)),
-          ),
-          const SizedBox(height: 20),
-          Text('AI-стилист\nбез ограничений', style: AppTextStyles.display.copyWith(fontSize: 34)),
-          const SizedBox(height: 12),
-          Text(
-            'Персональные подборки, визуальный анализ и приоритетные рекомендации.',
-            style: AppTextStyles.bodyMuted,
-          ),
-          const SizedBox(height: 28),
-          const SoftCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _FeatureRow('Неограниченные подборки'),
-                _FeatureRow('1 визуальный анализ в месяц'),
-                _FeatureRow('Образы под любой сценарий'),
-                _FeatureRow('Приоритет в ленте'),
-              ],
+            const SizedBox(height: 24),
+            PrimaryButton(
+              label: 'Вернуться',
+              onPressed: () => _returnToApp(context),
             ),
-          ),
-          const SizedBox(height: 24),
-          Text('129 ₽ / месяц', style: AppTextStyles.price.copyWith(fontSize: 28)),
-          Text('Статус: $status', style: AppTextStyles.caption),
-          const SizedBox(height: 24),
-          PrimaryButton(
-            label: 'Оформить Plus',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Оплата в прототипе не подключена')),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FeatureRow extends StatelessWidget {
-  const _FeatureRow(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          const Icon(Icons.check_circle_outline, color: AppColors.accent, size: 22),
-          const SizedBox(width: 10),
-          Expanded(child: Text(text)),
-        ],
+          ],
+        ),
       ),
     );
   }
