@@ -42,7 +42,7 @@ def main():
     test_temp = target / 'test-temp'
     test_temp.mkdir()
     environment.update(TEMP=str(test_temp), TMP=str(test_temp))
-    environment.update(DATABASE_URL='sqlite:///:memory:', JWT_SECRET='local-package-test-not-a-real-secret',
+    environment.update(DATABASE_URL='sqlite:///:memory:', JWT_SECRET='SYNTHETIC_ISOLATED_JWT',
                        APP_ENV='test', PYTHON_DOTENV_DISABLED='1', PYTHONIOENCODING='utf-8')
     with log_path.open('w', encoding='utf-8') as log:
         result = subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'test_*.py', '-v'],

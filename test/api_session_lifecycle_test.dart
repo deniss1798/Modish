@@ -103,8 +103,8 @@ void main() {
       await waitForRequests(adapter, 1);
       api.clearToken();
       adapter.requests.single.complete({
-        'access_token': 'obsolete',
-        'refresh_token': 'obsolete-refresh',
+        'access_token': 'SYNTHETIC_ACCESS_TOKEN_1',
+        'refresh_token': 'SYNTHETIC_REFRESH_TOKEN_2',
       });
       await rejected;
       expect(api.refreshToken, isNull);
@@ -125,14 +125,14 @@ void main() {
       final login = api.login('new@example.test', 'test-password');
       await waitForRequests(adapter, 2);
       adapter.requests[1].complete({
-        'access_token': 'new',
-        'refresh_token': 'new-refresh',
+        'access_token': 'SYNTHETIC_ACCESS_TOKEN_3',
+        'refresh_token': 'SYNTHETIC_REFRESH_TOKEN_4',
       });
       await login;
       adapter.requests[0].complete({'email': 'old@example.test'});
       await rejected;
       expect(unauthorized, 0);
-      expect(api.refreshToken, 'new-refresh');
+      expect(api.refreshToken, 'SYNTHETIC_REFRESH_TOKEN_4');
     },
   );
 
@@ -148,14 +148,14 @@ void main() {
     final login = api.login('new@example.test', 'test-password');
     await waitForRequests(adapter, 2);
     adapter.requests[1].complete({
-      'access_token': 'new',
-      'refresh_token': 'new-refresh',
+      'access_token': 'SYNTHETIC_ACCESS_TOKEN_3',
+      'refresh_token': 'SYNTHETIC_REFRESH_TOKEN_4',
     });
     await login;
     adapter.requests[0].complete({'detail': 'Invalid token'}, 401);
     await rejected;
     expect(adapter.requests.length, 2);
-    expect(api.refreshToken, 'new-refresh');
+    expect(api.refreshToken, 'SYNTHETIC_REFRESH_TOKEN_4');
     expect(unauthorized, 0);
   });
 
@@ -167,8 +167,8 @@ void main() {
     await waitForRequests(adapter, 1);
     api.clearToken();
     adapter.requests.single.complete({
-      'access_token': 'obsolete',
-      'refresh_token': 'obsolete-refresh',
+      'access_token': 'SYNTHETIC_ACCESS_TOKEN_1',
+      'refresh_token': 'SYNTHETIC_REFRESH_TOKEN_2',
     });
     await rejected;
     expect(api.refreshToken, isNull);
@@ -209,27 +209,27 @@ void main() {
     expect(adapter.requests[1].options.path, '/auth/refresh');
     api.clearToken();
     api.applyToken('new-expired');
-    api.refreshToken = 'new-refresh';
+    api.refreshToken = 'SYNTHETIC_REFRESH_TOKEN_4';
     final current = api.usersMe();
     await waitForRequests(adapter, 3);
     adapter.requests[2].complete({'detail': 'expired'}, 401);
     await waitForRequests(adapter, 4);
     expect(adapter.requests[3].options.path, '/auth/refresh');
-    expect(adapter.requests[3].options.data['refresh_token'], 'new-refresh');
+    expect(adapter.requests[3].options.data['refresh_token'], 'SYNTHETIC_REFRESH_TOKEN_4');
     adapter.requests[1].complete({
-      'access_token': 'obsolete',
-      'refresh_token': 'obsolete-refresh',
+      'access_token': 'SYNTHETIC_ACCESS_TOKEN_1',
+      'refresh_token': 'SYNTHETIC_REFRESH_TOKEN_2',
     });
     await oldRejected;
-    expect(api.refreshToken, 'new-refresh');
+    expect(api.refreshToken, 'SYNTHETIC_REFRESH_TOKEN_4');
     adapter.requests[3].complete({
-      'access_token': 'current',
-      'refresh_token': 'current-refresh',
+      'access_token': 'SYNTHETIC_ACCESS_TOKEN_5',
+      'refresh_token': 'SYNTHETIC_REFRESH_TOKEN_6',
     });
     await waitForRequests(adapter, 5);
     adapter.requests[4].complete({'email': 'current@example.test'});
     expect((await current)['email'], 'current@example.test');
-    expect(api.refreshToken, 'current-refresh');
+    expect(api.refreshToken, 'SYNTHETIC_REFRESH_TOKEN_6');
   });
 
   test(

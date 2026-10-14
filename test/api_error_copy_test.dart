@@ -56,12 +56,13 @@ void main() {
           statusCode: 500,
           data: {
             'detail':
-                'SQL private connection postgres://user:password@host/database',
+                'SQL private connection postgres://REPLACE_ME:REPLACE_ME@host/database',
           },
         ),
       );
       expect(ApiClient.formatError(serverError), isNot(contains('SQL')));
       expect(ApiClient.formatError(serverError), isNot(contains('password')));
+      expect(ApiClient.formatError(serverError), isNot(contains('REPLACE_ME')));
       final validation = DioException(
         requestOptions: request,
         response: Response(

@@ -20,7 +20,7 @@ with (R/'build.log').open('w') as log:run('docker','build','-t',TAG,str(R/'backe
 verifier="import sys,json,hashlib;from pathlib import Path;m=json.load(sys.stdin);bad=[n for n,s in m['files'].items() if hashlib.sha256(Path('/app/'+n.removeprefix('backend/')).read_bytes()).hexdigest()!=s];assert not bad,bad"
 run('docker','run','--rm','-i','--network','none','--entrypoint','python',TAG,'-c',verifier,input=json.dumps(manifest).encode())
 with (R/'unit-tests.log').open('w') as log:
- run('docker','run','--rm','--network','none','-e','DATABASE_URL=sqlite:///:memory:','-e','JWT_SECRET=isolated-tests-only',
+ run('docker','run','--rm','--network','none','-e','DATABASE_URL=sqlite:///:memory:','-e','JWT_SECRET=SYNTHETIC_ISOLATED_JWT',
   '-e','PYTHON_DOTENV_DISABLED=1','--entrypoint','python',TAG,'-m','unittest','discover','-s','tests','-v',stdout=log,stderr=subprocess.STDOUT)
 with (R/'smoke.log').open('w') as log:
  run('docker','run','--rm','--name','modish_styling_smoke','--network','modish-styling-test','--env-file',str(R/'test-api.env'),

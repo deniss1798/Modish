@@ -32,7 +32,7 @@ class RegistrationConflictTests(unittest.TestCase):
     # Simulate the precheck losing the race; let the actual unique INSERT fail.
     with patch.object(self.db, "execute", return_value=absent), patch.object(auth, "hash_password", return_value="unused"):
       with self.assertRaises(HTTPException) as failure:
-        auth.register(auth.AuthRequest(email="existing@example.com", password="long-password"), self.db)
+        auth.register(auth.AuthRequest(email="existing@example.com", password="SYNTHETIC_PASSWORD_1"), self.db)
     self.assertEqual(failure.exception.status_code, 409)
     self.assertTrue(self.db.is_active)
     self.assertEqual(self.db.scalar(select(func.count()).select_from(User)), 1)
@@ -40,7 +40,7 @@ class RegistrationConflictTests(unittest.TestCase):
   def test_unrelated_primary_key_integrity_failure_is_not_reported_as_email_conflict(self):
     with patch.object(auth, "uuid4", return_value=self.existing_id), patch.object(auth, "hash_password", return_value="unused"):
       with self.assertRaises(IntegrityError):
-        auth.register(auth.AuthRequest(email="new@example.com", password="long-password"), self.db)
+        auth.register(auth.AuthRequest(email="new@example.com", password="SYNTHETIC_PASSWORD_1"), self.db)
     self.assertTrue(self.db.is_active)
     self.assertEqual(self.db.scalar(select(func.count()).select_from(User)), 1)
 

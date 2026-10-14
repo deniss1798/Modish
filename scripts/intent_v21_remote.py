@@ -325,7 +325,7 @@ print('image_dependencies_verified')
         print('image_sources_verified', flush=True)
         with (R / 'unit-tests.log').open('x') as log:
             run('docker', 'run', '--rm', '--pull=never', '--network', 'none',
-                '-e', 'DATABASE_URL=sqlite:///:memory:', '-e', 'JWT_SECRET=isolated-tests-only',
+                '-e', 'DATABASE_URL=sqlite:///:memory:', '-e', 'JWT_SECRET=SYNTHETIC_ISOLATED_JWT',
                 '-e', 'APP_ENV=test', '-e', 'PYTHON_DOTENV_DISABLED=1',
                 '--entrypoint', 'python', image, '-m', 'unittest', 'discover', '-s', 'tests',
                 '-p', 'test_*.py', '-v', stdout=log, stderr=subprocess.STDOUT)

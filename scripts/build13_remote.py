@@ -57,7 +57,7 @@ def prepare():
     print(json.dumps({'progress': 'image_built'}), flush=True)
     with (R/'unit-tests.log').open('w') as log:
         run('docker', 'run', '--rm', '--network', 'none', '-e', 'DATABASE_URL=sqlite:///:memory:',
-            '-e', 'JWT_SECRET=isolated-tests-only', '-e', 'PYTHON_DOTENV_DISABLED=1',
+            '-e', 'JWT_SECRET=SYNTHETIC_ISOLATED_JWT', '-e', 'PYTHON_DOTENV_DISABLED=1',
             '--entrypoint', 'python', NEW, '-m', 'unittest', 'discover', '-s', 'tests', '-v',
             stdout=log, stderr=subprocess.STDOUT)
     with (R/'smoke.log').open('w') as log:

@@ -85,7 +85,7 @@ def main():
     print('image_sources_verified',flush=True)
     with (R/'unit-tests.log').open('w') as log:
         run('docker','run','--rm','--network','none','-e','DATABASE_URL=sqlite:///:memory:',
-            '-e','JWT_SECRET=isolated-tests-only','-e','PYTHON_DOTENV_DISABLED=1','--entrypoint','python',
+            '-e','JWT_SECRET=SYNTHETIC_ISOLATED_JWT','-e','PYTHON_DOTENV_DISABLED=1','--entrypoint','python',
             image,'-m','unittest','discover','-s','tests','-v',stdout=log,stderr=subprocess.STDOUT)
     print('unit_tests_passed',flush=True)
     assert db_query('SELECT version_num FROM alembic_version') == TARGET_REVISION

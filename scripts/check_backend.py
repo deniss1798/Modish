@@ -13,7 +13,7 @@ def main() -> int:
     # Clearing the environment also isolates optional external integrations.
     environment = {
         "DATABASE_URL": "sqlite:///:memory:",
-        "JWT_SECRET": "isolated-test-secret-never-use-in-production",
+        "JWT_SECRET": "SYNTHETIC_ISOLATED_JWT",
         "APP_ENV": "test",
         "PYTHON_DOTENV_DISABLED": "1",
     }

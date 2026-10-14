@@ -150,8 +150,8 @@ void main() {
         await waitUploads(adapter, 2);
         expect(adapter.requests[1].path, '/auth/refresh');
         adapter.requests[1].complete({
-          'access_token': 'rotated',
-          'refresh_token': 'rotated-refresh',
+          'access_token': 'SYNTHETIC_ACCESS_TOKEN_1',
+          'refresh_token': 'SYNTHETIC_REFRESH_TOKEN_2',
         });
         await waitUploads(adapter, 3);
         final retry = adapter.requests[2];

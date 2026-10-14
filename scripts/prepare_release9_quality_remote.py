@@ -14,7 +14,7 @@ def main():
     assert all(hashlib.sha256((R/n).read_bytes()).hexdigest()==sha for n,sha in manifest['files'].items())
     with (R/'build.log').open('w') as log:run('docker','build','-t',TAG,str(R/'backend'),stdout=log,stderr=subprocess.STDOUT)
     with (R/'unit-tests.log').open('w') as log:
-        run('docker','run','--rm','--network','none','-e','DATABASE_URL=sqlite:///:memory:','-e','JWT_SECRET=isolated-tests-only',
+        run('docker','run','--rm','--network','none','-e','DATABASE_URL=sqlite:///:memory:','-e','JWT_SECRET=SYNTHETIC_ISOLATED_JWT',
             '-e','PYTHON_DOTENV_DISABLED=1','--entrypoint','python',TAG,'-m','unittest','discover','-s','tests','-v',stdout=log,stderr=subprocess.STDOUT)
     with (R/'smoke.log').open('w') as log:
         run('docker','run','--rm','--name','modish_release9_smoke','--network','modish-release9-test','--env-file','/opt/modish-releases/20260917-release9/test-api.env',

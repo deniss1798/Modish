@@ -32,13 +32,13 @@ class SessionAdapter implements HttpClientAdapter {
         );
       }
       status = refreshStatus;
-      body = {'access_token': 'fresh', 'refresh_token': 'refresh-secret'};
+      body = {'access_token': 'SYNTHETIC_ACCESS_TOKEN_1', 'refresh_token': 'SYNTHETIC_REFRESH_TOKEN_2'};
     } else if (options.path == '/auth/login') {
       loginAuthorization = options.headers['Authorization'];
-      body = {'access_token': 'fresh', 'refresh_token': 'refresh-secret'};
+      body = {'access_token': 'SYNTHETIC_ACCESS_TOKEN_1', 'refresh_token': 'SYNTHETIC_REFRESH_TOKEN_2'};
     } else {
       protectedCalls++;
-      status = options.headers['Authorization'] == 'Bearer fresh' ? 200 : 401;
+      status = options.headers['Authorization'] == 'Bearer SYNTHETIC_ACCESS_TOKEN_1' ? 200 : 401;
     }
     return ResponseBody.fromString(
       jsonEncode(body),
@@ -63,7 +63,7 @@ void main() {
       var signedOut = 0;
       final api = ApiClient(dio: dio, onUnauthorized: () => signedOut++)
         ..applyToken('expired')
-        ..refreshToken = 'refresh-secret';
+        ..refreshToken = 'SYNTHETIC_REFRESH_TOKEN_2';
       final requests = List.generate(8, (_) => api.usersMe());
       await adapter.refreshStarted.future;
       expect(adapter.refreshCalls, 1);
@@ -82,10 +82,10 @@ void main() {
     var signedOut = 0;
     final api = ApiClient(dio: dio, onUnauthorized: () => signedOut++)
       ..applyToken('expired')
-      ..refreshToken = 'refresh-secret';
+      ..refreshToken = 'SYNTHETIC_REFRESH_TOKEN_2';
     await expectLater(api.usersMe(), throwsA(isA<DioException>()));
     expect(signedOut, 0);
-    expect(api.refreshToken, 'refresh-secret');
+    expect(api.refreshToken, 'SYNTHETIC_REFRESH_TOKEN_2');
   });
 
   test(
@@ -102,7 +102,7 @@ void main() {
       await expectLater(api.usersMe(), throwsA(isA<DioException>()));
       expect(signedOut, 1);
       api.applyToken('stale');
-      expect(await api.login('test@example.test', 'test-password'), 'fresh');
+      expect(await api.login('test@example.test', 'test-password'), 'SYNTHETIC_ACCESS_TOKEN_1');
       expect(adapter.loginAuthorization, isNull);
     },
   );

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from uuid import uuid4
+from urllib.parse import urljoin, urlsplit
 
 import httpx
 from sqlalchemy import select, update
@@ -20,6 +22,14 @@ from ...models import CatalogRecord, CatalogSyncRun, Product, ProductSource
 from ...log_redaction import redact
 from ...config import get_admitad_export_config
 from .catalog_records import store_record
+from ..public_fetch import (
+  BoundedBody, FetchDenied, MAX_REDIRECTS, REDIRECT_STATUSES, STREAM_CHUNK_BYTES,
+  resolve_public_target_async,
+)
+
+_MAX_FEED_BYTES = 256 * 1024 * 1024
+_FEED_DEADLINE_SECONDS = 120
+_RETRY_STATUSES = frozenset({429, 500, 502, 503, 504})
 
 
 @dataclass
@@ -65,34 +75,84 @@ def _parse_feed_rows(url_hint: str, body: str) -> list:
   return rows
 
 
-def _download_feed_body(url: str, *, max_attempts: int = 4) -> str:
-  """Скачивание фида с ретраями при сетевых сбоях и 429/5xx."""
-  last_err: Exception | None = None
-  timeout = httpx.Timeout(120.0, connect=30.0)
-  for attempt in range(max_attempts):
-    try:
-      with httpx.Client(timeout=timeout, follow_redirects=True) as client:
-        r = client.get(url)
-        if r.status_code in (429, 500, 502, 503, 504):
-          wait = min(1.5 * (2**attempt), 45.0)
-          ra = r.headers.get("Retry-After")
-          if ra:
-            try:
-              wait = min(float(ra), 60.0)
-            except ValueError:
-              pass
-          time.sleep(wait)
-          last_err = RuntimeError(f"HTTP {r.status_code} from feed")
+async def _download_feed_once(url: str, deadline: float) -> str:
+  target = url
+  for hop in range(MAX_REDIRECTS + 1):
+    public = await resolve_public_target_async(target)
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+      raise FetchDenied('download_deadline')
+    timeout = httpx.Timeout(min(120.0, remaining), connect=min(30.0, remaining))
+    # Each origin gets a fresh TLS connection and no cookies/proxy from another
+    # hop. The literal address cannot be rebound after admission.
+    async with httpx.AsyncClient(timeout=timeout, follow_redirects=False, trust_env=False) as client:
+      async with client.stream('GET', public.connect_url, headers={
+        'Host': public.host_header, 'Accept-Encoding': 'identity',
+      }, extensions=public.extensions) as response:
+        if response.status_code in REDIRECT_STATUSES:
+          location = response.headers.get('location')
+          if not location or hop == MAX_REDIRECTS:
+            raise FetchDenied('invalid_download_redirect')
+          target = urljoin(public.url, location)
+          if urlsplit(public.url).scheme == 'https' and urlsplit(target).scheme != 'https':
+            raise FetchDenied('download_redirect_downgrade')
           continue
-        r.raise_for_status()
-        return r.text
-    except (httpx.ConnectError, httpx.ReadTimeout, httpx.ConnectTimeout, httpx.WriteTimeout) as exc:
-      last_err = exc
-      time.sleep(min(1.5 * (2**attempt), 25.0))
-  msg = f"feed download failed after {max_attempts} attempts"
-  if last_err:
-    raise RuntimeError(f"{msg}: {redact(str(last_err))}") from None
-  raise RuntimeError(msg)
+        response.raise_for_status()
+        body = BoundedBody(response.headers, _MAX_FEED_BYTES)
+        async for chunk in response.aiter_raw(chunk_size=STREAM_CHUNK_BYTES):
+          if time.monotonic() >= deadline:
+            raise FetchDenied('download_deadline')
+          body.add(chunk)
+        raw = body.finish()
+        # Keep the existing HTTP charset contract; UTF-8 is the default.
+        return raw.decode(response.encoding or 'utf-8', errors='replace')
+  raise FetchDenied('invalid_download_redirect')
+
+
+async def _download_feed_with_retries(url: str, *, max_attempts: int) -> str:
+  if not 1 <= max_attempts <= 4:
+    raise ValueError('invalid_feed_attempt_count')
+  deadline = time.monotonic() + _FEED_DEADLINE_SECONDS
+  for attempt in range(max_attempts):
+    wait = min(1.5 * (2 ** attempt), 25.0)
+    try:
+      return await _download_feed_once(url, deadline)
+    except httpx.HTTPStatusError as exc:
+      if exc.response.status_code not in _RETRY_STATUSES:
+        raise
+      retry_after = exc.response.headers.get('Retry-After')
+      try:
+        wait = max(0.0, min(float(retry_after), 60.0)) if retry_after else wait
+      except ValueError:
+        pass
+    except (httpx.ConnectError, httpx.ReadTimeout, httpx.ConnectTimeout, httpx.WriteTimeout):
+      pass
+    remaining = deadline - time.monotonic()
+    if attempt + 1 == max_attempts or remaining <= 0:
+      break
+    await asyncio.sleep(min(wait, remaining))
+  # Do not echo a provider URL: its query may contain partner credentials.
+  raise RuntimeError('feed_download_unavailable') from None
+
+
+async def _download_feed_body_async(url: str, *, max_attempts: int = 4) -> str:
+  """One deadline includes DNS, headers, tiny chunks, redirects and retry waits."""
+  try:
+    async with asyncio.timeout(_FEED_DEADLINE_SECONDS):
+      return await _download_feed_with_retries(url, max_attempts=max_attempts)
+  except TimeoutError:
+    raise FetchDenied('download_deadline') from None
+
+
+def _download_feed_body(url: str, *, max_attempts: int = 4) -> str:
+  """Compatible synchronous worker entry; never block the API's event loop."""
+  try:
+    asyncio.get_running_loop()
+  except RuntimeError:
+    pass
+  else:
+    raise RuntimeError('feed_download_requires_sync_worker')
+  return asyncio.run(_download_feed_body_async(url, max_attempts=max_attempts))
 
 
 def _ingest_feed_rows(

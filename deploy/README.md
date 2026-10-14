@@ -35,9 +35,9 @@ curl http://194.87.118.236/health
 
 ```env
 POSTGRES_PASSWORD=придумайте_длинный_пароль
-DATABASE_URL=postgresql+psycopg://modish:придумайте_длинный_пароль@db:5432/modish
-JWT_SECRET=длинная-случайная-строка
-ADMIN_CATALOG_TOKEN=другая-случайная-строка
+DATABASE_URL=postgresql+psycopg://modish:REPLACE_ME@db:5432/modish
+JWT_SECRET=REPLACE_ME
+ADMIN_CATALOG_TOKEN=REPLACE_ME
 ```
 
 Важно: в `DATABASE_URL` хост **`db`**, не `localhost`. Пароль в `POSTGRES_PASSWORD` и в URL — **один и тот же**.
@@ -47,7 +47,7 @@ ADMIN_CATALOG_TOKEN=другая-случайная-строка
 Проверка после `docker compose up`:
 
 ```bash
-docker compose -f deploy/docker-compose.prod.yml ps
+docker compose --env-file backend/.env -f deploy/docker-compose.prod.yml ps
 curl http://127.0.0.1:8000/health
 ```
 
@@ -92,7 +92,7 @@ curl -X POST http://127.0.0.1/admin/catalog/alpha-bootstrap \
 2. На сервере: `sudo apt install nginx certbot python3-certbot-nginx`
 3. Скопировать `deploy/nginx/modish-api.conf`, заменить `YOUR_DOMAIN`.
 4. `sudo certbot --nginx -d api.YOUR_DOMAIN.com`
-5. Backend: `docker compose -f deploy/docker-compose.prod.yml up -d --build`
+5. Backend: `docker compose --env-file backend/.env -f deploy/docker-compose.prod.yml up -d --build`
 
 ## `.env` на сервере
 
@@ -100,7 +100,7 @@ curl -X POST http://127.0.0.1/admin/catalog/alpha-bootstrap \
 
 ```env
 DATABASE_URL=postgresql://modish:YOUR_PASSWORD@db:5432/modish
-JWT_SECRET=длинная-случайная-строка
+JWT_SECRET=REPLACE_ME
 POSTGRES_PASSWORD=YOUR_PASSWORD
 ```
 
@@ -138,7 +138,7 @@ flutter build apk --release \
 ```bash
 cd /opt/Modish   # или /opt/modish — как у вас на VPS
 git pull
-docker compose -f deploy/docker-compose.prod.yml up -d --build
+docker compose --env-file backend/.env -f deploy/docker-compose.prod.yml up -d --build
 ```
 
 ## Типичные ошибки деплоя
@@ -154,7 +154,7 @@ docker compose -f deploy/docker-compose.prod.yml up -d --build
 После успешного деплоя:
 
 ```bash
-docker compose -f deploy/docker-compose.prod.yml ps
+docker compose --env-file backend/.env -f deploy/docker-compose.prod.yml ps
 # deploy-api-1  Up
 # deploy-db-1   Up (healthy)
 
@@ -175,6 +175,8 @@ curl http://127.0.0.1:8000/health
 ## Если «сервер недоступен» в приложении
 
 1. `curl http://194.87.118.236/health` с ПК — должен ответить JSON.
-2. На VPS: `docker compose -f deploy/docker-compose.prod.yml ps` и `docker compose logs api --tail 50`.
+2. На VPS: `docker compose --env-file backend/.env -f deploy/docker-compose.prod.yml ps` и `docker compose logs api --tail 50`.
 3. Убедитесь, что порт 80/443 открыт в firewall и nginx проксирует на `127.0.0.1:8000`.
 4. Пересоберите APK после смены `productionApiBaseUrl`.
+
+Перед запуском Compose требует DATABASE_URL и POSTGRES_PASSWORD. Команды выше явно читают backend/.env через --env-file; этот приватный файл не добавляется в Git.

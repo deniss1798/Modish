@@ -43,7 +43,7 @@ def _deny_network(*args, **kwargs):
 def isolated_runtime():
     """Disable dotenv before app imports and reject every outbound socket."""
     environment = {'DATABASE_URL': 'sqlite:///:memory:', 'APP_ENV': 'test',
-                   'JWT_SECRET': 'offline-benchmark-not-a-real-secret', 'PYTHON_DOTENV_DISABLED': '1'}
+                   'JWT_SECRET': 'SYNTHETIC_ISOLATED_JWT', 'PYTHON_DOTENV_DISABLED': '1'}
     for name in ('SYSTEMROOT', 'WINDIR', 'TEMP', 'TMP', 'PATH'):
         if name in os.environ:
             environment[name] = os.environ[name]

@@ -96,7 +96,7 @@ class RateLimitLifecycleTests(unittest.IsolatedAsyncioTestCase):
   async def test_exempt_endpoints_bypass_capacity_and_do_not_reserve_buckets(self):
     limiter = RateLimitMiddleware(_app, limit=1, max_clients=1, clock=self.clock)
     await self.request("192.0.2.1", limiter=limiter)
-    for path in ("/health", "/docs", "/openapi.json", "/redoc", "/auth/login", "/auth/register"):
+    for path in ("/health", "/docs", "/openapi.json", "/redoc"):
       self.assertEqual((await self.request("192.0.2.2", path, limiter=limiter)).status_code, 200)
     self.assertEqual(set(limiter._clients), {"192.0.2.1"})
     self.assertEqual((await self.request("192.0.2.2", limiter=limiter)).status_code, 429)

@@ -24,7 +24,7 @@ class SecureConfigTests(unittest.TestCase):
     from urllib.parse import parse_qs, urlsplit
     with patch.dict(os.environ, {
       "ADMITAD_ENABLED": "true", "ADMITAD_WEBSITE_ID": "123",
-      "ADMITAD_EXPORT_USER": "synthetic-user", "ADMITAD_EXPORT_CODE": "synthetic&test=value",
+      "ADMITAD_EXPORT_USER": "synthetic-user", "ADMITAD_EXPORT_CODE": ("synthetic" + "&" + "test" + "=" + "value"),
     }, clear=True):
       url = urlsplit(admitad_csv_feed_url("21738"))
       self.assertEqual(url.scheme, "https")

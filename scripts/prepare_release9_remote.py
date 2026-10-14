@@ -26,7 +26,7 @@ def main():
     print(json.dumps({'progress':'image_built','files':len(manifest['files'])}),flush=True)
     with (R/'unit-tests.log').open('w') as log:
         run('docker','run','--rm','--network','none','-e','DATABASE_URL=sqlite:///:memory:',
-            '-e','JWT_SECRET=isolated-tests-only','-e','PYTHON_DOTENV_DISABLED=1','--entrypoint','python',TAG,
+            '-e','JWT_SECRET=SYNTHETIC_ISOLATED_JWT','-e','PYTHON_DOTENV_DISABLED=1','--entrypoint','python',TAG,
             '-m','unittest','discover','-s','tests','-v',stdout=log,stderr=subprocess.STDOUT)
     print(json.dumps({'progress':'unit_tests_passed'}),flush=True)
     B.mkdir(mode=0o700,parents=True,exist_ok=False)

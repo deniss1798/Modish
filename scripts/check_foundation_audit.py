@@ -7,7 +7,7 @@ import os
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'backend'))
-with patch.dict(os.environ, {'DATABASE_URL':'sqlite:///:memory:', 'JWT_SECRET':'isolated-audit-check',
+with patch.dict(os.environ, {'DATABASE_URL':'sqlite:///:memory:', 'JWT_SECRET':'SYNTHETIC_ISOLATED_JWT',
                             'PYTHON_DOTENV_DISABLED':'1'}, clear=True), patch('dotenv.load_dotenv'):
     from audit_foundation_live import coverage, SIZES, BUDGETS
     from app.services.activation_service import product_ok

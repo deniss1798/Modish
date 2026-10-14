@@ -18,7 +18,7 @@ def main():
     root = Path(__file__).resolve().parents[1]
     sys.path.insert(0, str(root / "backend"))
     environment = {"DATABASE_URL": "sqlite:///:memory:", "APP_ENV": "test",
-        "JWT_SECRET": "offline-audit-not-for-deployment", "PYTHON_DOTENV_DISABLED": "1"}
+        "JWT_SECRET": "SYNTHETIC_ISOLATED_JWT", "PYTHON_DOTENV_DISABLED": "1"}
     # Analysis needs normalized objects, not a database connection.
     with patch.dict(os.environ, environment, clear=True), patch("dotenv.load_dotenv"):
         from app.models import ProductSource

@@ -17,7 +17,7 @@ CASES = [
 def main():
     os.chdir(ROOT/'backend'); sys.path[:0] = [str(ROOT/'backend'), str(ROOT/'backend/tests')]
     env = {key: os.environ[key] for key in ('SYSTEMROOT','WINDIR','PATH','TEMP','TMP') if key in os.environ}
-    env.update(DATABASE_URL='sqlite:///:memory:', JWT_SECRET='isolated-acceptance-only', APP_ENV='test', PYTHON_DOTENV_DISABLED='1')
+    env.update(DATABASE_URL='sqlite:///:memory:', JWT_SECRET='SYNTHETIC_ISOLATED_JWT', APP_ENV='test', PYTHON_DOTENV_DISABLED='1')
     report = []
     with patch.dict(os.environ, env, clear=True), patch('dotenv.load_dotenv'):
         for scenario, name in CASES:
