@@ -177,6 +177,27 @@ class UserLimits(Base):
   updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
 
 
+class PhotoAnalysisReservation(Base):
+  """A durable quota debit and replay record; never contains image bytes."""
+  __tablename__ = "photo_analysis_reservations"
+  id: Mapped[str] = mapped_column(String(36), primary_key=True)
+  user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+  request_id: Mapped[str] = mapped_column(String(128))
+  kind: Mapped[str] = mapped_column(String(32))
+  content_digest: Mapped[str] = mapped_column(String(64))
+  generation: Mapped[int] = mapped_column(Integer)
+  period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+  status: Mapped[str] = mapped_column(String(24), default="pending")
+  response_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+  created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+  expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+  finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+  __table_args__ = (
+    UniqueConstraint("user_id", "request_id", name="uq_photo_analysis_request"),
+    UniqueConstraint("user_id", "generation", name="uq_photo_analysis_generation"),
+  )
+
+
 class ProductSource(Base):
   """Источник каталога (affiliate / Admitad program и т.д.)."""
   __tablename__ = "product_sources"

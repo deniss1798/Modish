@@ -1,0 +1,35 @@
+{
+  "status": "built_and_verified",
+  "version_name": "1.0.0",
+  "version_code": 14,
+  "package": "com.example.modish",
+  "api_base_url": "https://modish.org.ru",
+  "file_name": "Modish-1.0.0-build14.apk",
+  "bytes": 62458919,
+  "sha256": "5b154b335ed61eea625df2d4116812d2e221ab119b12b5730ca9a917f9acca21",
+  "signer_sha256": "56aa2a86188fb19e48f6dfbbb67bd59c4bd7aa67783b97edc8217a0bb6cc4f0d",
+  "signer_matches_build13": true,
+  "signature_verification": "passed",
+  "min_sdk": 24,
+  "target_sdk": 36,
+  "fonts": {
+    "Inter.ttf": {
+      "sha256": "29160a80ff49ddcab2c97711247e08b1fab27a484a329ce8b813d820dc559031",
+      "apk_matches_source": true
+    },
+    "PlayfairDisplay.ttf": {
+      "sha256": "c40f2293766a503bc70cce9e512ef844a4ccb7cbcde792fe2ea31d191917d8d6",
+      "apk_matches_source": true
+    }
+  },
+  "verification": {
+    "flutter_tests_full": 193,
+    "photo_transport_and_session_targeted_after_final_change": 17,
+    "backend_tests_full": 446,
+    "immutable_server_candidate_tests": 435,
+    "ui_capture_states": 56,
+    "flutter_analyze": "no_issues"
+  },
+  "server_activation": "pending_approved_catalogue_import",
+  "build_command": "flutter build apk --release --dart-define=MODISH_API_BASE_URL=https://modish.org.ru"
+}

@@ -1,0 +1,57 @@
+{
+  "status": "failed",
+  "phase": "postgres_photo_and_registration_concurrency",
+  "ready_for_activation": false,
+  "production_database_writes": false,
+  "production_catalogue_imported": false,
+  "archive_sha256": "04d9ec34fb32e45823f2b19397e0fd1a0f21d85dd45a487ad0914c7313ad1424",
+  "started_at": "2026-10-14T05:46:42.899085+00:00",
+  "production_before": {
+    "modish_backend": {
+      "id": "db4e5272bb78458fd9a650f74b5c674b5b5e84cd11d02e93cd8373f7cf1378be",
+      "image": "sha256:4ae234fc8a1f8082bb368f4f617d187a6138bb5848c02af5e9a7a9f15a3d6d7e",
+      "running": true,
+      "started_at": "2026-10-06T16:51:23.885204668Z",
+      "restart_count": 0
+    },
+    "modish_postgres": {
+      "id": "987af124c33aa2984c6d4379417036f4278f3024ba75c6f145dcd29838da667e",
+      "image": "sha256:5d143123fdf80462d1778cd4f24b9f7ca13c87174bca19141fb194c5a1ebca59",
+      "running": true,
+      "started_at": "2026-05-17T21:20:29.134919769Z",
+      "restart_count": 0
+    },
+    "modish_redis": {
+      "id": "7d097417acdcb98861c1b4f1df83fcf562db12c231d6f2f44f25180f7308e615",
+      "image": "sha256:3e1b24a1a8f24ff926b15e5ace8c38a03e5657fb66e1fc7e5188e315aa5fa094",
+      "running": true,
+      "started_at": "2026-05-17T21:20:29.134333547Z",
+      "restart_count": 0
+    }
+  },
+  "helpers": {
+    "check_photo_postgres.py": "a9b0baff2bc8dd46f4a63d8357abeb23d35422e01c7703aa9f6f334944e7b0e2",
+    "release14_import_clone.py": "e1c3e1a1071b637afbcffc024180bb2f51b6b04ca392c9e1b8f113094dec5e4f",
+    "intent_v20_refresh_import.py": "6181045401d7eb3dbe702c68ec80d90837b9a4436136bd2914bc67b592ddad8f",
+    "check_discovery_postgres.py": "f168f3cc8c196a6b57ee3221d93ce10209903a27b54062094b7acc788ab52e88"
+  },
+  "image_id": "sha256:eeea30209dcaa366fd936b6181ce84d47fc475a342df257893d58bb725dac1ec",
+  "unit_tests": {
+    "status": "passed",
+    "count": 435,
+    "seconds": 70.095,
+    "network": "none"
+  },
+  "backup": {
+    "status": "restored_new_database",
+    "bytes": 162754933,
+    "sha256": "b37c4687ee343fddafd048f3e58205c99552946e70508b5796995f83262dfba6",
+    "dump_consistency": "pg_dump_transaction_snapshot",
+    "source_revision": "20260917_0021"
+  },
+  "test_pg_container_id": "881ea4c21dc23bbbe79889d3779b2500707af32e4705a619790e680688d6786f",
+  "clone_revision": "20261013_0025",
+  "error_type": "CalledProcessError",
+  "finished_at": "2026-10-14T05:49:21.866040+00:00",
+  "production_metadata_unchanged": true
+}

@@ -15,6 +15,7 @@ import 'package:modish/features/auth/auth_screen.dart';
 import 'package:modish/features/catalog/brands_screen.dart';
 import 'package:modish/features/catalog/filters_screen.dart';
 import 'package:modish/features/catalog/search_screen.dart';
+import 'package:modish/features/catalog/discovery_screen.dart';
 import 'package:modish/features/onboarding/analysis_screen.dart';
 import 'package:modish/features/onboarding/fit_quiz_screen.dart';
 import 'package:modish/features/onboarding/intro_onboarding_screen.dart';
@@ -34,7 +35,10 @@ import 'package:modish/features/visual/visual_analysis_screen.dart';
 import 'app_regressions_test.dart' show FakeApi;
 import 'support/load_app_fonts.dart';
 
-const _destination = 'docs/modish2/ui-audit-20261012';
+const _destination = String.fromEnvironment(
+  'AUDIT_OUTPUT',
+  defaultValue: 'docs/modish2/ui-audit-20261012',
+);
 const _photoUrl = 'https://ui-fixture.invalid/blouse.jpg';
 const _offlineError =
     'Не удалось загрузить данные. Проверьте подключение и попробуйте снова.';
@@ -106,6 +110,50 @@ Map<String, dynamic> _outfit(String id, {String scenario = 'daily'}) => {
 };
 
 class _AuditApi extends FakeApi {
+  String catalogueState = 'full';
+  Completer<Map<String, dynamic>>? catalogueGate;
+  @override
+  Future<Map<String, dynamic>> catalogueDiscovery({
+    int limit = 20,
+    String? category,
+    String? query,
+    String? source,
+    int? minPrice,
+    int? maxPrice,
+    String? cursor,
+  }) async {
+    if (catalogueState == 'error') throw StateError('offline fixture');
+    return catalogueGate?.future ??
+        {
+          'mode': 'catalogue_discovery',
+          'personalized': false,
+          'size_verification': 'not_verified',
+          'has_more': false,
+          'next_cursor': null,
+          'products': catalogueState == 'empty'
+              ? <Map<String, dynamic>>[]
+              : [
+                  for (var i = 0; i < 6; i++)
+                    _discoveryProduct(
+                      'catalogue-$i',
+                      role: category == 'shoes'
+                          ? 'shoes'
+                          : category == 'outerwear'
+                          ? 'outerwear'
+                          : i.isEven
+                          ? 'top'
+                          : 'shoes',
+                    ),
+                ],
+        };
+  }
+
+  @override
+  Future<Map<String, dynamic>> catalogueDiscoveryProduct(String id) async {
+    if (detailFails) throw StateError('offline fixture');
+    return _discoveryProduct(id, role: 'shoes');
+  }
+
   int swipeRated = 0;
   bool swipeCanContinue = false;
   bool searchFails = false;
@@ -172,6 +220,7 @@ AppController _controller() {
       _product('shoes', title: 'Лоферы из мягкой кожи', slot: 'shoes'),
     ];
   return AppController(apiClient: api)
+    ..token = 'offline-fixture-access-token'
     ..email = 'anna@example.test'
     ..stage = AppStage.home
     ..activationStatus = {
@@ -181,7 +230,11 @@ AppController _controller() {
       'height': 170,
       'price_segment': 'mid',
       'style_preferences': ['casual', 'minimalism'],
-      'recommendation_features': ['context_v1', 'shopping_intent_v1'],
+      'recommendation_features': [
+        'context_v1',
+        'shopping_intent_v1',
+        'catalogue_discovery_v1',
+      ],
     }
     ..fitProfile = {
       'gender_target': 'womenswear',
@@ -333,6 +386,87 @@ class _Case {
 }
 
 List<_Case> _cases() => [
+  _Case(
+    'catalogue-full',
+    (c) => DiscoveryScreen(controller: c),
+    largeText: true,
+  ),
+  _Case(
+    'catalogue-shoes',
+    (c) => DiscoveryScreen(controller: c, initialCategory: 'shoes'),
+    largeText: true,
+  ),
+  _Case(
+    'catalogue-outerwear',
+    (c) => DiscoveryScreen(controller: c, initialCategory: 'outerwear'),
+    largeText: true,
+  ),
+  _Case(
+    'catalogue-bottom',
+    (c) => DiscoveryScreen(controller: c),
+    interact: _scrollBottom,
+    largeText: true,
+  ),
+  _Case(
+    'catalogue-empty',
+    (c) => DiscoveryScreen(controller: c),
+    prepare: (c) => (c.api as _AuditApi).catalogueState = 'empty',
+    largeText: true,
+  ),
+  _Case(
+    'catalogue-error',
+    (c) => DiscoveryScreen(controller: c),
+    prepare: (c) => (c.api as _AuditApi).catalogueState = 'error',
+    largeText: true,
+  ),
+  _Case(
+    'catalogue-loading',
+    (c) => DiscoveryScreen(controller: c),
+    prepare: (c) => (c.api as _AuditApi).catalogueGate = Completer(),
+  ),
+  _Case(
+    'catalogue-keyboard',
+    (c) => DiscoveryScreen(controller: c),
+    keyboard: true,
+    interact: (t) async {
+      await t.tap(find.byKey(const ValueKey('catalogue-query')));
+      await t.enterText(
+        find.byKey(const ValueKey('catalogue-query')),
+        'лоферы',
+      );
+      await t.pump(const Duration(milliseconds: 500));
+    },
+    largeText: true,
+  ),
+  _Case(
+    'catalogue-detail',
+    (c) => ProductDetailScreen(
+      controller: c,
+      card: prod.FeedCard(
+        product: prod.Product.fromApi(
+          _discoveryProduct('catalogue-detail', role: 'shoes'),
+        ),
+        reason: '',
+      ),
+      eventMeta: const {'surface': 'catalogue_discovery'},
+    ),
+    largeText: true,
+  ),
+  _Case(
+    'catalogue-detail-bottom',
+    (c) => ProductDetailScreen(
+      controller: c,
+      card: prod.FeedCard(
+        product: prod.Product.fromApi(
+          _discoveryProduct('catalogue-detail', role: 'shoes'),
+        ),
+        reason: '',
+      ),
+      eventMeta: const {'surface': 'catalogue_discovery'},
+    ),
+    interact: _scrollBottom,
+    largeText: true,
+  ),
   _Case('splash', (_) => const SplashScreen()),
   _Case('welcome', (c) => WelcomeScreen(controller: c), largeText: true),
   _Case('intro', (c) => IntroOnboardingScreen(controller: c), largeText: true),
@@ -777,6 +911,41 @@ List<_Case> _cases() => [
     largeText: true,
   ),
 ];
+
+Map<String, dynamic> _discoveryProduct(String id, {String role = 'top'}) => {
+  ..._product(id, slot: role),
+  // Distinct simulated offers need distinct image identities; the bytes stay
+  // the same local layout fixture and are never fetched over the network.
+  'image_url': 'https://ui-fixture.invalid/$id.jpg',
+  'title': role == 'shoes'
+      ? 'Лоферы из мягкой кожи'
+      : role == 'outerwear'
+      ? 'Куртка с высоким воротником'
+      : 'Блузка из мягкого хлопка',
+  'category': role == 'outerwear'
+      ? 'верхняя одежда'
+      : role == 'shoes'
+      ? 'обувь'
+      : 'рубашки',
+  'catalogue_discovery': true,
+  'size_verification': 'not_verified',
+  'size_notice': 'Размер нужно уточнить у магазина',
+  'size_system': null,
+  'merchant_sizes': [
+    {
+      'raw_size': role == 'shoes' ? '38' : 'M',
+      'normalized_size': null,
+      'size_system': 'UNKNOWN',
+      'availability': 'unknown',
+    },
+    {
+      'raw_size': role == 'shoes' ? '39' : 'L',
+      'normalized_size': null,
+      'size_system': 'UNKNOWN',
+      'availability': 'unavailable',
+    },
+  ],
+};
 
 Map<String, dynamic> _taskResult({required bool outfit}) => {
   'id': 'preview-task',

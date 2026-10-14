@@ -15,7 +15,7 @@ from .api.affiliate import router as affiliate_router
 from .api.analytics import router as analytics_router
 from .api.auth import router as auth_router
 from .api.catalog_admin import router as catalog_admin_router
-from .api.deps import auth_scheme, get_db, user_from_token
+from .api.deps import auth_scheme, get_db
 from .api.fit_profile import router as fit_profile_router
 from .api.onboarding import router as onboarding_router
 from .api.media_proxy import router as media_proxy_router
@@ -25,10 +25,11 @@ from .api.profile import router as profile_router
 from .api.recommendations import router as recommendations_router
 from .api.taste_profile import router as taste_profile_router
 from .api.shopping_intents import router as shopping_intents_router
+from .api.catalog_discovery import router as catalog_discovery_router
 from .middleware import RateLimitMiddleware, RequestLogMiddleware
 from .log_redaction import install_log_redaction
-from .services.recommendation_engine import ensure_style_profile
 from .services.visual_analysis_service import generate_style_visual
+from .services.photo_analysis_jobs import detached_visual_analysis
 
 logging.basicConfig(
   level=logging.INFO,
@@ -36,7 +37,8 @@ logging.basicConfig(
 )
 install_log_redaction()
 
-app = FastAPI(title="Modish API", version="1.0.0-alpha")
+API_VERSION = "1.0.0-build14"
+app = FastAPI(title="Modish API", version=API_VERSION)
 
 _cors_raw = (os.getenv("CORS_ORIGINS") or "*").strip()
 _cors_origins = [o.strip() for o in _cors_raw.split(",") if o.strip()] or ["*"]
@@ -59,6 +61,7 @@ app.include_router(fit_profile_router)
 app.include_router(onboarding_router)
 app.include_router(taste_profile_router)
 app.include_router(shopping_intents_router)
+app.include_router(catalog_discovery_router)
 app.include_router(outfits_router)
 app.include_router(affiliate_router)
 app.include_router(catalog_admin_router)
@@ -74,21 +77,16 @@ def health(db: Session = Depends(get_db)) -> dict[str, str]:
   except Exception:
     db_ok = "error"
   status = "ok" if db_ok == "ok" else "degraded"
-  return {"status": status, "database": db_ok, "version": "1.0.0-alpha"}
+  return {"status": status, "database": db_ok, "version": API_VERSION}
 
 
 @app.post("/visual-analysis")
 async def visual_analysis(
-  db: Session = Depends(get_db),
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> dict[str, str]:
-  user = user_from_token(credentials, db)
-  profile = ensure_style_profile(db, user.id)
-  analysis = profile.profile_json.get("analysis") if isinstance(profile.profile_json, dict) else None
-  if not isinstance(analysis, dict) or not analysis:
-    raise HTTPException(status_code=400, detail="Сначала выполните анализ стиля по фото.")
+  analysis = await detached_visual_analysis(credentials)
   try:
     image_url = await generate_style_visual(analysis)
   except RuntimeError as e:
-    raise HTTPException(status_code=502, detail=str(e)) from e
+    raise HTTPException(status_code=502, detail="Не удалось создать визуализацию. Попробуйте ещё раз.") from e
   return {"image_url": image_url, "type": "style_visual"}

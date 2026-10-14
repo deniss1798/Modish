@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile
 from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
@@ -19,7 +19,7 @@ from ..models import (
   StyleProfile,
   User,
 )
-from ..schemas.photo_analysis import build_profile_json_after_analysis
+from ..services.photo_analysis_jobs import run_photo_analysis
 from ..services.style_analysis_service import analyze_photo_bytes as analyze_photo_ai
 from .deps import auth_scheme, get_db, user_from_token
 from .serializers import as_user_payload, fit_to_api, taste_to_api
@@ -242,38 +242,14 @@ def patch_style_target(
 @router.post("/style-profile/analyze")
 async def analyze(
   photo: UploadFile = File(...),
-  db: Session = Depends(get_db),
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+  idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> dict[str, Any]:
   ct = (photo.content_type or "").lower()
   if ct not in {"image/jpeg", "image/jpg", "image/png", "image/webp"}:
     raise HTTPException(status_code=400, detail="Допустимы jpg, jpeg, png, webp")
-  user = user_from_token(credentials, db)
-  try:
-    limits = business.assert_can_analyze(db, user)
-  except PermissionError as e:
-    raise HTTPException(status_code=403, detail=str(e)) from e
   raw = await read_upload_bytes_limited(photo, MAX_PHOTO_BYTES)
-  profile = db.execute(select(StyleProfile).where(StyleProfile.user_id == user.id)).scalar_one()
-  try:
-    analysis = await analyze_photo_ai(content_type=ct, raw=raw)
-  except RuntimeError as e:
-    raise HTTPException(status_code=502, detail=str(e)) from e
-  profile.profile_json = build_profile_json_after_analysis(
-    analysis,
-    source="photo_analysis_v2_openai",
+  return await run_photo_analysis(
+    credentials=credentials, request_id=idempotency_key, kind="style_profile",
+    content_type=ct, raw=raw, provider=analyze_photo_ai,
   )
-  profile.confidence_score = 0.75
-  profile.updated_at = datetime.now(timezone.utc)
-  limits.photo_analysis_used += 1
-  limits.updated_at = datetime.now(timezone.utc)
-  db.commit()
-  business.rebuild_user_summary(db, user.id)
-  db.commit()
-  return {
-    "id": profile.id,
-    "user_id": profile.user_id,
-    "style_target": profile.style_target,
-    "confidence_score": profile.confidence_score,
-    "profile_json": profile.profile_json,
-  }

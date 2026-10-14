@@ -5,6 +5,7 @@ import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/modish_widgets.dart';
 import '../../core/widgets/product_image.dart';
 import '../outfits/outfits_screen.dart';
+import '../catalog/discovery_screen.dart';
 
 /// Preferences → real catalogue Style Swipe → verified Wow outfits.
 class OnboardingV2Screen extends StatefulWidget {
@@ -359,6 +360,29 @@ class _OnboardingV2ScreenState extends State<OnboardingV2Screen> {
                                   : c.editActivationPreferences,
                               child: const Text('Изменить параметры'),
                             ),
+                            if (!c.isLoading &&
+                                c.token?.isNotEmpty == true &&
+                                c.supportsCatalogueDiscovery) ...[
+                              TextButton.icon(
+                                key: const ValueKey(
+                                  'cold-swipe-open-catalogue',
+                                ),
+                                onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        DiscoveryScreen(controller: c),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.storefront_outlined),
+                                label: const Text('Посмотреть каталог'),
+                              ),
+                              const Text(
+                                'Размеры нужно уточнять у магазина. Ваши оценки сохранены.',
+                                textAlign: TextAlign.center,
+                                style: AppTextStyles.bodyMuted,
+                              ),
+                            ],
                           ],
                         ],
                       ),

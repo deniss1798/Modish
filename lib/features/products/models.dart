@@ -77,6 +77,38 @@ List<String> _imageUrlsFromJson(dynamic raw) {
   return out;
 }
 
+class MerchantSize {
+  const MerchantSize({
+    required this.rawSize,
+    this.normalizedSize,
+    this.sizeSystem = 'UNKNOWN',
+    this.availability = 'unknown',
+  });
+  final String rawSize;
+  final String? normalizedSize;
+  final String sizeSystem;
+  final String availability;
+
+  factory MerchantSize.fromApi(Map<String, dynamic> json) {
+    final system = '${json['size_system'] ?? ''}'.toUpperCase();
+    final availability = '${json['availability'] ?? ''}';
+    return MerchantSize(
+      rawSize: '${json['raw_size'] ?? ''}',
+      normalizedSize: json['normalized_size']?.toString(),
+      sizeSystem: {'RU', 'EU', 'UK', 'US', 'LETTER', 'WAIST'}.contains(system)
+          ? system
+          : 'UNKNOWN',
+      availability: {'available', 'unavailable'}.contains(availability)
+          ? availability
+          : 'unknown',
+    );
+  }
+
+  String get label => sizeSystem == 'UNKNOWN' || sizeSystem == 'LETTER'
+      ? rawSize
+      : '$rawSize ($sizeSystem)';
+}
+
 class Product {
   const Product({
     required this.id,
@@ -104,6 +136,10 @@ class Product {
     this.vendorCode = '',
     this.outfitSlot,
     this.recommendationFacts = const {},
+    this.catalogueDiscovery = false,
+    this.sizeVerification = '',
+    this.merchantSizes = const [],
+    this.sizeNotice = '',
   });
 
   final String id;
@@ -138,6 +174,10 @@ class Product {
   /// Immutable API facts supporting the recommendation that supplied this item.
   /// Presentation URLs and observation timestamps do not change these facts.
   final Map<String, dynamic> recommendationFacts;
+  final bool catalogueDiscovery;
+  final String sizeVerification;
+  final List<MerchantSize> merchantSizes;
+  final String sizeNotice;
 
   Set<String> get identityKeys {
     final keys = <String>{'id:$id'};
@@ -252,6 +292,15 @@ class Product {
       vendorCode: (json['vendor_code'] ?? '').toString().trim(),
       outfitSlot: json['outfit_slot']?.toString(),
       recommendationFacts: _recommendationFactsFromApi(json),
+      catalogueDiscovery: json['catalogue_discovery'] == true,
+      sizeVerification: '${json['size_verification'] ?? ''}',
+      merchantSizes: List<MerchantSize>.unmodifiable(
+        (json['merchant_sizes'] as List? ?? const [])
+            .whereType<Map>()
+            .map((row) => MerchantSize.fromApi(Map<String, dynamic>.from(row)))
+            .where((size) => size.rawSize.trim().isNotEmpty),
+      ),
+      sizeNotice: '${json['size_notice'] ?? ''}',
     );
   }
 }

@@ -68,6 +68,13 @@ OVERLAY = (
     'app/middleware.py', 'tests/test_rate_limit_lifecycle.py',
     'app/services/product_identity.py', 'tests/test_product_identity_resilience.py',
     'tests/test_intent_identity_order.py',
+    'app/api/catalog_discovery.py', 'app/services/catalog_discovery.py',
+    'tests/test_catalog_discovery.py',
+    'tests/test_diversity_completion.py',
+    'app/api/auth.py', 'app/api/profile.py', 'app/business.py',
+    'app/services/photo_analysis_jobs.py',
+    'alembic/versions/20261013_0025_photo_analysis_reservations.py',
+    'tests/test_photo_reservations.py', 'tests/test_registration_conflict.py',
 )
 
 
@@ -115,7 +122,7 @@ def main():
     assert 'backend/tests/test_activation_category_filters.py' in entries
     assert b'allow_category_fallback=bool(filters and filters.categories)' in entries['backend/app/services/activation_service.py']
     manifest = {'release': 'catalog-foundation', 'base_image': record['image_id'],
-        'overlay': list(OVERLAY), 'migration': '20261008_0024',
+        'overlay': list(OVERLAY), 'migration': '20261013_0025',
         'files': {n: hashlib.sha256(data).hexdigest() for n, data in entries.items()}}
     entries['source-manifest.json'] = json.dumps(manifest, indent=2).encode()
     target = ROOT/f'.tmp/modish-{args.name}.tar'

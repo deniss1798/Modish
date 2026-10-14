@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http_parser/http_parser.dart';
@@ -75,6 +76,11 @@ class ApiClient {
               request.extra['authRetried'] = true;
               request.headers['Authorization'] =
                   _dio.options.headers['Authorization'];
+              if (request.data is FormData) {
+                // Multipart streams are consumed by the first dispatch. Clone
+                // them while retaining this upload's idempotency key.
+                request.data = (request.data as FormData).clone();
+              }
               handler.resolve(await _dio.fetch(request));
               return;
             } on DioException catch (refreshError) {
@@ -406,6 +412,7 @@ class ApiClient {
   }
 
   Future<void> analyzeStyleProfile(String photoPath) async {
+    final options = _photoRequestOptions();
     final lower = photoPath.toLowerCase();
 
     final subtype = lower.endsWith('.png')
@@ -422,7 +429,25 @@ class ApiClient {
       ),
     });
 
-    await _dio.post('/style-profile/analyze', data: form);
+    await _dio.post('/style-profile/analyze', data: form, options: options);
+  }
+
+  Options _photoRequestOptions() {
+    final random = Random.secure();
+    final key = List.generate(
+      16,
+      (_) => random.nextInt(256),
+    ).map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
+    // Capture the account before reading the file. File preparation can finish
+    // after logout, and must never dispatch that photo under another account.
+    return Options(
+      headers: {'Idempotency-Key': 'photo-$key'},
+      // The provider has a 180-second server deadline. The usual short read
+      // timeout would abandon a valid analysis after its quota was reserved.
+      sendTimeout: const Duration(minutes: 2),
+      receiveTimeout: const Duration(minutes: 4),
+      extra: {'sessionVersion': _sessionVersion},
+    );
   }
 
   Future<List<Outfit>> feed() async {
@@ -637,6 +662,38 @@ class ApiClient {
     return list;
   }
 
+  Future<Map<String, dynamic>> catalogueDiscovery({
+    int limit = 20,
+    String? category,
+    String? query,
+    String? source,
+    int? minPrice,
+    int? maxPrice,
+    String? cursor,
+  }) async {
+    final response = await _dio.get(
+      '/catalog/discovery',
+      queryParameters: {
+        'limit': limit,
+        if (category != null && category.trim().isNotEmpty)
+          'category': category.trim(),
+        if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
+        if (source != null && source.trim().isNotEmpty) 'source': source.trim(),
+        'min_price': ?minPrice,
+        'max_price': ?maxPrice,
+        if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+      },
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  Future<Map<String, dynamic>> catalogueDiscoveryProduct(String id) async {
+    final response = await _dio.get(
+      '/catalog/discovery/${Uri.encodeComponent(id)}',
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
   Future<List<Map<String, dynamic>>> productsList({
     int limit = 50,
     int offset = 0,
@@ -758,6 +815,7 @@ class ApiClient {
   }
 
   Future<Map<String, dynamic>> onboardingPhoto(String photoPath) async {
+    final options = _photoRequestOptions();
     final lower = photoPath.toLowerCase();
     final subtype = lower.endsWith('.png')
         ? 'png'
@@ -771,7 +829,11 @@ class ApiClient {
         contentType: MediaType('image', subtype),
       ),
     });
-    final response = await _dio.post('/onboarding/photo', data: form);
+    final response = await _dio.post(
+      '/onboarding/photo',
+      data: form,
+      options: options,
+    );
     return Map<String, dynamic>.from(response.data as Map);
   }
 

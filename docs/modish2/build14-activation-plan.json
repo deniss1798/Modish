@@ -1,0 +1,115 @@
+{
+  "status": "reviewable_activation_plan",
+  "created_at": "2026-10-14T16:49:16.682235+00:00",
+  "archive_sha256": "04d9ec34fb32e45823f2b19397e0fd1a0f21d85dd45a487ad0914c7313ad1424",
+  "candidate_image": "sha256:eeea30209dcaa366fd936b6181ce84d47fc475a342df257893d58bb725dac1ec",
+  "rollback_image": "sha256:112fbcee83e937171121d19a50b5756779ee5b64a38ec7ad5bff99ee1e819c9a",
+  "script_sha256": "27284f71ef65238d3b52c226573f734d5ac18b4009f3ccf361d44666efa2e9b7",
+  "bounded_report_sha256": "32fda255785cbee4cb143826b4980969728af7fec473cd8d3980017014fba96e",
+  "bounded_import_sha256": "c366b746ecc9f4df264d3a1266fd9cd82e4ea30a5c5a01f924ddc1325a18436e",
+  "production_import_sha256": "e502bca7375c52e6a10d2c08f1a19cfeeab9bdc4f3a84270f3ecfa7328583b0d",
+  "rollback_guard_sha256": "7a41cef99c0051fc00a280cf9fb3f51da49539e21cee941b93cf3edb26af1fc4",
+  "rollback_tests_sha256": "ab908c1617563d04bc3631e8c0482fe6a33dcb573ff84108d52e626448c58843",
+  "original_compose_sha256": "0f70483cf0dc469f9b03c84f9113b3e694801356cb49113913c7195cb2681dea",
+  "production_environment_sha256": "eef8a3a4cfbb6f5df1088b215e9eefb13543258f701831e43e18f1f630745786",
+  "original_compose_sources": [
+    {
+      "path": "/opt/Modish/docker-compose.yml",
+      "sha256": "0f70483cf0dc469f9b03c84f9113b3e694801356cb49113913c7195cb2681dea"
+    },
+    {
+      "path": "/opt/modish-releases/20261006-build13/release.compose.json",
+      "sha256": "c4eded8a84e014a01cbe2ab63cf2b50ab095486e9a426eff8fd88e54e279da30"
+    }
+  ],
+  "production_before": {
+    "modish_backend": {
+      "id": "db4e5272bb78458fd9a650f74b5c674b5b5e84cd11d02e93cd8373f7cf1378be",
+      "image": "sha256:4ae234fc8a1f8082bb368f4f617d187a6138bb5848c02af5e9a7a9f15a3d6d7e",
+      "running": true,
+      "started_at": "2026-10-06T16:51:23.885204668Z",
+      "restart_count": 0
+    },
+    "modish_postgres": {
+      "id": "987af124c33aa2984c6d4379417036f4278f3024ba75c6f145dcd29838da667e",
+      "image": "sha256:5d143123fdf80462d1778cd4f24b9f7ca13c87174bca19141fb194c5a1ebca59",
+      "running": true,
+      "started_at": "2026-05-17T21:20:29.134919769Z",
+      "restart_count": 0
+    },
+    "modish_redis": {
+      "id": "7d097417acdcb98861c1b4f1df83fcf562db12c231d6f2f44f25180f7308e615",
+      "image": "sha256:3e1b24a1a8f24ff926b15e5ace8c38a03e5657fb66e1fc7e5188e315aa5fa094",
+      "running": true,
+      "started_at": "2026-05-17T21:20:29.134333547Z",
+      "restart_count": 0
+    }
+  },
+  "compose": {
+    "candidate": {
+      "path": "/opt/modish-releases/20261014-build14/activation-private-v2/candidate.compose.yml",
+      "sha256": "aefac66eae7815ba0a04382a6ba75cb6e64a01e5f022f4e771190e7d6eea1708",
+      "image": "sha256:eeea30209dcaa366fd936b6181ce84d47fc475a342df257893d58bb725dac1ec",
+      "module": "app.main:app"
+    },
+    "rollback": {
+      "path": "/opt/modish-releases/20261014-build14/activation-private-v2/rollback.compose.yml",
+      "sha256": "63fb4630ac69923ab7a49f4f99f976d772e2bdd288171ab9092ae96be81273f1",
+      "image": "sha256:112fbcee83e937171121d19a50b5756779ee5b64a38ec7ad5bff99ee1e819c9a",
+      "module": "release14_rollback_guard:app"
+    }
+  },
+  "feeds": [
+    {
+      "code": "baon",
+      "feed_id": "19982",
+      "sha256": "56b4ea0e30e0fc8bbde915dfce7ae30dd0f922bb7a16a7bc3946a0d1782dfa8f",
+      "bytes": 27431719,
+      "observed_at": "2026-10-12T21:23:01.581921+00:00",
+      "download_finished_at": "2026-10-12T21:23:11.988981+00:00"
+    },
+    {
+      "code": "shoppinglive",
+      "feed_id": "25461",
+      "sha256": "42e59881c5cff6842f6d2d0208c0be0d5084dbc1c357894ed5df96f3b323090d",
+      "bytes": 38305141,
+      "observed_at": "2026-10-12T21:23:11.989083+00:00",
+      "download_finished_at": "2026-10-12T21:23:27.246219+00:00"
+    },
+    {
+      "code": "serginnetti",
+      "feed_id": "26417",
+      "sha256": "1af45b682724b95a000ac88fa9d1841a17f9a67f361a5dad446d67690bf1dfee",
+      "bytes": 15925635,
+      "observed_at": "2026-10-12T21:23:27.246280+00:00",
+      "download_finished_at": "2026-10-12T21:23:33.731708+00:00"
+    },
+    {
+      "code": "postmeridiem",
+      "feed_id": "25200",
+      "sha256": "27921393cd62121f80fe32163dde890ba8680d92279ac14d6212bf2b3abf695a",
+      "bytes": 448357,
+      "observed_at": "2026-10-12T21:23:33.731761+00:00",
+      "download_finished_at": "2026-10-12T21:23:34.403272+00:00"
+    }
+  ],
+  "verified": {
+    "unit_tests": 435,
+    "photo_postgres_checks": 5,
+    "discovery_profiles": 10,
+    "discovery_http": "passed",
+    "guarded_rollback_image": "offline_tests_and_real_base_probe_passed"
+  },
+  "steps": [
+    "fresh_consistent_readonly_pg_dump",
+    "guarded_base_api_and_old_worker_drain",
+    "additive_schema_0021_to_0025",
+    "atomic_four_source_import_preserving_observation_times",
+    "candidate_api_only_switch",
+    "local_and_public_health_openapi_unauthenticated_discovery"
+  ],
+  "rollback": "guarded_base_api_only_keep_schema_catalogue_photo_ledger_no_database_restore",
+  "production_import_approval_required": true,
+  "production_changed": false,
+  "catalogue_full_outfit_readiness": "unproven"
+}

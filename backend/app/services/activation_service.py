@@ -249,13 +249,31 @@ def candidate_pool(db, user, session, *, exclude_ids=(), restrict_categories=Fal
     return pool
 
 
+def _sequence_capacity(capacities, *, last_category=None, last_run=0):
+    """Maximum suffix length with at most two consecutive cards of a category.
+
+    Other categories provide separators, each allowing two more cards of a
+    dominant category. An existing tail consumes part of its first slot.
+    """
+    total = sum(capacities.values())
+    maximum = total
+    for category, count in capacities.items():
+        slots = 2 * (total - count + 1) - (last_run if category == last_category else 0)
+        maximum = min(maximum, total - max(0, count - slots))
+    return maximum
+
+
 def diverse_products(products, limit, *, exploration=False, allow_category_fallback=False,
                      exploration_offset=0, selection_sources=None):
     remaining = list(products)
     result = []
     categories, brands = Counter(), Counter()
+    category_cap = max(3, ceil(limit / 4))
+    remaining_categories = Counter(normalize_category(p.category or '') for p in remaining)
+    capacities = {category: min(count, category_cap) for category, count in remaining_categories.items()}
+    target = limit if allow_category_fallback else min(limit, _sequence_capacity(capacities))
     brand_cap = max(4, ceil(limit / 3), ceil(limit / max(1, len({p.brand for p in products}))))
-    while remaining and len(result) < limit:
+    while remaining and len(result) < target:
         # Every fifth card comes from a softer-ranked alternative in the same
         # allowed categories. Quality constraints have already been applied.
         indexes = list(range(len(remaining)))
@@ -275,9 +293,19 @@ def diverse_products(products, limit, *, exploration=False, allow_category_fallb
         for enforce_category_cap, enforce_brand_cap in constraints:
             for i in indexes:
                 p = remaining[i]; cat = normalize_category(p.category or '')
-                if enforce_category_cap and categories[cat] >= max(3, ceil(limit / 4)): continue
+                if enforce_category_cap and categories[cat] >= category_cap: continue
                 if enforce_brand_cap and brands[p.brand] >= brand_cap: continue
                 if enforce_category_cap and len(result) >= 2 and all(normalize_category(q.category or '') == cat for q in result[-2:]): continue
+                if enforce_category_cap and not allow_category_fallback:
+                    # Do not spend the last separator while a complete diverse
+                    # slate is still possible. This retains both existing caps;
+                    # a genuinely sparse pool keeps its achievable short page.
+                    after = {category: min(count - int(category == cat),
+                        category_cap - categories[category] - int(category == cat))
+                        for category, count in remaining_categories.items()}
+                    tail = 2 if result and normalize_category(result[-1].category or '') == cat else 1
+                    if _sequence_capacity(after, last_category=cat, last_run=tail) < target - len(result) - 1:
+                        continue
                 chosen = i; break
             if chosen is not None: break
         if chosen is None: break
@@ -286,7 +314,9 @@ def diverse_products(products, limit, *, exploration=False, allow_category_fallb
             # remaining choice. Do not label that fallback as softer discovery.
             selection_sources[remaining[chosen].id] = 'soft_exploration' if explore and len(remaining) > 1 and chosen >= midpoint else 'taste_match'
         p = remaining.pop(chosen)
-        result.append(p); categories[normalize_category(p.category or '')] += 1; brands[p.brand] += 1
+        cat = normalize_category(p.category or '')
+        remaining_categories[cat] -= 1
+        result.append(p); categories[cat] += 1; brands[p.brand] += 1
     return result
 
 

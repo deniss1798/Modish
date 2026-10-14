@@ -229,6 +229,9 @@ class AppController extends ChangeNotifier {
   bool get supportsShoppingIntent =>
       (activationStatus['recommendation_features'] as List? ?? const [])
           .contains('shopping_intent_v1');
+  bool get supportsCatalogueDiscovery =>
+      (activationStatus['recommendation_features'] as List? ?? const [])
+          .contains('catalogue_discovery_v1');
   int? get feedMinPrice => _feedQuery.minPrice;
   int? get feedMaxPrice => _feedQuery.maxPrice;
   List<String> get feedFilterSizes => _feedQuery.sizes;

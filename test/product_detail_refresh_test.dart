@@ -137,7 +137,7 @@ void main() {
     final controller = await _showDetail(tester, api);
     _expectReasonsRetained();
 
-    await tester.tap(find.byIcon(Icons.ios_share));
+    await tester.tap(find.byTooltip('Обновить карточку'));
     await tester.pumpAndSettle();
     _expectReasonsRetained();
     await _disposeDetail(tester, controller);
@@ -230,7 +230,7 @@ void main() {
       _expectNoExplanations();
 
       // A second unchanged refresh must not revive the old fallback reason.
-      await tester.tap(find.byIcon(Icons.ios_share));
+      await tester.tap(find.byTooltip('Обновить карточку'));
       await tester.pumpAndSettle();
       _expectNoExplanations();
       await _disposeDetail(tester, controller);

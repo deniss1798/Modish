@@ -5,6 +5,7 @@ import '../../core/presentation/catalog_labels.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/modish_widgets.dart';
 import '../catalog/brands_screen.dart';
+import '../catalog/discovery_screen.dart';
 import '../catalog/search_screen.dart';
 import '../settings/settings_screen.dart';
 import 'edit_profile_screen.dart';
@@ -181,6 +182,20 @@ class ProfileScreen extends StatelessWidget {
                 onTap: () => controller.setTab(2),
               ),
               const Divider(color: AppColors.line),
+              if (controller.supportsCatalogueDiscovery) ...[
+                MenuTile(
+                  icon: Icons.grid_view_outlined,
+                  title: 'Каталог магазинов',
+                  subtitle: 'Посмотреть товары и уточнить размер у магазина',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => DiscoveryScreen(controller: controller),
+                    ),
+                  ),
+                ),
+                const Divider(color: AppColors.line),
+              ],
               MenuTile(
                 icon: Icons.storefront_outlined,
                 title: 'Бренды',

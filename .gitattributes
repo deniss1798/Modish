@@ -1,0 +1,7 @@
+# Reviewed release helpers and downloaded evidence are pinned by byte hashes.
+# Keep their bytes stable on Windows and Linux checkouts.
+scripts/release14*.py text eol=lf
+scripts/check_discovery*.py text eol=lf
+scripts/check_photo_postgres.py text eol=lf
+scripts/intent_v20_refresh_import.py text eol=lf
+docs/modish2/build14*.json text eol=lf

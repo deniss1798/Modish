@@ -62,9 +62,15 @@ def is_plus_available(user: User, now: datetime | None = None) -> bool:
   return False
 
 
-def get_or_refresh_limits(db: Session, user_id: str) -> UserLimits:
-  now = datetime.now(timezone.utc)
-  row = db.execute(select(UserLimits).where(UserLimits.user_id == user_id)).scalar_one_or_none()
+def get_or_refresh_limits(db: Session, user_id: str, *, now: datetime | None = None) -> UserLimits:
+  # Every quota refresh shares the reservation's owner lock. Otherwise a login
+  # crossing the month boundary could overwrite a concurrently reserved slot.
+  db.flush()
+  db.execute(select(User.id).where(User.id == user_id).with_for_update()).scalar_one()
+  now = now or datetime.now(timezone.utc)
+  row = db.execute(
+    select(UserLimits).where(UserLimits.user_id == user_id).execution_options(populate_existing=True)
+  ).scalar_one_or_none()
   start, end = month_bounds_utc(now)
   if row is None:
     row = UserLimits(
@@ -78,7 +84,9 @@ def get_or_refresh_limits(db: Session, user_id: str) -> UserLimits:
     db.add(row)
     db.flush()
     return row
-  if now > row.period_end or now < row.period_start:
+  period_start = row.period_start.replace(tzinfo=timezone.utc) if row.period_start.tzinfo is None else row.period_start
+  period_end = row.period_end.replace(tzinfo=timezone.utc) if row.period_end.tzinfo is None else row.period_end
+  if now > period_end or now < period_start:
     row.period_start = start
     row.period_end = end
     row.photo_analysis_used = 0

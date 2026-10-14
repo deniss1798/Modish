@@ -7,13 +7,14 @@ import 'app_regressions_test.dart' show FakeApi;
 class MerchantApi extends FakeApi {
   String url = 'https://merchant.example/item';
   bool eventFails = false;
+  int affiliateRequests = 0;
   final confirmations = <Map<String, dynamic>>[];
 
   @override
-  Future<Map<String, dynamic>> affiliateClick(String productId) async => {
-    'url': url,
-    'click_id': 'click-1',
-  };
+  Future<Map<String, dynamic>> affiliateClick(String productId) async {
+    affiliateRequests++;
+    return {'url': url, 'click_id': 'click-1'};
+  }
 
   @override
   Future<Map<String, dynamic>> recordRecommendationEvent({
@@ -29,6 +30,24 @@ class MerchantApi extends FakeApi {
 }
 
 void main() {
+  test(
+    'Discovery opens the merchant ledger URL without training recommendation taste',
+    () async {
+      final api = MerchantApi();
+      expect(
+        await openMerchantLink(
+          api,
+          'p1',
+          surface: 'catalogue_discovery',
+          recordRecommendationEvent: false,
+          openUrl: (_) async => true,
+        ),
+        isTrue,
+      );
+      expect(api.affiliateRequests, 1);
+      expect(api.confirmations, isEmpty);
+    },
+  );
   test(
     'Late external launch cannot record old context against a new account',
     () async {

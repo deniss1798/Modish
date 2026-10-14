@@ -7,6 +7,7 @@ import '../../core/widgets/modish_widgets.dart';
 import '../../core/widgets/product_image.dart';
 import '../products/models.dart' as prod;
 import '../products/product_detail_screen.dart';
+import 'discovery_screen.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({
@@ -109,6 +110,17 @@ class _SearchScreenState extends State<SearchScreen> {
     _search();
   }
 
+  void _openCatalogue({String query = ''}) {
+    FocusScope.of(context).unfocus();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            DiscoveryScreen(controller: widget.controller, initialQuery: query),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -179,6 +191,13 @@ class _SearchScreenState extends State<SearchScreen> {
                     )
                     .toList(),
               ),
+              if (widget.controller.supportsCatalogueDiscovery) ...[
+                const SizedBox(height: 20),
+                SecondaryButton(
+                  label: 'Посмотреть каталог',
+                  onPressed: _openCatalogue,
+                ),
+              ],
             ],
             if (_submitted.isNotEmpty && _results.isNotEmpty) ...[
               Text(
@@ -209,6 +228,13 @@ class _SearchScreenState extends State<SearchScreen> {
                       'По запросу «$_submitted» нет доступных товаров. Попробуйте более общее название или другой бренд.',
                       style: AppTextStyles.bodyMuted,
                     ),
+                    if (widget.controller.supportsCatalogueDiscovery) ...[
+                      const SizedBox(height: 16),
+                      SecondaryButton(
+                        label: 'Посмотреть каталог',
+                        onPressed: () => _openCatalogue(query: _submitted),
+                      ),
+                    ],
                   ],
                 ),
               ),

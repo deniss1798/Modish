@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile
 from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -15,7 +15,6 @@ from ..models import ActivationSession, FitProfile, Product, StyleProfile
 from ..schemas.api_product import product_to_api
 from ..schemas.fit_sizes import FitSizesInput
 from ..services.onboarding_service import (
-  apply_photo_analysis_pending,
   apply_photo_confirm,
   apply_step1,
   apply_step3,
@@ -23,6 +22,7 @@ from ..services.onboarding_service import (
   onboarding_status,
 )
 from ..services.photo_analysis import analyze_onboarding_photo
+from ..services.photo_analysis_jobs import run_photo_analysis
 from ..services.recommendation_engine import ensure_style_profile
 from .deps import auth_scheme, get_db, user_from_token
 from .upload_utils import read_upload_bytes_limited
@@ -139,7 +139,7 @@ def get_onboarding_status(
   from ..services.fit_size_profile import missing_fit_requirements, size_profile_to_api
   missing_fit = missing_fit_requirements(fit)
   result.update(activation_version=1, completed=bool(activation.completed_at) if activation else legacy_has_taste(db, user, profile),
-      recommendation_features=['fit_sizes_v1', 'shopping_intent_v1'] + (['context_v1', 'dna_ranking_v1', 'personalized_search_v1'] if activation else []),
+      recommendation_features=['fit_sizes_v1', 'shopping_intent_v1', 'catalogue_discovery_v1'] + (['context_v1', 'dna_ranking_v1', 'personalized_search_v1'] if activation else []),
       preferences_ready=activation is not None and not missing_fit, rated=rated_count(activation) if activation else 0,
       minimum=MIN_SWIPES, target=SWIPE_TARGET, clothing_size=fit.clothing_size if fit else None,
       shoe_size=activation.shoe_size if activation else None)
@@ -170,31 +170,18 @@ def onboarding_step1(
 @router.post("/photo")
 async def onboarding_photo(
   photo: UploadFile = File(...),
-  db: Session = Depends(get_db),
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+  idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> dict[str, Any]:
   """Загрузка фото + AI-анализ → экран подтверждения (ещё не финализировано)."""
   ct = (photo.content_type or "").lower()
   if ct not in {"image/jpeg", "image/jpg", "image/png", "image/webp"}:
     raise HTTPException(status_code=400, detail="Допустимы jpg, jpeg, png, webp")
-  user = user_from_token(credentials, db)
-  try:
-    limits = business.assert_can_analyze(db, user)
-  except PermissionError as e:
-    raise HTTPException(status_code=403, detail=str(e)) from e
   raw = await read_upload_bytes_limited(photo, MAX_PHOTO_BYTES)
-  profile = _profile(db, user.id)
-  try:
-    pending = await analyze_onboarding_photo(content_type=ct, raw=raw)
-  except RuntimeError as e:
-    raise HTTPException(status_code=502, detail=str(e)) from e
-  result = apply_photo_analysis_pending(db, profile=profile, pending=pending)
-  limits.photo_analysis_used += 1
-  from datetime import datetime, timezone
-
-  limits.updated_at = datetime.now(timezone.utc)
-  db.commit()
-  return result
+  return await run_photo_analysis(
+    credentials=credentials, request_id=idempotency_key, kind="onboarding",
+    content_type=ct, raw=raw, provider=analyze_onboarding_photo,
+  )
 
 
 @router.patch("/photo/confirm")

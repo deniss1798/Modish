@@ -8,6 +8,7 @@ import '../../core/widgets/modish_widgets.dart';
 import '../../core/widgets/product_image.dart';
 import '../catalog/filters_screen.dart';
 import '../catalog/search_screen.dart';
+import '../catalog/discovery_screen.dart';
 import '../shopping/shopping_task_screen.dart';
 import '../products/models.dart' as prod;
 import '../products/product_detail_screen.dart';
@@ -320,27 +321,63 @@ class _EmptyFeed extends StatelessWidget {
       );
     }
     return Center(
-      child: EmptyState(
-        icon: err != null && err.isNotEmpty
-            ? Icons.cloud_off_outlined
-            : Icons.style_outlined,
-        title: err != null && err.isNotEmpty
-            ? 'Не удалось загрузить'
-            : 'Подходящих вещей пока нет',
-        message: err != null && err.isNotEmpty
-            ? err
-            : (_hasActiveFilters(controller)
-                  ? 'Попробуйте убрать часть условий или сбросить фильтры.'
-                  : 'Вы просмотрели доступные вещи. Попробуйте обновить ленту позже.'),
-        actionLabel: _hasActiveFilters(controller)
-            ? 'Сбросить фильтры'
-            : 'Обновить',
-        busy: busy,
-        onAction: busy
-            ? null
-            : (_hasActiveFilters(controller)
-                  ? () => controller.applyFeedFilters()
-                  : onRefresh),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          EmptyState(
+            icon: err != null && err.isNotEmpty
+                ? Icons.cloud_off_outlined
+                : Icons.style_outlined,
+            title: err != null && err.isNotEmpty
+                ? 'Не удалось загрузить'
+                : 'Подходящих вещей пока нет',
+            message: err != null && err.isNotEmpty
+                ? err
+                : (_hasActiveFilters(controller)
+                      ? 'Попробуйте убрать часть условий или сбросить фильтры.'
+                      : 'Вы просмотрели доступные вещи. Попробуйте обновить ленту позже.'),
+            actionLabel: _hasActiveFilters(controller)
+                ? 'Сбросить фильтры'
+                : 'Обновить',
+            busy: busy,
+            onAction: busy
+                ? null
+                : (_hasActiveFilters(controller)
+                      ? () => controller.applyFeedFilters()
+                      : onRefresh),
+          ),
+          if (controller.supportsCatalogueDiscovery &&
+              controller.token?.isNotEmpty == true) ...[
+            const SizedBox(height: 12),
+            TextButton.icon(
+              key: const ValueKey('empty-feed-open-catalogue'),
+              icon: const Icon(Icons.storefront_outlined),
+              label: const Text('Посмотреть каталог'),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => DiscoveryScreen(
+                    controller: controller,
+                    initialCategory: controller.feedFilterCategories.length == 1
+                        ? switch (controller.feedFilterCategories.first) {
+                            'Обувь' || 'обувь' || 'shoes' => 'shoes',
+                            'Верхняя одежда' ||
+                            'верхняя одежда' ||
+                            'outerwear' => 'outerwear',
+                            _ => '',
+                          }
+                        : '',
+                  ),
+                ),
+              ),
+            ),
+            const Text(
+              'Размеры в каталоге нужно уточнять у магазина.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodyMuted,
+            ),
+          ],
+        ],
       ),
     );
   }

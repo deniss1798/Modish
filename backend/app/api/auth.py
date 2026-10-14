@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .. import business
@@ -74,8 +75,6 @@ def logout(payload: RefreshRequest, db: Session = Depends(get_db)):
 def register(payload: AuthRequest, db: Session = Depends(get_db)) -> TokenResponse:
   existing = db.execute(select(User).where(User.email == payload.email)).scalar_one_or_none()
   if existing:
-    from fastapi import HTTPException
-
     raise HTTPException(status_code=409, detail="Email уже зарегистрирован")
   now = datetime.now(timezone.utc)
   user = User(
@@ -91,7 +90,23 @@ def register(payload: AuthRequest, db: Session = Depends(get_db)) -> TokenRespon
     fit_preference="regular",
   )
   db.add(user)
-  db.flush()
+  try:
+    db.flush()
+  except IntegrityError as exc:
+    db.rollback()
+    original = exc.orig
+    constraint = getattr(getattr(original, "diag", None), "constraint_name", None)
+    postgres_email_conflict = (
+      getattr(original, "sqlstate", None) == "23505"
+      and constraint in {"ix_users_email", "users_email_key"}
+    )
+    sqlite_email_conflict = (
+      getattr(original, "sqlite_errorname", None) == "SQLITE_CONSTRAINT_UNIQUE"
+      and str(original) == "UNIQUE constraint failed: users.email"
+    )
+    if postgres_email_conflict or sqlite_email_conflict:
+      raise HTTPException(status_code=409, detail="Email уже зарегистрирован") from exc
+    raise
   db.add(
     StyleProfile(
       id=str(uuid4()),

@@ -10,6 +10,7 @@ Future<bool> openMerchantLink(
   required String surface,
   Map<String, dynamic> contextMeta = const {},
   Future<bool> Function(Uri uri)? openUrl,
+  bool recordRecommendationEvent = true,
 }) async {
   final session = api.sessionEpoch;
   final response = await api.affiliateClick(productId);
@@ -26,6 +27,7 @@ Future<bool> openMerchantLink(
   // The external launch can finish after logout or an account change. Its
   // success remains true, but it cannot be attributed to the next account.
   if (session != api.sessionEpoch) return true;
+  if (!recordRecommendationEvent) return true;
   try {
     await api.recordRecommendationEvent(
       eventType: 'affiliate_click',

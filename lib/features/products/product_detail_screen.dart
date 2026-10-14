@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/modish_widgets.dart';
 import '../../core/widgets/product_image.dart';
+import '../catalog/catalogue_widgets.dart';
 import 'models.dart' as prod;
 
 class ProductDetailScreen extends StatefulWidget {
@@ -27,6 +28,10 @@ class ProductDetailScreen extends StatefulWidget {
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   late prod.FeedCard _card;
+  late final bool _catalogueDiscovery;
+  late final int _originSessionEpoch;
+  bool _sessionChanged = false;
+  int _request = 0;
   bool _refreshing = true;
   String? _refreshError;
   String? _selectedSize;
@@ -35,18 +40,25 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   @override
   void initState() {
     super.initState();
+    _catalogueDiscovery = widget.card.product.catalogueDiscovery;
+    _originSessionEpoch = widget.controller.navigationSessionEpoch;
     _card = prod.FeedCard(
       product: widget.card.product,
-      reason: _isMarketingFallback(widget.card.reason)
+      reason: _catalogueDiscovery || _isMarketingFallback(widget.card.reason)
           ? ''
           : widget.card.reason,
-      reasons: widget.card.reasons
-          .where((reason) => !_isMarketingFallback(reason))
-          .toList(growable: false),
+      reasons: _catalogueDiscovery
+          ? const []
+          : widget.card.reasons
+                .where((reason) => !_isMarketingFallback(reason))
+                .toList(growable: false),
     );
     widget.controller.addListener(_rebuild);
-    widget.controller.loadRelatedProducts(_card.product.id);
-    _selectedSize = _card.product.availableSizes.isNotEmpty
+    if (!_catalogueDiscovery) {
+      widget.controller.loadRelatedProducts(_card.product.id);
+    }
+    _selectedSize =
+        !_catalogueDiscovery && _card.product.availableSizes.isNotEmpty
         ? _card.product.availableSizes.first
         : null;
     _selectedColor = _card.product.colors.isNotEmpty
@@ -56,7 +68,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   void _rebuild() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {
+      if (_originSessionEpoch != widget.controller.navigationSessionEpoch) {
+        _request++;
+        _sessionChanged = true;
+        _refreshing = false;
+        _refreshError = 'Вы сменили аккаунт. Откройте товар заново.';
+      }
+    });
   }
 
   void _openRelatedProduct(prod.FeedCard card) {
@@ -85,22 +105,40 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   @override
   void dispose() {
+    _request++;
     widget.controller.removeListener(_rebuild);
     super.dispose();
   }
 
   Future<void> _pullLatest() async {
+    if (_sessionChanged) return;
+    final request = ++_request;
+    final session = widget.controller.navigationSessionEpoch;
     setState(() {
       _refreshing = true;
       _refreshError = null;
     });
     try {
-      final m = await widget.controller.api.productById(_card.product.id);
-      if (!mounted) return;
+      final m = _catalogueDiscovery
+          ? await widget.controller.api.catalogueDiscoveryProduct(
+              _card.product.id,
+            )
+          : await widget.controller.api.productById(_card.product.id);
+      if (!mounted ||
+          request != _request ||
+          session != widget.controller.navigationSessionEpoch) {
+        return;
+      }
       final latestProduct = prod.Product.fromApi(m);
+      if (_catalogueDiscovery &&
+          (!latestProduct.catalogueDiscovery ||
+              latestProduct.sizeVerification != 'not_verified')) {
+        throw const FormatException('Missing catalogue product metadata');
+      }
       // The product endpoint cannot rerun the original recommendation. Keep its
       // explanations only while the facts that supported them are unchanged.
       final keepExplanations =
+          !_catalogueDiscovery &&
           _card.product.recommendationFacts.isNotEmpty &&
           _sameRecommendationFacts(
             _card.product.recommendationFacts,
@@ -115,9 +153,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         _refreshing = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted ||
+          request != _request ||
+          session != widget.controller.navigationSessionEpoch) {
+        return;
+      }
       setState(() {
-        _refreshError = ApiClient.formatError(e);
+        _refreshError = _catalogueDiscovery
+            ? 'Не удалось проверить товар в каталоге. Обновите карточку и попробуйте снова.'
+            : ApiClient.formatError(e);
         _refreshing = false;
       });
     }
@@ -144,26 +188,30 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     icon: const Icon(Icons.arrow_back),
                   ),
                   const Spacer(),
+                  if (!_catalogueDiscovery)
+                    IconButton(
+                      onPressed: widget.controller.isLoading
+                          ? null
+                          : () => widget.controller.sendProductEvent(
+                              context,
+                              p.id,
+                              'like',
+                              meta: widget.eventMeta,
+                            ),
+                      icon: const Icon(Icons.favorite_border),
+                    ),
                   IconButton(
-                    onPressed: widget.controller.isLoading
+                    tooltip: 'Обновить карточку',
+                    onPressed: _refreshing || _sessionChanged
                         ? null
-                        : () => widget.controller.sendProductEvent(
-                            context,
-                            p.id,
-                            'like',
-                            meta: widget.eventMeta,
-                          ),
-                    icon: const Icon(Icons.favorite_border),
-                  ),
-                  IconButton(
-                    onPressed: _refreshing ? null : _pullLatest,
+                        : _pullLatest,
                     icon: _refreshing
                         ? const SizedBox(
                             width: 22,
                             height: 22,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(Icons.ios_share),
+                        : const Icon(Icons.refresh),
                   ),
                 ],
               ),
@@ -232,36 +280,44 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         ],
                       ),
                       const SizedBox(height: 20),
-                      Text(
-                        'Размер',
-                        style: AppTextStyles.sectionTitle.copyWith(
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      if (sizes.isEmpty)
+                      if (_catalogueDiscovery) ...[
+                        const CatalogueSizeNotice(),
+                        const SizedBox(height: 20),
+                        MerchantSizes(product: p),
+                      ] else ...[
                         Text(
-                          'Размеры уточняйте на сайте магазина',
-                          style: AppTextStyles.bodyMuted,
-                        )
-                      else
-                        Wrap(
-                          spacing: 8,
-                          children: sizes.map((s) {
-                            final on = _selectedSize == s;
-                            return ChoiceChip(
-                              label: Text(s),
-                              selected: on,
-                              onSelected: (_) =>
-                                  setState(() => _selectedSize = s),
-                              selectedColor: AppColors.accent,
-                              labelStyle: TextStyle(
-                                fontFamily: AppFonts.bodyFamily,
-                                color: on ? AppColors.onAccent : AppColors.ink,
-                              ),
-                            );
-                          }).toList(),
+                          'Размер',
+                          style: AppTextStyles.sectionTitle.copyWith(
+                            fontSize: 14,
+                          ),
                         ),
+                        const SizedBox(height: 10),
+                        if (sizes.isEmpty)
+                          Text(
+                            'Размеры уточняйте на сайте магазина',
+                            style: AppTextStyles.bodyMuted,
+                          )
+                        else
+                          Wrap(
+                            spacing: 8,
+                            children: sizes.map((s) {
+                              final on = _selectedSize == s;
+                              return ChoiceChip(
+                                label: Text(s),
+                                selected: on,
+                                onSelected: (_) =>
+                                    setState(() => _selectedSize = s),
+                                selectedColor: AppColors.accent,
+                                labelStyle: TextStyle(
+                                  fontFamily: AppFonts.bodyFamily,
+                                  color: on
+                                      ? AppColors.onAccent
+                                      : AppColors.ink,
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                      ],
                       const SizedBox(height: 18),
                       Text(
                         'Цвет',
@@ -318,6 +374,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       ],
                       Builder(
                         builder: (context) {
+                          if (_catalogueDiscovery) {
+                            return const SizedBox.shrink();
+                          }
                           final related = widget.controller.relatedProducts(
                             p.id,
                             limit: 4,
@@ -398,14 +457,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       ],
                       const SizedBox(height: 24),
                       PrimaryButton(
-                        label: 'Перейти в магазин',
-                        onPressed: widget.controller.isLoading
+                        label: _catalogueDiscovery
+                            ? 'Открыть магазин'
+                            : 'Перейти в магазин',
+                        onPressed:
+                            _sessionChanged ||
+                                widget.controller.isLoading ||
+                                (_catalogueDiscovery &&
+                                    (_refreshing || _refreshError != null))
                             ? null
                             : () => _openAffiliateShop(
                                 context,
                                 widget.controller,
                                 p.id,
-                                widget.eventMeta,
+                                _catalogueDiscovery
+                                    ? const {'surface': 'catalogue_discovery'}
+                                    : widget.eventMeta,
+                                recordRecommendationEvent: !_catalogueDiscovery,
                               ),
                       ),
                     ],
@@ -528,14 +596,16 @@ Future<void> _openAffiliateShop(
   BuildContext context,
   AppController controller,
   String productId,
-  Map<String, dynamic> eventMeta,
-) async {
+  Map<String, dynamic> eventMeta, {
+  bool recordRecommendationEvent = true,
+}) async {
   try {
     if (!await openMerchantLink(
       controller.api,
       productId,
       surface: eventMeta['surface'] as String? ?? 'product_detail',
       contextMeta: eventMeta,
+      recordRecommendationEvent: recordRecommendationEvent,
     )) {
       throw Exception('Не удалось открыть магазин. Попробуйте ещё раз.');
     }
