@@ -417,7 +417,10 @@ def _matched_confirmed_size(product, fit):
     from .fit_size_profile import requested_size_for_product
     from .catalog.size_resolver import resolve_size, resolve_product_sizes
     from .catalog.stock_freshness import availability_snapshot
+    from .personal_size_gate import evaluate_personal_size
     if product is None:
+        return None
+    if not evaluate_personal_size(product, fit).eligible:
         return None
     requested, system = requested_size_for_product(fit, product)
     if not requested:

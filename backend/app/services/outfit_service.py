@@ -161,6 +161,7 @@ def _bucket_products(
   products: list[Product],
   scenario: str,
   *,
+  fit: FitProfile | None = None,
   budget_max: int | None = None,
   skipped_ids: set[str] | None = None,
 ) -> dict[str, list[Product]]:
@@ -173,6 +174,10 @@ def _bucket_products(
   top_pref = _SCENARIO_TOP_PREF.get(scenario, _SCENARIO_TOP_PREF["daily"])
   bottom_pref = _SCENARIO_BOTTOM_PREF.get(scenario, _SCENARIO_BOTTOM_PREF["daily"])
   for p in products:
+    # Raw emergency rows must meet the same exact Fit admission as the normal
+    # catalogue path. A missing fit never justifies relaxing the size gate.
+    if not evaluate_eligibility(p, fit).eligible:
+      continue
     if not product_is_feed_eligible(p):
       continue
     if not _scenario_product_ok(p, scenario, budget_max):
@@ -370,7 +375,7 @@ def _generate_outfits_fallback(
   if len(products) > 40:
     pivot = rng.randint(0, len(products) - 1)
     products = products[pivot:] + products[:pivot]
-  buckets = _bucket_products(products, scenario_key, budget_max=budget_max, skipped_ids=skipped_ids)
+  buckets = _bucket_products(products, scenario_key, fit=fit, budget_max=budget_max, skipped_ids=skipped_ids)
   _extend_buckets(
     db,
     buckets,
@@ -391,7 +396,7 @@ def _generate_outfits_fallback(
       ).limit(300)
     ).scalars().all()
     fallback = [p for p in fallback if p.id not in excluded]
-    buckets = _bucket_products(fallback, scenario_key, budget_max=budget_max, skipped_ids=skipped_ids)
+    buckets = _bucket_products(fallback, scenario_key, fit=fit, budget_max=budget_max, skipped_ids=skipped_ids)
     _extend_buckets(
       db,
       buckets,

@@ -392,7 +392,7 @@ def generate_feed(
         continue
       filtered.append(p)
 
-  # Всё ещё пусто — ослабляем бюджет/размер, пол и категории не трогаем.
+  # Резервный проход сохраняет точный размер; MIE также отвергает превышение бюджета.
   if not filtered and not (filters and filters.active) and products and fit:
     from .feed_filters import product_passes_size
 

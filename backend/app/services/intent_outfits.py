@@ -40,8 +40,11 @@ def outfit_problem(products, fit, spec):
 def serialize_outfit(products, fit, spec, *, intent_id, version):
     from .fit_size_profile import requested_size_for_product
     from .catalog.size_resolver import resolve_size, resolve_product_sizes
+    from .personal_size_gate import evaluate_personal_size
     size_matches = {}
     for slot, product in products.items():
+        if not evaluate_personal_size(product, fit).eligible:
+            continue
         requested, system = requested_size_for_product(fit, product)
         wanted = resolve_size(requested, size_system=system,
             category=product.category or product.category_name or '')

@@ -149,16 +149,20 @@ class SizeAdmissionPerformanceTests(unittest.TestCase):
         self.assertTrue(sizes.exact_size_match(product, 'M', requested_system='LETTER'))
         self.assertFalse(sizes.exact_size_match(aliased, 'S', requested_system='LETTER'))
 
-    def test_legacy_iterators_and_malformed_reusable_containers_keep_full_behavior(self):
-        for factory in (lambda: iter(['S', 'M']), lambda: {'M': 'legacy'}, lambda: 'M', lambda: ('S', 'M')):
+    def test_legacy_iterators_and_scalar_tokens_keep_full_behavior_but_mapping_is_unknown(self):
+        for factory, expected in ((lambda: iter(['S', 'M']), True), (lambda: {'M': 'legacy'}, False),
+                (lambda: 'M', True), (lambda: ('S', 'M'), True)):
             reference = SimpleNamespace(category='брюки', category_name='', source='legacy',
                 available_sizes=factory())
             product = SimpleNamespace(category='брюки', category_name='', source='legacy',
                 available_sizes=factory())
-            self.assertTrue(full_size_match(reference, 'M', requested_system='LETTER'))
+            self.assertEqual(full_size_match(reference, 'M', requested_system='LETTER'), expected)
             with patch.object(sizes, 'resolve_product_sizes', wraps=sizes.resolve_product_sizes) as resolver:
-                self.assertTrue(sizes.exact_size_match(product, 'M', requested_system='LETTER'))
-            resolver.assert_called_once_with(product)
+                self.assertEqual(sizes.exact_size_match(product, 'M', requested_system='LETTER'), expected)
+            if expected:
+                resolver.assert_called_once_with(product)
+            else:
+                resolver.assert_not_called()
 
 
 if __name__ == '__main__':

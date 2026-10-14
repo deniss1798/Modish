@@ -4,6 +4,7 @@ Merchant/brand charts belong at this boundary, scoped to their merchant, brand,
 category and chart version. No cross-system conversion is enabled by default.
 """
 from dataclasses import asdict, dataclass, replace
+from collections.abc import Mapping
 import re
 
 from ...catalog_normalize import normalize_category, normalize_size_system, normalize_size_token, split_size_values
@@ -97,6 +98,11 @@ def _size_identity(value):
 def _flat_sizes_may_match(values, normalized_size):
     if values is None:
         return False
+    if isinstance(values, str):
+        # A persisted scalar XL is one declared token, never X and L.
+        values = (values,)
+    if isinstance(values, (bytes, bytearray, Mapping)):
+        return False
     # Persisted flat sizes are reusable lists. Keep other legacy containers on
     # the full path; probing an iterator would consume its only matching token.
     if not isinstance(values, (list, tuple)):
@@ -124,6 +130,11 @@ def may_match_flat_size(product, requested, *, requested_system=None) -> bool:
 
 
 def resolve_product_sizes(product) -> tuple[ResolvedSize, ...]:
+    values = product.available_sizes or []
+    if isinstance(values, str):
+        values = (values,)
+    if isinstance(values, (bytes, bytearray, Mapping)):
+        return ()
     raw = getattr(product, 'feed_raw_json', None)
     params = getattr(product, 'raw_params_json', None)
     system = explicit_size_system(raw, params)
@@ -132,8 +143,11 @@ def resolve_product_sizes(product) -> tuple[ResolvedSize, ...]:
     original_tokens = set(original_values)
     compounds = any(any(separator in value for separator in '/-,') for value in original_values.values())
     details = getattr(product, 'available_sizes_detailed', None) or []
+    if isinstance(details, (str, bytes, bytearray, Mapping)):
+        # An invalid stock-evidence container cannot confirm the flat list.
+        return ()
     out = []
-    for value in product.available_sizes or []:
+    for value in values:
         raw_value = original_values.get(_size_identity(value), value)
         size = resolve_size(raw_value, size_system=system,
             category=product.category or product.category_name or '',

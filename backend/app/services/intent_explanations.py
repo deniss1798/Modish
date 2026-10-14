@@ -1,6 +1,8 @@
 """Short reasons built from confirmed Fit, request constraints and evidence."""
 from .fit_size_profile import requested_size_for_product
 from .catalog.product_dna import RULE_VERSION
+from .personal_size_gate import evaluate_personal_size
+from .catalog.stock_freshness import availability_snapshot
 
 FEATURE_LABELS = {'straight': 'прямой крой', 'wide': 'широкий крой', 'slim': 'приталенную посадку',
     'regular': 'стандартную посадку', 'oversized': 'оверсайз', 'cotton': 'хлопок',
@@ -8,6 +10,8 @@ FEATURE_LABELS = {'straight': 'прямой крой', 'wide': 'широкий �
 
 
 def product_reasons(product, fit, spec, *, facts, taste_features=None, behavior=None):
+    if not evaluate_personal_size(product, fit).eligible or not availability_snapshot(product).available:
+        return []
     size, system = requested_size_for_product(fit, product)
     maximum = min(fit.budget_max, spec.budget_max or fit.budget_max)
     reasons = [f'Размер {system} {size} указан в наличии', f'Цена в пределах {maximum:,} ₽'.replace(',', ' ')]

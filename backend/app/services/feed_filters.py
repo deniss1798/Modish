@@ -32,10 +32,8 @@ def product_passes_size(product: Product, fit: FitProfile | None) -> bool:
 
 
 def product_has_confirmed_size(product: Product, fit: FitProfile | None) -> bool:
-  from .catalog.size_resolver import exact_size_match
-  from .fit_size_profile import requested_size_for_product
-  requested, system = requested_size_for_product(fit, product)
-  return exact_size_match(product, requested, requested_system=system)
+  from .personal_size_gate import evaluate_personal_size
+  return evaluate_personal_size(product, fit).eligible
 
 
 def product_passes_interest_categories(product: Product, fit: FitProfile | None) -> bool:

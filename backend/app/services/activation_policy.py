@@ -5,9 +5,8 @@ from .catalog.catalog_quality import product_is_feed_eligible
 from .catalog.affiliate_link_service import _public_web_url
 from .catalog.rule_filters import product_passes_source_rules
 from .catalog.style_tagger import infer_style_tags
-from .catalog.size_evidence import confirmed_product_size
 from .garment_roles import product_role
-from .fit_size_profile import requested_size_for_product
+from .personal_size_gate import evaluate_personal_size
 from .product_eligibility import evaluate_eligibility
 
 STYLES = {'casual', 'smart_casual', 'minimalism', 'romantic', 'elegant', 'streetwear'}
@@ -24,8 +23,7 @@ def features(product):
 
 
 def confirmed_size(product, fit, session):
-    requested, system = requested_size_for_product(fit, product)
-    return confirmed_product_size(product, requested, requested_system=system)
+    return evaluate_personal_size(product, fit).eligible
 
 
 def product_ok(product, fit, session, *, rules=None):

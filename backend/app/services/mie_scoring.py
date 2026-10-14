@@ -17,7 +17,8 @@ from ..catalog_normalize import (
 from ..models import FitProfile, Product, TasteProfile, UserTasteFeature
 from .catalog.catalog_quality import product_is_feed_eligible
 from .catalog.rule_filters import product_gender_compatible
-from .feed_filters import product_passes_budget, product_passes_size
+from .feed_filters import product_passes_budget
+from .personal_size_gate import evaluate_personal_size
 from .recommendation_config import FINAL_SCORE_WEIGHTS, FIT_MIN_THRESHOLD
 from .user_twin_service import apply_decay, current_taste_feature, product_taste_features
 
@@ -97,6 +98,11 @@ def compute_fit_score(
     return 0.0, True, ["Недостаточно данных о товаре"], {"fit_catalog_eligible": 0.0}
   if not product.affiliate_url and not product.product_url:
     return 0.0, True, ["Нет рабочей ссылки на товар"], {"fit_link_ok": 0.0}
+  size = evaluate_personal_size(product, fit)
+  if not size.eligible:
+    reason = "Подтвердите размер в профиле" if size.reason == 'size_unknown' else "Нет подходящего размера"
+    return 0.0, True, [reason], {"fit_size_confirmed": 0.0}
+  debug["fit_size_confirmed"] = 1.0
 
   score = 0.55
   hard_reject = False
@@ -118,17 +124,8 @@ def compute_fit_score(
   debug["fit_gender"] = 0.0 if hard_reject else score
 
   if not hard_reject and fit is not None:
-    if product_passes_size(product, fit):
-      from .feed_filters import product_has_confirmed_size
-      if product_has_confirmed_size(product, fit):
-        score += 0.10
-        reasons.append("Есть ваш размер")
-      else:
-        score += 0.04
-    else:
-      score = min(score, 0.35)
-      hard_reject = True
-      reasons.append("Нет подходящего размера")
+    score += 0.10
+    reasons.append("Есть ваш размер")
     if product_passes_budget(product, fit):
       score += 0.08
       reasons.append("Цена в рамках бюджета")
@@ -136,8 +133,6 @@ def compute_fit_score(
       score = min(score, 0.35)
       hard_reject = True
       reasons.append("Выше бюджета")
-  elif not hard_reject:
-    score += 0.06
 
   colors = set(product_taste_features(product).get("color", set()))
   if not hard_reject and palette and colors & palette:
