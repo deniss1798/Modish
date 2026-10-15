@@ -122,39 +122,45 @@ def apply_preferences_from_tags(
 ) -> None:
   if weight == 0:
     return
-  now = datetime.now(timezone.utc)
-  for field, category in TAG_FIELD_TO_CATEGORY.items():
-    values = tags_json.get(field) or []
-    if not isinstance(values, list):
-      continue
-    for raw in values:
-      key = str(raw).strip().lower()
-      if not key:
+  from .services.recommendation_revision import owner_mutation
+  with owner_mutation(db, user_id) as mutation:
+    changed = False
+    now = datetime.now(timezone.utc)
+    for field, category in TAG_FIELD_TO_CATEGORY.items():
+      values = tags_json.get(field) or []
+      if not isinstance(values, list):
         continue
-      pref = db.execute(
-        select(UserPreference).where(
-          UserPreference.user_id == user_id,
-          UserPreference.category == category,
-          UserPreference.key == key,
-        )
-      ).scalar_one_or_none()
-      if pref is None:
-        db.add(
-          UserPreference(
-            id=str(uuid4()),
-            user_id=user_id,
-            category=category,
-            key=key,
-            score=weight,
-            source="feedback_tags",
-            created_at=now,
-            updated_at=now,
+      for raw in values:
+        key = str(raw).strip().lower()
+        if not key:
+          continue
+        changed = True
+        pref = db.execute(
+          select(UserPreference).where(
+            UserPreference.user_id == user_id,
+            UserPreference.category == category,
+            UserPreference.key == key,
           )
-        )
-      else:
-        pref.score += weight
-        pref.updated_at = now
-  db.flush()
+        ).scalar_one_or_none()
+        if pref is None:
+          db.add(
+            UserPreference(
+              id=str(uuid4()),
+              user_id=user_id,
+              category=category,
+              key=key,
+              score=weight,
+              source="feedback_tags",
+              created_at=now,
+              updated_at=now,
+            )
+          )
+        else:
+          pref.score += weight
+          pref.updated_at = now
+    db.flush()
+    if changed:
+      mutation.mark_changed()
 
 
 def _stable_prefs(db: Session, user_id: str) -> tuple[dict[str, list[str]], dict[str, list[str]]]:

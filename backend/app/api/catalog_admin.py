@@ -310,7 +310,8 @@ def admin_catalog_source_rule_create(
   authorization: str | None = Header(default=None),
 ) -> dict[str, Any]:
   _admin_auth(authorization)
-  src = db.execute(select(ProductSource).where(ProductSource.id == source_id)).scalar_one_or_none()
+  src = db.execute(select(ProductSource).where(ProductSource.id == source_id)
+      .with_for_update().execution_options(populate_existing=True)).scalar_one_or_none()
   if src is None:
     raise HTTPException(status_code=404, detail="Source not found")
   rv_store = "1" if payload.rule_type in FLAG_RULE_TYPES else payload.rule_value.strip()
@@ -330,6 +331,18 @@ def admin_catalog_source_rule_create(
   return _rule_to_api(r)
 
 
+def _locked_rule(db, rule_id):
+  source_id = db.scalar(select(SourceRule.source_id).where(SourceRule.id == rule_id))
+  if source_id is None:
+    raise HTTPException(status_code=404, detail="Rule not found")
+  db.execute(select(ProductSource.id).where(ProductSource.id == source_id).with_for_update()).scalar_one()
+  rule = db.scalar(select(SourceRule).where(SourceRule.id == rule_id, SourceRule.source_id == source_id)
+      .with_for_update().execution_options(populate_existing=True))
+  if rule is None:
+    raise HTTPException(status_code=404, detail="Rule not found")
+  return rule
+
+
 @router.patch("/rules/{rule_id}")
 def admin_catalog_rule_patch(
   rule_id: str,
@@ -338,9 +351,7 @@ def admin_catalog_rule_patch(
   authorization: str | None = Header(default=None),
 ) -> dict[str, Any]:
   _admin_auth(authorization)
-  r = db.execute(select(SourceRule).where(SourceRule.id == rule_id)).scalar_one_or_none()
-  if r is None:
-    raise HTTPException(status_code=404, detail="Rule not found")
+  r = _locked_rule(db, rule_id)
   rt = payload.rule_type if payload.rule_type is not None else r.rule_type
   rv = payload.rule_value if payload.rule_value is not None else r.rule_value
   if rt in FLAG_RULE_TYPES:
@@ -366,9 +377,7 @@ def admin_catalog_rule_delete(
   authorization: str | None = Header(default=None),
 ) -> dict[str, Any]:
   _admin_auth(authorization)
-  r = db.execute(select(SourceRule).where(SourceRule.id == rule_id)).scalar_one_or_none()
-  if r is None:
-    raise HTTPException(status_code=404, detail="Rule not found")
+  r = _locked_rule(db, rule_id)
   db.delete(r)
   db.commit()
   return {"deleted": True, "id": rule_id}

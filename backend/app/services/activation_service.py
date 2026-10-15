@@ -29,7 +29,7 @@ from .activation_policy import (
 )
 from .profile_repository import load_preferences as _preferences
 from .personalization_scoring import AffinityScorer, affinity_score as _affinity, load_ranking_seen_counts
-from .recommendation_revision import profile_input_writer, accept_personal_change
+from .recommendation_revision import profile_input_writer, accept_personal_change, owner_mutation
 
 MIN_SWIPES = 15
 SWIPE_TARGET = 20
@@ -136,7 +136,8 @@ def candidate_pool(db, user, session, *, exclude_ids=(), restrict_categories=Fal
     semantic_ranking = any(kind in DNA_TASTE_DIMENSIONS for kind, _ in taste_features)
     if not fit or not fit.budget_max:
         return []
-    seen_counts = load_ranking_seen_counts(db, user_id=user.id, as_of=datetime.now(timezone.utc)) if scorer is None or not scorer.seen_counts_loaded else None
+    seen_counts = load_ranking_seen_counts(db, user_id=user.id,
+        as_of=db.info.get('recommendation_as_of') or datetime.now(timezone.utc)) if scorer is None or not scorer.seen_counts_loaded else None
     if scorer is None:
         scorer = AffinityScorer(profile, taste, fit=fit, seen_counts=seen_counts,
             taste_features=taste_features, context=context)
@@ -180,7 +181,7 @@ def candidate_pool(db, user, session, *, exclude_ids=(), restrict_categories=Fal
     # Popularity is scoped to women and the same price segment by the outer query.
     popularity = select(RecommendationEventV2.product_id.label('pid'), func.count().label('n')).where(
         RecommendationEventV2.event_type.in_(['like', 'save']),
-        RecommendationEventV2.created_at >= datetime.now(timezone.utc) - timedelta(days=60),
+        RecommendationEventV2.created_at >= (db.info.get('recommendation_as_of') or datetime.now(timezone.utc)) - timedelta(days=60),
     ).group_by(RecommendationEventV2.product_id).subquery()
     # Legacy feeds store merchant category paths, not just canonical labels.
     # Resolve the small category vocabulary first, without a recency cutoff.
@@ -488,7 +489,7 @@ def _wow_explanation(products, profile, fit):
     return ' · '.join(parts)
 
 
-def personalized_feed(db, user, session, *, limit=20, exclude_ids=(), filters=None, source=None, scenario='daily', context=None):
+def personalized_feed(db, user, session, *, limit=20, exclude_ids=(), filters=None, source=None, scenario='daily', context=None, publish=True):
     from .recommendation_engine import ScoredProduct
     profile, fit, taste = _preferences(db, user)
     from .mie_scoring import load_user_taste_feature_map
@@ -496,7 +497,8 @@ def personalized_feed(db, user, session, *, limit=20, exclude_ids=(), filters=No
     context = context or (context_for(scenario) if scenario != 'daily' else None)
     taste_features = load_user_taste_feature_map(db, user_id=user.id)
     scorer = AffinityScorer(profile, taste, fit=fit,
-        seen_counts=load_ranking_seen_counts(db, user_id=user.id, as_of=datetime.now(timezone.utc)),
+        seen_counts=load_ranking_seen_counts(db, user_id=user.id,
+            as_of=db.info.get('recommendation_as_of') or datetime.now(timezone.utc)),
         taste_features=taste_features, context=context)
     pool = candidate_pool(db, user, session, exclude_ids=exclude_ids, restrict_categories=True,
                           filters=filters, context=context, taste_features=taste_features,
@@ -511,8 +513,9 @@ def personalized_feed(db, user, session, *, limit=20, exclude_ids=(), filters=No
     chosen = diverse_products(pool, cap, exploration=True, exploration_offset=viewed,
                               allow_category_fallback=bool(filters and filters.categories),
                               selection_sources=selection_sources)
-    issued = list(session.issued_feed_ids or [])
-    session.issued_feed_ids = list(dict.fromkeys(issued + [p.id for p in chosen]))[-200:]
+    if publish:
+        issued = list(session.issued_feed_ids or [])
+        session.issued_feed_ids = list(dict.fromkeys(issued + [p.id for p in chosen]))[-200:]
     rows = []
     for i, p in enumerate(chosen):
         reasons = reasons_for(p, profile, fit, taste, session)[:2]
@@ -529,9 +532,15 @@ def personalized_feed(db, user, session, *, limit=20, exclude_ids=(), filters=No
 
 
 def record_exposure_event(db, user, product_id, event_type, *, surface=None):
+    if surface == 'style_swipe':
+        return
+    with owner_mutation(db, user.id):
+        _apply_exposure_event(db, user, product_id, event_type, surface=surface)
+
+
+def _apply_exposure_event(db, user, product_id, event_type, *, surface=None):
     session = db.get(ActivationSession, user.id)
-    if not session or not session.completed_at or surface == 'style_swipe': return
-    lock_user(db, user)
+    if not session or not session.completed_at: return
     row = db.scalar(select(ActivationExposure).where(ActivationExposure.user_id == user.id, ActivationExposure.product_id == product_id))
     before = None if row is None else (row.reaction, row.saved, row.opened, row.clicked)
     if row is None:

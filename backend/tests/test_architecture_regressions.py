@@ -152,3 +152,39 @@ class ArchitectureRegressionTests(unittest.TestCase):
         self.db.rollback()
         for model in (RecommendationEventV2, UserProductState, UserTasteFeature, TasteProfile):
             self.assertEqual(list(self.db.scalars(select(model))), [])
+
+    def test_prefetched_legacy_taste_and_state_do_not_overwrite_later_feedback(self):
+        product = self.product()
+        self.db.commit()
+        payload = EventRequest(product_id=product.id, event_type='like')
+        record_product_event(self.db, self.user, payload)
+        stale_taste = self.db.scalar(select(TasteProfile))
+        stale_state = self.db.scalar(select(UserProductState))
+        first_weights = dict(stale_taste.category_weights)
+        first_strength = stale_state.event_strength
+        with Session(self.engine, autoflush=False) as other:
+            record_product_event(other, other.get(User, self.user.id), payload)
+        self.assertEqual(stale_taste.category_weights, first_weights)
+        self.assertEqual(stale_state.event_strength, first_strength)
+        record_product_event(self.db, self.user, payload)
+        self.assertEqual(stale_taste.category_weights,
+            {key: value * 3 for key, value in first_weights.items()})
+        self.assertEqual(stale_state.event_strength, first_strength * 3)
+
+    def test_direct_exposure_reloads_issued_attribution_after_owner_wait(self):
+        from app.models import ActivationExposure, ActivationSession
+        product = self.product()
+        session = ActivationSession(user_id=self.user.id, completed_at=datetime.now(timezone.utc),
+            issued_feed_ids=[])
+        self.db.add(session)
+        self.db.commit()
+        self.assertEqual(session.issued_feed_ids, [])
+        with Session(self.engine, autoflush=False) as other:
+            from app.services.recommendation_revision import owner_mutation
+            with owner_mutation(other, self.user.id):
+                other.get(ActivationSession, self.user.id).issued_feed_ids = [product.id]
+            other.commit()
+        self.assertEqual(session.issued_feed_ids, [])
+        activation.record_exposure_event(self.db, self.user, product.id, 'view', surface='feed')
+        self.assertEqual(session.issued_feed_ids, [product.id])
+        self.assertEqual(len(list(self.db.scalars(select(ActivationExposure)))), 1)

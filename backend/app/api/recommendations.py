@@ -82,10 +82,10 @@ def recommendations_feed(
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> list[dict[str, Any]]:
   """Персонализированная товарная лента (alias для GET /feed)."""
-  from .products import _feed_scored_items
+  from .products import _independent_feed_response
 
   user = user_from_token(credentials, db)
-  return _feed_scored_items(db, user, limit=limit, source=source, scenario=scenario)
+  return _independent_feed_response(db, user, limit=limit, source=source, scenario=scenario)
 
 
 @router.get("/recommendations/outfits-legacy")

@@ -7,6 +7,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from app.api import fit_profile as fit_api, profile as profile_api, taste_profile as taste_api
+from app import business
 from app.db import Base
 from app.models import ActivationSession, StyleProfile, TasteProfile, User, UserProductState, UserTasteFeature
 from app.schemas.product_event import EventRequest
@@ -108,6 +109,16 @@ class RecommendationWriterMatrixTests(unittest.TestCase):
         self.assertEqual(self.revision(), 1)
         ensure_taste_profile(self.db, self.user.id)
         ensure_style_profile(self.db, self.user.id)
+        self.db.commit()
+        self.assertEqual(self.revision(), 1)
+
+    def test_direct_legacy_tag_preferences_participate_and_empty_tags_are_noop(self):
+        business.apply_preferences_from_tags(self.db, self.user.id, {'colors': ['black']}, 0)
+        business.apply_preferences_from_tags(self.db, self.user.id, {}, 2)
+        self.db.commit()
+        self.assertEqual(self.revision(), 0)
+        field = next(iter(business.TAG_FIELD_TO_CATEGORY))
+        business.apply_preferences_from_tags(self.db, self.user.id, {field: ['synthetic-value']}, 2)
         self.db.commit()
         self.assertEqual(self.revision(), 1)
 

@@ -45,7 +45,7 @@ class AffinityEvaluation:
 def load_ranking_seen_counts(db, *, user_id, as_of=None):
     """Real visible actions, deduplicated by product/day; delivery is not sight."""
     from .behavior_profile import EXPOSURE_EVENTS
-    now = as_of or datetime.now(timezone.utc)
+    now = as_of or db.info.get('recommendation_as_of') or datetime.now(timezone.utc)
     rows = db.execute(select(RecommendationEventV2.product_id,
         func.count(func.distinct(func.date(RecommendationEventV2.created_at))))
         .where(RecommendationEventV2.user_id == user_id,

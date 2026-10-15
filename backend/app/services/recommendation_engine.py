@@ -101,7 +101,7 @@ def _batch_seen_counts(db: Session, *, user_id: str, product_ids: list[str]) -> 
   """view/open_product за 30 дней по всем кандидатам одним запросом."""
   if not product_ids:
     return {}
-  since = datetime.now(timezone.utc) - timedelta(days=30)
+  since = (db.info.get('recommendation_as_of') or datetime.now(timezone.utc)) - timedelta(days=30)
   rows = db.execute(
     select(RecommendationEventV2.product_id, func.count())
     .where(
@@ -117,7 +117,7 @@ def _batch_seen_counts(db: Session, *, user_id: str, product_ids: list[str]) -> 
 
 def _batch_saved_categories(db: Session, *, user_id: str) -> set[str]:
   """Категории сохранённых товаров за 90 дней — один запрос на ленту."""
-  since = datetime.now(timezone.utc) - timedelta(days=90)
+  since = (db.info.get('recommendation_as_of') or datetime.now(timezone.utc)) - timedelta(days=90)
   rows = db.execute(
     select(Product.category, Product.category_name)
     .join(RecommendationEventV2, RecommendationEventV2.product_id == Product.id)
@@ -153,7 +153,7 @@ def _batch_popularity(db: Session, *, product_ids: list[str]) -> dict[str, float
   """Популярность 0..10 по позитивным событиям всех пользователей за 60 дней."""
   if not product_ids:
     return {}
-  since = datetime.now(timezone.utc) - timedelta(days=60)
+  since = (db.info.get('recommendation_as_of') or datetime.now(timezone.utc)) - timedelta(days=60)
   rows = db.execute(
     select(RecommendationEventV2.product_id, func.count())
     .where(
@@ -306,12 +306,14 @@ def generate_feed(
   scenario: str = "daily",
   max_to_score: int = 700,
   filters: CatalogFilters | None = None,
+  read_only: bool = False,
 ) -> list[ScoredProduct]:
   from .product_identity import product_identity_keys
 
   # Serialize per-user cache writes across concurrent feed/outfit requests.
   # PostgreSQL holds this lock until the caller commits; SQLite tests ignore it.
-  db.execute(select(User.id).where(User.id == user.id).with_for_update()).scalar_one()
+  if not read_only:
+    db.execute(select(User.id).where(User.id == user.id).with_for_update()).scalar_one()
 
   fit = db.scalar(select(FitProfile).where(FitProfile.user_id == user.id))
   if fit is None or fit.gender_target not in {"menswear", "womenswear", "unisex"}:
@@ -322,7 +324,8 @@ def generate_feed(
   if activation is not None:
     from .activation_service import personalized_feed
     return personalized_feed(db, user, activation, limit=limit,
-        exclude_ids=exclude_product_ids or (), filters=filters, source=source, scenario=scenario)
+        exclude_ids=exclude_product_ids or (), filters=filters, source=source, scenario=scenario,
+        publish=not read_only)
 
   exclude_product_ids = expand_product_exclusions(db, exclude_product_ids)
   excluded_keys: set[str] = set()
@@ -460,10 +463,10 @@ def generate_feed(
         break
   from .recommendation_cache_service import persist_recommendation_caches  # noqa: PLC0415
 
-  persist_recommendation_caches(
-    db,
-    user_id=user.id,
-    filtered_products=filtered,
-    scored_top=top,
-  )
+  if read_only:
+    db.info['prepared_feed_candidate_ids'] = tuple(p.id for p in filtered[:400])
+  else:
+    persist_recommendation_caches(
+      db, user_id=user.id, filtered_products=filtered, scored_top=top,
+    )
   return top

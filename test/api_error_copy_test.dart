@@ -22,6 +22,18 @@ DioException _response(int status, dynamic data, {String path = '/feed'}) {
 }
 
 void main() {
+  test('Concurrent feed conflict offers a fresh read without diagnostics', () {
+    expect(
+      ApiClient.formatError(
+        _response(409, {
+          'detail':
+              'Параметры или каталог изменились во время подбора. Обновите ленту.',
+        }),
+      ),
+      'Подборка изменилась. Обновите ленту, чтобы увидеть актуальные вещи.',
+    );
+  });
+
   test('Changed swipe card asks to reload instead of retrying a stale vote', () {
     expect(
       ApiClient.formatError(

@@ -6,13 +6,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..models import FitProfile, StyleProfile, TasteProfile, User
-from .recommendation_revision import owner_mutation
+from .recommendation_revision import owner_mutation, RecommendationSnapshotChanged
 
 
 def ensure_style_profile(db: Session, user_id: str) -> StyleProfile:
   row = db.execute(select(StyleProfile).where(StyleProfile.user_id == user_id)).scalar_one_or_none()
   if row:
     return row
+  if db.info.get('recommendation_read_only'):
+    raise RecommendationSnapshotChanged()
   return _create_style_profile(db, user_id)
 
 
@@ -41,6 +43,8 @@ def ensure_taste_profile(db: Session, user_id: str, *, as_of: datetime | None = 
   row = db.execute(select(TasteProfile).where(TasteProfile.user_id == user_id)).scalar_one_or_none()
   if row:
     return row
+  if db.info.get('recommendation_read_only'):
+    raise RecommendationSnapshotChanged()
   return _create_taste_profile(db, user_id, as_of=as_of)
 
 

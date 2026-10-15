@@ -53,7 +53,7 @@ def load_user_taste_feature_map(db: Session, *, user_id: str, as_of: datetime | 
     select(UserTasteFeature).where(UserTasteFeature.user_id == user_id)
   ).scalars().all()
   out: TasteFeatureMap = {}
-  checked_at = as_of or datetime.now(timezone.utc)
+  checked_at = as_of or db.info.get('recommendation_as_of') or datetime.now(timezone.utc)
   for row in rows:
     key = (str(row.feature_type or "").strip(), str(row.feature_value or "").strip().lower())
     if not key[0] or not key[1]:

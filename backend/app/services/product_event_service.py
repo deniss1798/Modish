@@ -24,13 +24,38 @@ from .recommendation_config import (
 )
 from .recommendation_engine import _product_category_norms
 from .user_twin_service import apply_event_to_user_twin
-from .recommendation_revision import accept_personal_change
+from .recommendation_revision import accept_personal_change, owner_mutation
 
 
 def record_product_event(db: Session, user: User, payload: EventRequest, *, commit: bool = True) -> dict[str, Any]:
-  from ..models import Outfit, Product
+  # Refresh cached owner rows BEFORE reading legacy taste/state. A late revision
+  # bump alone cannot repair a signal overwritten after waiting for the lock.
+  with owner_mutation(db, user.id):
+    result = _apply_product_event(db, user, payload)
+  if result.get('idempotent'):
+    return result
+  if not commit:
+    return {'status': result['status'], 'event_type': result['event_type']}
+  db.commit()
+  total = db.scalar(select(func.count()).select_from(RecommendationEventV2).where(
+    RecommendationEventV2.user_id == user.id)) or 0
+  from ..models import ActivationSession, Outfit
+  milestone = total in (20, 30) and db.get(ActivationSession, user.id) is None
+  generated = 0
+  if milestone:
+    existing = db.scalar(select(Outfit).where(Outfit.user_id == user.id).limit(1))
+    if existing is None:
+      items = generate_outfits(db, user, count=3)
+      db.commit()
+      generated = len(items)
+  return {**result, 'total_events': int(total), 'milestone_reached': milestone,
+    'outfits_generated': generated}
 
-  db.execute(select(User.id).where(User.id == user.id).with_for_update()).scalar_one()
+
+def _apply_product_event(db: Session, user: User, payload: EventRequest) -> dict[str, Any]:
+  """Commit-free application; caller holds and refreshes the owner first."""
+  from ..models import Product
+
   if payload.product_id and db.get(Product, payload.product_id) is None:
     raise HTTPException(status_code=404, detail="Товар не найден")
   try:
@@ -286,27 +311,4 @@ def record_product_event(db: Session, user: User, payload: EventRequest, *, comm
     record_exposure_event(db, user, payload.product_id, canonical_event_type, surface=meta.get('surface'))
   db.flush()
   accept_personal_change(db, user.id)
-  if not commit:
-    return {"status": "ok", "event_type": canonical_event_type}
-  db.commit()
-  total = db.execute(
-    select(func.count()).select_from(RecommendationEventV2).where(RecommendationEventV2.user_id == user.id)
-  ).scalar_one()
-  total = int(total or 0)
-  from ..models import ActivationSession
-  milestone = total in (20, 30) and db.get(ActivationSession, user.id) is None
-  generated = 0
-  if milestone:
-    existing = db.execute(select(Outfit).where(Outfit.user_id == user.id)).scalars().first()
-    if existing is None:
-      items = generate_outfits(db, user, count=3)
-      db.commit()
-      generated = len(items)
-  return {
-    "status": "ok",
-    "event_type": canonical_event_type,
-    "weight": weight,
-    "total_events": total,
-    "milestone_reached": milestone,
-    "outfits_generated": generated,
-  }
+  return {'status': 'ok', 'event_type': canonical_event_type, 'weight': weight}

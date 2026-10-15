@@ -21,6 +21,14 @@ from ..models import ActivationSession, FitProfile, StyleProfile, TasteProfile, 
 _KEY = '_recommendation_owner_mutations'
 
 
+class RecommendationSnapshotChanged(RuntimeError):
+    """Internal bounded-retry signal; never display raw diagnostics."""
+
+
+class RecommendationOwnerMissing(RuntimeError):
+    """The authenticated owner was removed during a multi-phase operation."""
+
+
 @dataclass
 class OwnerMutation:
     db: Session
@@ -67,7 +75,9 @@ def owner_mutation(db: Session, user_id: str):
     mutation = owners.get(user_id)
     if mutation is None:
         with db.no_autoflush:
-            db.execute(select(User.id).where(User.id == user_id).with_for_update()).scalar_one()
+            owner_id = db.scalar(select(User.id).where(User.id == user_id).with_for_update())
+            if owner_id is None:
+                raise RecommendationOwnerMissing()
         db.flush()
         # Expire only loaded rows for this owner. Do not aggregate an unbounded
         # personal history while holding the lock or discard pending edits.

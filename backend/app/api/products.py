@@ -10,13 +10,22 @@ from sqlalchemy.orm import Session
 
 from ..models import Product, User, UserProductState, FitProfile, RecommendationEventV2
 from ..schemas.api_product import product_to_api
-from ..services.recommendation_config import recommendation_algorithm_metadata
 from ..services.recommendation_engine import generate_feed
 from ..services.catalog_filters import CatalogFilters, CATEGORY_GROUPS
 from ..services.catalog.stock_freshness import fresh_stock_conditions
 from .deps import auth_scheme, get_db, user_from_token
 
 router = APIRouter(tags=["products"])
+
+
+def _independent_feed_response(db, user, **options):
+  """Release the authentication read before taking another pooled connection."""
+  from ..services.feed_session import build_feed_response
+  user_id, bind = user.id, db.get_bind()
+  if db.new or db.dirty or db.deleted:
+    raise RuntimeError('Feed request cannot own uncommitted writes')
+  db.close()
+  return build_feed_response(bind, user_id, **options)
 
 
 def _feed_scored_items(
@@ -71,44 +80,8 @@ def _feed_scored_items(
       detail="Не удалось загрузить ленту. Попробуйте обновить её через несколько секунд.",
     ) from exc
 
-  from ..services.product_analytics_service import log_feed_impressions
-
-  ranking_metadata: dict[str, dict[str, Any]] = {}
-  for rank, s in enumerate(scored, start=1):
-    ranking_metadata[s.product.id] = {
-      **recommendation_algorithm_metadata(ranking_algorithm=s.ranking_algorithm, scenario=scenario),
-      "algorithm_version": s.algorithm_version,
-      "rank": rank,
-      "candidate_source": ",".join(s.candidate_sources),
-      "candidate_sources": list(s.candidate_sources),
-      "fit_score": s.breakdown.get("fit_score"),
-      "taste_score": s.breakdown.get("taste_score"),
-      "context_score": s.breakdown.get("context_score"),
-      "quality_score": s.breakdown.get("quality_score"),
-      "exploration_score": s.breakdown.get("exploration_score"),
-      "final_score": s.final_score,
-    }
-  log_feed_impressions(
-    db,
-    user_id=user.id,
-    product_ids=[s.product.id for s in scored],
-    source=source,
-    ranking_metadata=ranking_metadata,
-  )
-  out: list[dict[str, Any]] = []
-  for s in scored:
-    out.append(
-      {
-        "product": product_to_api(s.product),
-        "final_score": s.final_score,
-        "breakdown": s.breakdown,
-        "candidate_sources": s.candidate_sources,
-        "algorithm_version": s.algorithm_version,
-        "ranking_algorithm": s.ranking_algorithm,
-        "reason": s.reason,
-        "reasons": s.reasons,
-      }
-    )
+  from ..services.feed_delivery import serialize_feed_delivery
+  out = serialize_feed_delivery(db, user_id=user.id, scored=scored, source=source, scenario=scenario)
   db.commit()
   return out
 
@@ -211,7 +184,7 @@ def products_recommended(
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> list[dict[str, Any]]:
   u = user_from_token(credentials, db)
-  return _feed_scored_items(db, u, limit=limit, source=source, scenario=scenario)
+  return _independent_feed_response(db, u, limit=limit, source=source, scenario=scenario)
 
 
 @router.get("/feed")
@@ -234,7 +207,7 @@ def feed(
   if any(c not in CATEGORY_GROUPS for c in categories):
     raise HTTPException(status_code=422, detail="Неизвестная категория")
   filters = CatalogFilters(min_price, max_price, tuple(categories), tuple(sizes), tuple(colors))
-  return _feed_scored_items(db, u, limit=limit, source=source, scenario=scenario, filters=filters, exclude_ids=exclude_ids)
+  return _independent_feed_response(db, u, limit=limit, source=source, scenario=scenario, filters=filters, exclude_ids=exclude_ids)
 
 
 @router.get("/products/{product_id}")

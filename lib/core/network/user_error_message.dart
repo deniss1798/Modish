@@ -19,6 +19,8 @@ const _service =
 // Exact known business responses are translated to our own UI copy. Arbitrary
 // server text, validation locations, exception messages and HTML never reach UI.
 const _businessMessages = <String, String>{
+  'Параметры или каталог изменились во время подбора. Обновите ленту.':
+      'Подборка изменилась. Обновите ленту, чтобы увидеть актуальные вещи.',
   'Карточка больше не подходит вашим параметрам. Обновите подборку.':
       'Цена, наличие или параметры вещи изменились. Обновите подборку и выберите другую вещь.',
   'Явно выберите гардероб.': 'Выберите пол в параметрах подбора и продолжите.',

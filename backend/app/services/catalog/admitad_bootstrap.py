@@ -17,6 +17,9 @@ from .feed_import_service import sync_partner_feed
 
 def _ensure_clothing_rules(db: Session, *, source_id: str) -> int:
   """Добавляет недостающие правила; возвращает число новых."""
+  # Feed publication holds the same source row FOR SHARE before reading rules.
+  # Lock the parent first so inserts cannot become unprotected policy phantoms.
+  db.execute(select(ProductSource.id).where(ProductSource.id == source_id).with_for_update()).scalar_one()
   existing = db.execute(
     select(SourceRule).where(
       SourceRule.source_id == source_id,

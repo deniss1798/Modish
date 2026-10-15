@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.db import Base
 from app.models import StyleProfile, User
-from app.services.recommendation_revision import owner_mutation
+from app.services.recommendation_revision import RecommendationOwnerMissing, owner_mutation
 
 
 class RecommendationRevisionTests(unittest.TestCase):
@@ -29,6 +29,13 @@ class RecommendationRevisionTests(unittest.TestCase):
             pass
         self.db.commit()
         self.assertEqual(self.revision(), 0)
+
+    def test_missing_owner_is_an_explicit_publication_conflict(self):
+        with self.assertRaises(RecommendationOwnerMissing):
+            with owner_mutation(self.db, 'removed-owner'):
+                self.fail('A removed owner cannot publish')
+        self.db.rollback()
+        self.assertNotIn('_recommendation_owner_mutations', self.db.info)
 
     def test_nested_helpers_coalesce_once_and_preserve_outer_pending_changes(self):
         profile = StyleProfile(id='style', user_id=self.user.id, style_target='unknown')

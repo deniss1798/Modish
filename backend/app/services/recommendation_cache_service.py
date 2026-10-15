@@ -23,9 +23,18 @@ def persist_recommendation_caches(
   top_limit: int = 100,
 ) -> None:
   """Сохраняет пул кандидатов и топ выдачи для пользователя (ТЗ §13)."""
-  now = datetime.now(timezone.utc)
   cands = [p.id for p in filtered_products[: max(1, candidate_limit)]]
   top_ids = [s.product.id for s in scored_top[: max(1, top_limit)]]
+  persist_recommendation_cache_ids(db, user_id=user_id, candidate_ids=cands, top_ids=top_ids,
+      candidate_limit=candidate_limit, top_limit=top_limit)
+
+
+def persist_recommendation_cache_ids(db: Session, *, user_id: str, candidate_ids, top_ids,
+    candidate_limit=400, top_limit=100) -> None:
+  """Persist a bounded prepared pool; no catalogue scan or scoring here."""
+  now = datetime.now(timezone.utc)
+  cands = list(candidate_ids)[:max(1, candidate_limit)]
+  top_ids = list(top_ids)[:max(1, top_limit)]
 
   pool = db.execute(
     select(RecommendationCandidatePool).where(RecommendationCandidatePool.user_id == user_id)

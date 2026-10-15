@@ -362,7 +362,7 @@ def retrieve_candidates(
   )
   _add_rows(result, rows, source_name="embedding", max_candidates=max_candidates, fit=fit)
 
-  since = datetime.now(timezone.utc) - timedelta(days=60)
+  since = (db.info.get('recommendation_as_of') or datetime.now(timezone.utc)) - timedelta(days=60)
   popular_ids = [
     str(pid)
     for pid in db.execute(
