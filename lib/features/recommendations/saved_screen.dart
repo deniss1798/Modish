@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../app.dart';
+import '../../core/presentation/price_format.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/modish_widgets.dart';
@@ -194,7 +195,7 @@ class _SavedScreenState extends State<SavedScreen> {
                               children: [
                                 Expanded(
                                   child: Text(
-                                    '${product.price} ₽',
+                                    '${formatPriceAmount(product.price)} ₽',
                                     style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w700,

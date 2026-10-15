@@ -5,6 +5,7 @@ from typing import Any
 
 from ..catalog_normalize import normalize_interest_category, normalize_style_scenario
 from ..models import FitProfile, Outfit, Recommendation, TasteProfile
+from ..money import json_rubles
 from ..services.fit_size_profile import size_profile_to_api, missing_fit_requirements
 
 
@@ -109,7 +110,7 @@ def outfit_to_api(o: Outfit, products: dict[str, Any] | None = None) -> dict[str
     "id": o.id,
     "items": items,
     "products": products or {},
-    "total_price": o.total_price,
+    "total_price": json_rubles(o.total_price),
     "style_direction": o.style_direction,
     "reason": o.reason,
     "score": o.score,

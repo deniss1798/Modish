@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Any
 
 from ...catalog_normalize import (
@@ -14,6 +14,7 @@ from ...catalog_normalize import (
   split_size_values,
 )
 from ...models import ProductSource
+from ...money import parse_rubles
 from .normalized_product import NormalizedProduct
 from .style_tagger import infer_style_tags
 
@@ -35,21 +36,14 @@ def _pick(d: dict[str, Any], *keys: str) -> Any:
   return None
 
 
-def _int_price(raw: Any) -> int | None:
-  if raw is None or isinstance(raw, bool):
-    return None
-  s = re.sub(r"[\s\u00a0₽]", "", str(raw)).replace("RUB", "").replace("RUR", "")
-  if "," in s and "." in s:
-    decimal_separator = "," if s.rfind(",") > s.rfind(".") else "."
-    s = s.replace("." if decimal_separator == "," else ",", "")
-  s = s.replace(",", ".")
-  try:
-    amount = Decimal(s)
-    if not amount.is_finite() or amount < 0 or amount > 10_000_000:
-      return None
-    return int(amount.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
-  except (InvalidOperation, ValueError):
-    return None
+def _int_price(raw: Any) -> Decimal | None:
+  """Compatibility name; amounts are RUB with kopecks, never integer truncation."""
+  return parse_rubles(raw)
+
+
+def _int_percent(raw: Any) -> int | None:
+  amount = parse_rubles(raw, maximum=Decimal('100'))
+  return int(amount.quantize(Decimal('1'), rounding=ROUND_HALF_UP)) if amount is not None else None
 
 
 def availability_from_row(d: dict[str, Any]) -> str:
@@ -219,7 +213,7 @@ def row_to_normalized(row: dict[str, Any], source: ProductSource) -> NormalizedP
 
   availability_status = availability_from_row(d)
 
-  discount = _int_price(_pick(d, "discount", "discount_percent", "sale_percent"))
+  discount = _int_percent(_pick(d, "discount", "discount_percent", "sale_percent"))
 
   raw_params: dict[str, Any] = {}
   for rk, rv in d.items():

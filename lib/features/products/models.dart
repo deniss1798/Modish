@@ -149,8 +149,8 @@ class Product {
   /// Подпись витрины с бэкенда (Lamoda, бренд и т.д.), без URL.
   final String shopLabel;
   final String category;
-  final int price;
-  final int? oldPrice;
+  final num price;
+  final num? oldPrice;
   final int? discountPercent;
   final String currency;
   final String imageUrl;
@@ -269,8 +269,8 @@ class Product {
       brand: (json['brand'] ?? '').toString(),
       shopLabel: _shopLabelFromJson(json),
       category: (json['category'] ?? '').toString(),
-      price: (json['price'] as num?)?.toInt() ?? 0,
-      oldPrice: (json['old_price'] as num?)?.toInt(),
+      price: (json['price'] as num?) ?? 0,
+      oldPrice: json['old_price'] as num?,
       discountPercent: (json['discount_percent'] as num?)?.toInt(),
       currency: (json['currency'] ?? 'RUB').toString(),
       imageUrl: (json['image_url'] ?? json['imageUrl'] ?? '').toString(),

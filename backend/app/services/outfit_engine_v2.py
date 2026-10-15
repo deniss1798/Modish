@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from itertools import product as cartesian_product
 from typing import Iterable
 from uuid import uuid4
@@ -16,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from ..catalog_normalize import normalize_category, normalize_colors_value
 from ..models import ActivationSession, FitProfile, MetricEvent, Outfit, Product, RecommendationEventV2, User
+from ..money import as_rubles
 from .catalog.catalog_quality import product_is_feed_eligible
 from .product_eligibility import evaluate_eligibility
 from .catalog.stock_freshness import fresh_stock_conditions
@@ -83,7 +85,7 @@ class SlotCandidate:
 @dataclass(frozen=True)
 class OutfitCandidate:
   items: dict[str, SlotCandidate]
-  total_price: int
+  total_price: Decimal
   personal_score: float
   compatibility_score: float
   novelty_score: float
@@ -472,10 +474,10 @@ def _novelty_score(items: list[SlotCandidate]) -> float:
   return _clamp01(0.45 + 0.45 * unique_ratio)
 
 
-def _outfit_budget_ok(total: int, item_count: int, fit: FitProfile | None) -> bool:
+def _outfit_budget_ok(total: Decimal, item_count: int, fit: FitProfile | None) -> bool:
   if fit is None or int(fit.budget_max or 0) <= 0:
     return True
-  return total <= int(fit.budget_max * max(1, item_count) * 1.05)
+  return total <= as_rubles(fit.budget_max) * max(1, item_count) * Decimal('1.05')
 
 
 def _reason(candidate: OutfitCandidate, *, scenario: str, compatibility_parts: dict[str, float]) -> str:
@@ -523,7 +525,7 @@ def _build_combinations(
       if len(product_ids) != len(set(product_ids)):
         continue
       items_by_slot = {item.slot: item for item in slot_items}
-      total = sum(int(item.product.price or 0) for item in slot_items)
+      total = sum((as_rubles(item.product.price) for item in slot_items), as_rubles(0))
       if not _outfit_budget_ok(total, len(slot_items), fit):
         continue
       compat, compat_parts = compatibility_score(slot_items, scenario=scenario)
@@ -626,7 +628,7 @@ def generate_outfits_v2(
     )
     combinations = _build_combinations(buckets, scenario=scenario_key, fit=fit, limit=need)
     if activation is not None:
-      combinations = [candidate for candidate in combinations if candidate.total_price <= int(fit.budget_max or 0)]
+      combinations = [candidate for candidate in combinations if candidate.total_price <= as_rubles(fit.budget_max)]
     combinations = [candidate for candidate in combinations if all(
       sum(not bool(product_identity_keys(item.product) & keys) for item in candidate.items.values()) >= 2
       for keys in recent_keys

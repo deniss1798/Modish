@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/network/merchant_link.dart';
 import '../../app.dart';
+import '../../core/presentation/price_format.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/modish_widgets.dart';
@@ -117,7 +118,7 @@ class _OutfitDetailScreenState extends State<OutfitDetailScreen> {
         .toString()
         .replaceAll(RegExp(r'engine:.*'), '')
         .trim();
-    final total = (outfit['total_price'] ?? 0).toString();
+    final total = formatPriceAmount((outfit['total_price'] as num?) ?? 0);
     final saved = _saved;
     final pmap = outfit['products'] is Map
         ? Map<String, dynamic>.from(outfit['products'] as Map)
@@ -189,7 +190,7 @@ class _OutfitDetailScreenState extends State<OutfitDetailScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '${m['brand'] ?? ''} · ${m['price'] ?? ''} ₽',
+                                '${m['brand'] ?? ''} · ${formatPriceAmount((m['price'] as num?) ?? 0)} ₽',
                                 style: AppTextStyles.bodyMuted,
                               ),
                             ],

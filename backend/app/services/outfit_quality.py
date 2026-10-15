@@ -2,6 +2,7 @@
 import re
 
 from ..models import Product
+from ..money import as_rubles
 from ..catalog_normalize import normalize_category
 from .garment_roles import product_role
 
@@ -116,7 +117,7 @@ def scenario_product_ok(product: Product, scenario: str) -> bool:
   brand = (product.brand or "").strip().lower()
   sports_brand = any(name in brand for name in ("demix", "kappa", "puma", "reebok", "nike", "adidas", "outventure", "northland", "everlast", "green hill"))
   sports_source = (product.source or "").lower() in {"sportmaster", "demix"}
-  if _EXCLUDED.search(text) or _TECHNICAL.search(text) or int(product.price or 0) > 500_000:
+  if _EXCLUDED.search(text) or _TECHNICAL.search(text) or as_rubles(product.price) > 500_000:
     return False
   if scenario not in {"gym", "run"} and _SPORT.search(text):
     return False

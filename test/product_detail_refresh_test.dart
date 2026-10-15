@@ -130,6 +130,26 @@ Future<void> _disposeDetail(
 }
 
 void main() {
+  testWidgets('A one-kopeck price refresh invalidates budget explanations', (
+    tester,
+  ) async {
+    final api = _DetailApi()..latest['price'] = 5000.01;
+    final controller = await _showDetail(tester, api);
+    _expectNoExplanations();
+    expect(find.text('5000,01 RUB'), findsOneWidget);
+    await _disposeDetail(tester, controller);
+  });
+
+  testWidgets('Equivalent integer and double RUB prices retain explanations', (
+    tester,
+  ) async {
+    final api = _DetailApi()..latest['price'] = 5000.0;
+    final controller = await _showDetail(tester, api);
+    _expectReasonsRetained();
+    expect(find.text('5000 RUB'), findsOneWidget);
+    await _disposeDetail(tester, controller);
+  });
+
   testWidgets('Refresh preserves unchanged discovery explanations', (
     tester,
   ) async {

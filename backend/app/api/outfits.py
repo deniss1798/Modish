@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..models import FitProfile, Outfit, Product, User
+from ..money import as_rubles, json_rubles
 from ..services.outfit_engine_v2 import SCENARIO_SLOT_OPTIONS, _hard_ok, _scenario_key, product_slot
 from ..services.outfit_quality import scenario_product_ok, outfit_compatible
 from ..services.product_identity import product_identity_keys
@@ -57,7 +58,8 @@ def visible_outfits(db: Session, user: User, rows: list[Outfit]) -> list[dict[st
       from ..services.intent_outfits import outfit_problem
       if outfit_problem(slots, fit, IntentSpec.model_validate(row.intent_constraints_json)):
         continue
-    if activation and (any(not product_ok(p, fit, activation, rules=rules) for p in slots.values()) or sum(int(p.price or 0) for p in slots.values()) > int(fit.budget_max or 0)):
+    total = sum((as_rubles(p.price) for p in slots.values()), as_rubles(0))
+    if activation and (any(not product_ok(p, fit, activation, rules=rules) for p in slots.values()) or total > as_rubles(fit.budget_max)):
       continue
     keys = set().union(*(product_identity_keys(p) for p in slots.values()))
     if any(sum(bool(product_identity_keys(p) & old) for p in slots.values()) > len(slots) - (2 if old_scenario == scenario else 1) for old_scenario, old in previous_keys):
@@ -65,7 +67,7 @@ def visible_outfits(db: Session, user: User, rows: list[Outfit]) -> list[dict[st
     previous_keys.append((scenario, keys))
     item = outfit_to_api(row, {s: product_to_api(p) for s, p in slots.items()})
     item["items"] = {s: p.id for s, p in slots.items()}
-    item["total_price"] = sum(int(p.price or 0) for p in slots.values())
+    item["total_price"] = json_rubles(total)
     result.append(item)
   return result
 

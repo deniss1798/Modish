@@ -1,5 +1,6 @@
 """Rule-based activation: durable taste learning and honest first 20 cards."""
 from __future__ import annotations
+from ..money import as_rubles
 
 from collections import Counter
 from contextlib import closing
@@ -448,7 +449,7 @@ def reasons_for(product, profile, fit, taste, session):
     if matched is not None:
         facts.append(f'Есть размер {matched.normalized_size} {matched.size_system}')
     maximum = getattr(fit, 'budget_max', None)
-    if maximum and 0 < int(product.price or 0) <= int(maximum):
+    if maximum and 0 < as_rubles(product.price) <= as_rubles(maximum):
         facts.append(f'в бюджете до {maximum} ₽')
     return ([reason] if reason else []) + ([' · '.join(facts)] if facts else [])
 
@@ -460,8 +461,8 @@ def _wow_explanation(products, profile, fit):
     parts = [STYLE_LABELS[sorted(matches)[0]]] if matches else []
     maximum = getattr(fit, 'budget_max', None)
     if products and all(p is not None for p in products) and maximum:
-        total = sum(int(p.price or 0) for p in products)
-        if 0 < total <= int(maximum):
+        total = sum((as_rubles(p.price) for p in products), as_rubles(0))
+        if 0 < total <= as_rubles(maximum):
             parts.append(f'до {maximum} ₽')
     if products and all(_matched_confirmed_size(p, fit) is not None for p in products):
         parts.append('Размеры указаны в наличии')

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from ..money import as_rubles
 
 import logging
 import random
@@ -124,7 +125,7 @@ def _scenario_product_ok(product: Product, scenario: str, budget_max: int | None
     return False
   if scenario in ("office", "evening") and any(m in title for m in _OFFICE_AVOID_IN_TITLE):
     return False
-  price = int(product.price or 0)
+  price = as_rubles(product.price)
   if budget_max and budget_max > 0 and price > budget_max:
     return False
   if price > 500_000:
@@ -139,7 +140,7 @@ def _sort_bucket(pool: list[Product], pref: list[str]) -> list[Product]:
       pref.index(normalize_category(p.category_name or p.category))
       if normalize_category(p.category_name or p.category) in pref
       else 99,
-      int(p.price or 0),
+      as_rubles(p.price),
     ),
   )
 
@@ -429,7 +430,7 @@ def _generate_outfits_fallback(
     accessory = _pick_unique("accessory", buckets["accessory"], cursors=cursors, used_in_batch=used_in_batch)
 
     items: dict[str, Any] = {}
-    total = 0
+    total = as_rubles(0)
     ids: list[str] = []
     for slot, prod in (
       ("top", top),
@@ -441,7 +442,7 @@ def _generate_outfits_fallback(
         continue
       items[slot] = prod.id
       ids.append(prod.id)
-      total += int(prod.price or 0)
+      total += as_rubles(prod.price)
 
     if len(items) < 2:
       continue

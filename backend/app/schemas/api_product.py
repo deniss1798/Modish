@@ -7,6 +7,7 @@ import hashlib
 import json
 
 from ..models import Product
+from ..money import as_rubles, json_rubles
 from ..catalog_normalize import product_gender_from_model
 from ..services.catalog.affiliate_link_service import resolve_outbound_url
 from ..services.garment_roles import product_role
@@ -42,7 +43,7 @@ def _api_discount_percent(p: Product) -> int | None:
   op = p.old_price
   pr = p.price
   if op is not None and pr is not None and op > pr > 0:
-    return int(round(100.0 * (op - pr) / float(op)))
+    return int(round(100 * (as_rubles(op) - as_rubles(pr)) / as_rubles(op)))
   return None
 
 
@@ -74,8 +75,8 @@ def product_to_api(p: Product) -> dict[str, Any]:
     "category": p.category,
     "outfit_slot": product_role(p),
     "subcategory": p.subcategory,
-    "price": p.price,
-    "old_price": p.old_price,
+    "price": json_rubles(p.price),
+    "old_price": json_rubles(p.old_price) if p.old_price is not None else None,
     "discount_percent": _api_discount_percent(p),
     "currency": p.currency,
     "availability_status": "unknown" if stock_problem else p.availability_status,

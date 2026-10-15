@@ -3,6 +3,7 @@ import '../../app.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/merchant_link.dart';
 import '../../core/presentation/catalog_labels.dart';
+import '../../core/presentation/price_format.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/modish_widgets.dart';
@@ -249,16 +250,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         style: AppTextStyles.displaySm.copyWith(fontSize: 21),
                       ),
                       const SizedBox(height: 10),
-                      Row(
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Text(
-                            '${p.price} ${p.currency}',
+                            '${formatPriceAmount(p.price)} ${p.currency}',
                             style: AppTextStyles.price,
                           ),
                           if (p.oldPrice != null && p.oldPrice! > p.price) ...[
-                            const SizedBox(width: 10),
                             Text(
-                              '${p.oldPrice} ${p.currency}',
+                              '${formatPriceAmount(p.oldPrice!)} ${p.currency}',
                               style: const TextStyle(
                                 color: AppColors.muted,
                                 decoration: TextDecoration.lineThrough,
@@ -266,14 +269,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             ),
                             if (p.discountPercent != null &&
                                 p.discountPercent! > 0)
-                              Padding(
-                                padding: const EdgeInsets.only(left: 8),
-                                child: Text(
-                                  '−${p.discountPercent}%',
-                                  style: const TextStyle(
-                                    color: AppColors.accent,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                              Text(
+                                '−${p.discountPercent}%',
+                                style: const TextStyle(
+                                  color: AppColors.accent,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                           ],

@@ -1,5 +1,6 @@
 """MIE v4 score separation: fit, taste, context, quality, exploration."""
 from __future__ import annotations
+from ..money import as_rubles
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -316,7 +317,7 @@ def compute_quality_score(product: Product) -> tuple[float, list[str], dict[str,
     score += 0.18
   if product.affiliate_url or product.product_url:
     score += 0.16
-  if int(product.price or 0) > 0:
+  if as_rubles(product.price) > 0:
     score += 0.10
   if product.colors:
     score += 0.08

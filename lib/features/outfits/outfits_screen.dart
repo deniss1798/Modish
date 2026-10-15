@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../app.dart';
+import '../../core/presentation/price_format.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/modish_widgets.dart';
@@ -167,7 +168,7 @@ class OutfitCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scenario = '${outfit['style_direction'] ?? ''}';
     final title = '${outfit['title'] ?? outfitScenarioLabel(scenario)}';
-    final total = (outfit['total_price'] ?? 0).toString();
+    final total = formatPriceAmount((outfit['total_price'] as num?) ?? 0);
     final saved = outfit['is_saved'] == true;
     final pmap = outfit['products'] is Map
         ? Map<String, dynamic>.from(outfit['products'] as Map)

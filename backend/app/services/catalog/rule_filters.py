@@ -12,6 +12,7 @@ from ...catalog_normalize import (
   resolve_product_gender,
 )
 from ...models import Product, SourceRule
+from ...money import as_rubles, parse_rubles
 
 
 def load_rules_by_source_id(db: Session) -> dict[str, list]:
@@ -44,11 +45,9 @@ def product_passes_source_rules(product: Product, rules_by_source_id: dict[str, 
     if rt == "blocked_brand" and rv.lower() == (product.brand or "").strip().lower():
       return False
     if rt == "min_price":
-      try:
-        if int(product.price) < int(rv):
-          return False
-      except ValueError:
-        pass
+      minimum = parse_rubles(rv, maximum=None)
+      if minimum is not None and as_rubles(product.price) < minimum:
+        return False
       continue
     if rt == "blocked_category":
       category_path = (product.category or "").lower()

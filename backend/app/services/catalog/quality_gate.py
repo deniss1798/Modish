@@ -1,6 +1,7 @@
 """Conservative admission of commerce facts; no network or model inference."""
 from dataclasses import dataclass
 import re
+from ...money import as_rubles
 
 from ...catalog_normalize import normalize_category
 from ..catalog_audience import product_is_adult
@@ -53,7 +54,7 @@ def evaluate_product(product, *, checked_at=None):
         reasons.append("missing_size")
     elif not all(recognized_size(s, footwear=category == "обувь", size_system=_size_system(product)) for s in product.available_sizes):
         reasons.append("unrecognized_size")
-    if not 0 < int(product.price or 0) <= 10_000_000:
+    if not 0 < as_rubles(product.price) <= 10_000_000:
         reasons.append("invalid_price")
     if product.currency not in {"RUB", "RUR"}:
         reasons.append("unsupported_currency")

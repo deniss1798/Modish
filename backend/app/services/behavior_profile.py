@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from math import exp
 from sqlalchemy import select
 from ..models import Product, RecommendationEventV2
+from ..money import as_rubles
 from ..catalog_normalize import normalize_category
 
 POSITIVE = {'like': 1.0, 'save': 1.0, 'open_product': .3, 'affiliate_click': 1.0,
@@ -66,7 +67,7 @@ def aggregate_behavior(rows):
             running = 0
             for price, weight in positive:
                 running += weight
-                if running >= target: return int(price)
+                if running >= target: return price
             return None
         enough = len(positive) >= 3
         price_profile[category] = {'sample_count': len(positive),
@@ -104,6 +105,6 @@ def category_price_adjustment(product, snapshot):
     score = 0.0
     price = (snapshot or {}).get('category_prices', {}).get(normalize_category(product.category))
     if price and price['preferred_min'] is not None and price['preferred_max'] is not None:
-        within = price['preferred_min'] <= product.price <= price['preferred_max']
+        within = as_rubles(price['preferred_min']) <= as_rubles(product.price) <= as_rubles(price['preferred_max'])
         score += .04 * price['confidence'] * (1 if within else -.5)
     return score

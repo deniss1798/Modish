@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from decimal import Decimal
 from typing import Any
 
 
@@ -13,8 +14,8 @@ class CanonicalProduct:
   brand: str
   category: str
   subcategory: str | None
-  price: int
-  old_price: int | None
+  price: Decimal
+  old_price: Decimal | None
   currency: str
   image_url: str
   original_url: str

@@ -1,5 +1,5 @@
 """Versioned contracts; do not label the core dictionary as the full P1 taxonomy."""
 CANONICAL_VERSION = "canonical_v1"
-NORMALIZATION_VERSION = "catalog_rules_v6"
+NORMALIZATION_VERSION = "catalog_rules_v7"
 TAXONOMY_VERSION = "category_core_v1"
 ENRICHMENT_VERSION = "style_rules_v1"

@@ -12,6 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..models import RecommendationEventV2, User, UserProductState
+from ..money import json_rubles
 from ..schemas.product_event import EventRequest
 from .outfit_service import generate_outfits
 from .profile_repository import ensure_taste_profile
@@ -78,7 +79,7 @@ def record_product_event(db: Session, user: User, payload: EventRequest, *, comm
   if payload.product_id:
     observed_product = db.get(Product, payload.product_id)
     from ..catalog_normalize import normalize_category
-    meta.update(observed_price=int(observed_product.price or 0) if observed_product.currency in {'RUB', 'RUR'} else 0,
+    meta.update(observed_price=json_rubles(observed_product.price) if observed_product.currency in {'RUB', 'RUR'} else 0,
         observed_brand=str(observed_product.brand or ''),
         observed_category=normalize_category(observed_product.category))
   weight = event_weight(canonical_event_type)

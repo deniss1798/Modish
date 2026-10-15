@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../app.dart';
+import '../../core/presentation/price_format.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/modish_widgets.dart';
@@ -505,7 +506,7 @@ class _ShoppingTaskScreenState extends State<ShoppingTaskScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Итого ${outfit['total_price']} ₽',
+              'Итого ${formatPriceAmount((outfit['total_price'] as num?) ?? 0)} ₽',
               style: AppTextStyles.sectionTitle,
             ),
             const SizedBox(height: 8),
@@ -559,7 +560,7 @@ class _ShoppingTaskScreenState extends State<ShoppingTaskScreen> {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    '${entry.value['price']} ₽',
+                                    '${formatPriceAmount((entry.value['price'] as num?) ?? 0)} ₽',
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -664,7 +665,7 @@ class _ShoppingTaskScreenState extends State<ShoppingTaskScreen> {
                         style: AppTextStyles.sectionTitle,
                       ),
                       const SizedBox(height: 8),
-                      Text('${card.product.price} ₽'),
+                      Text('${formatPriceAmount(card.product.price)} ₽'),
                       if (card.product.shopLabel.isNotEmpty)
                         Text(
                           card.product.shopLabel,

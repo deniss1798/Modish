@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from ...catalog_normalize import normalize_category
 from ...models import Product
+from ...money import as_rubles
 from ..catalog_audience import product_is_adult
 from ..catalog_scope import product_is_fashion
 from .affiliate_link_service import _public_web_url
@@ -23,7 +24,7 @@ def product_is_feed_eligible(product: Product, *, checked_at=None) -> bool:
     return False
   if stock_observation_problem(product, checked_at=checked_at):
     return False
-  if int(product.price or 0) <= 0:
+  if as_rubles(product.price) <= 0:
     return False
   img = (product.image_url or "").strip()
   if not _public_web_url(img):

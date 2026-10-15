@@ -9,6 +9,7 @@ from uuid import uuid4
 from sqlalchemy import func, select
 
 from ...models import CatalogRecord, Product, ProductSource
+from ...money import json_rubles
 from .affiliate_link_service import apply_deeplink_for_product
 from .merchant_adapters import get_adapter
 from .product_normalizer import orm_kwargs_from_normalized
@@ -42,6 +43,8 @@ def prepare_record(row, source, timestamp, *, observed_at=None):
     canonical.update(schema_version=CANONICAL_VERSION, taxonomy_version=TAXONOMY_VERSION,
         enrichment_version=ENRICHMENT_VERSION, adapter=adapter.code,
         delivery_eligibility="unknown", availability_observed_at=observed_at.isoformat())
+    canonical['price'] = json_rubles(payload['price'])
+    canonical['old_price'] = json_rubles(payload['old_price']) if payload['old_price'] is not None else None
     # Versioned semantic evidence is stored beside canonical facts. It cannot
     # upgrade an unknown size/stock state or alter the quality decision above.
     canonical["product_dna"] = build_product_dna(Product(**payload))

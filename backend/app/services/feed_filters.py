@@ -1,4 +1,5 @@
 from __future__ import annotations
+from ..money import as_rubles
 
 from ..catalog_normalize import (
   normalize_category,
@@ -20,10 +21,10 @@ def _product_category_norms(product: Product) -> set[str]:
 def product_passes_budget(product: Product, fit: FitProfile | None) -> bool:
   if fit is None:
     return True
-  bmax = int(fit.budget_max or 0)
+  bmax = as_rubles(fit.budget_max)
   if bmax <= 0:
     return True
-  price = int(product.price or 0)
+  price = as_rubles(product.price)
   return 0 < price <= bmax
 
 

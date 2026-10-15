@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from ..catalog_normalize import normalize_category, normalize_product_colors
 from ..db import SessionLocal
 from ..models import Product
+from ..money import parse_rubles
 from ..services.catalog.stock_freshness import stock_observation_problem
 
 router = APIRouter(prefix="/admin/products", tags=["admin-products"])
@@ -35,7 +36,8 @@ class ProductIn(BaseModel):
   brand: str
   category: str
   subcategory: str | None = None
-  price: int = Field(ge=0)
+  price: Any
+  old_price: Any | None = None
   currency: str = "RUB"
   image_url: str
   product_url: str
@@ -76,7 +78,17 @@ def admin_products_import(
   now = datetime.now(timezone.utc)
   # Validate the complete batch before touching persistent or pending rows.
   # Receiving an admin edit does not prove the merchant still has the product.
+  prices = []
   for index, item in enumerate(items):
+    price = parse_rubles(item.price)
+    old_price = parse_rubles(item.old_price) if item.old_price is not None else None
+    if price is None or (item.old_price is not None and old_price is None):
+      raise HTTPException(status_code=400, detail={
+        "item_index": index,
+        "field": "price" if price is None else "old_price",
+        "reason": "invalid_price",
+      })
+    prices.append((price, old_price))
     problem = stock_observation_problem(
       SimpleNamespace(last_seen_in_feed_at=item.stock_observed_at), checked_at=now,
     )
@@ -86,7 +98,7 @@ def admin_products_import(
       })
   created = 0
   updated = 0
-  for it in items:
+  for it, (price, old_price) in zip(items, prices):
     existing = db.execute(
       select(Product).where(Product.external_id == it.external_id, Product.source == it.source)
     ).scalar_one_or_none()
@@ -100,7 +112,8 @@ def admin_products_import(
         brand=payload["brand"],
         category=normalize_category(payload["category"]),
         subcategory=payload.get("subcategory"),
-        price=int(payload["price"]),
+        price=price,
+        old_price=old_price,
         currency=payload.get("currency") or "RUB",
         image_url=payload["image_url"],
         product_url=payload["product_url"],
@@ -132,7 +145,9 @@ def admin_products_import(
       existing.brand = payload["brand"]
       existing.category = normalize_category(payload["category"])
       existing.subcategory = payload.get("subcategory")
-      existing.price = int(payload["price"])
+      existing.price = price
+      if "old_price" in it.model_fields_set:
+        existing.old_price = old_price
       existing.currency = payload.get("currency") or "RUB"
       existing.image_url = payload["image_url"]
       existing.product_url = payload["product_url"]

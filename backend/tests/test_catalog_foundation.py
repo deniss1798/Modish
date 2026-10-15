@@ -47,7 +47,7 @@ class CatalogFoundationTests(unittest.TestCase):
         return store_record(self.db, self.source, row, self.now)
 
     def test_prices_keep_decimal_units_and_reject_invalid_values(self):
-        for value, expected in [("3999.00", 3999), ("1 299,50", 1300), ("1,299.00", 1299),
+        for value, expected in [("3999.00", 3999), ("1 299,50", 1299.50), ("1,299.00", 1299),
                                 ("1.299,00", 1299), (3999.0, 3999), ("-99", None),
                                 ("NaN", None), ("Infinity", None), (True, None), ("call", None)]:
             with self.subTest(value=value):

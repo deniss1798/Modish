@@ -4,6 +4,8 @@ No LLM, network, profile writes or guessed merchant facts. The API exposes the
 parsed hard constraints so a user can correct them before following a link.
 """
 import re
+from decimal import Decimal
+from ..money import as_rubles
 from ..schemas.shopping_intent import IntentSpec
 from .catalog.fashion_taxonomy import PATTERNS
 
@@ -46,7 +48,7 @@ def _modifier(text, start):
 
 
 def parse_intent(text: str, *, previous: IntentSpec | None = None,
-                 reference_price: int | None = None, reference_colors=(), default_budget=None) -> IntentSpec:
+                 reference_price: Decimal | int | float | None = None, reference_colors=(), default_budget=None) -> IntentSpec:
     text = ' '.join(text.lower().replace('ё', 'е').split())
     result = previous.model_copy(deep=True) if previous else IntentSpec()
     result.unresolved = []
@@ -117,11 +119,11 @@ def parse_intent(text: str, *, previous: IntentSpec | None = None,
                 append('preferred_styles', style)
     for match in _matches(r'дешевле|слишком\s+дорого', text):
         consume(match)
-        caps = [x for x in (result.budget_max, default_budget, reference_price) if x and x > 0]
+        caps = [as_rubles(x) for x in (result.budget_max, default_budget, reference_price) if x and x > 0]
         if not previous or not caps:
             result.unresolved.append('Сначала найдите вещь, чтобы выбрать дешевле')
         else:
-            result.budget_max = max(1, int(min(caps) * .8))
+            result.budget_max = max(1, int(min(caps) * Decimal('0.8')))
     for match in _matches(r'(?:другой|другого|иной|иного)\s+цвет(?:а)?', text):
         consume(match)
         colors = set(reference_colors) or set(result.colors)

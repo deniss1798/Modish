@@ -6,6 +6,7 @@ import heapq
 from uuid import uuid5, NAMESPACE_URL
 from sqlalchemy import select, func
 from ..models import Product
+from ..money import as_rubles, json_rubles
 from ..catalog_normalize import normalize_category
 from ..schemas.api_product import product_to_api
 from .catalog.stock_freshness import available_product_conditions
@@ -28,7 +29,7 @@ def outfit_problem(products, fit, spec):
         return 'ineligible_product'
     if not set(spec.requested_categories) <= {normalize_category(p.category) for p in products.values()}:
         return 'missing_requested_category'
-    total = sum(p.price for p in products.values())
+    total = sum((as_rubles(p.price) for p in products.values()), as_rubles(0))
     maximum = min(fit.budget_max, spec.budget_max or fit.budget_max)
     if total > maximum or total < (spec.budget_min or 0):
         return 'outfit_budget'
@@ -64,7 +65,7 @@ def serialize_outfit(products, fit, spec, *, intent_id, version):
     return {'id': str(uuid5(NAMESPACE_URL, key)), 'items': items,
         'products': {slot: product_to_api(p) for slot, p in products.items()},
         'size_matches': size_matches,
-        'total_price': sum(p.price for p in products.values()), 'style_direction': spec.occasion or 'daily',
+        'total_price': json_rubles(sum((as_rubles(p.price) for p in products.values()), as_rubles(0))), 'style_direction': spec.occasion or 'daily',
         'reason': f'{size_reason}Весь комплект — до {maximum:,} ₽.'.replace(',', ' '),
         'confidence': {'fit': 'confirmed' if confirmed else 'unknown',
             'availability': 'feed_observed' if confirmed else 'unknown', 'compatibility': 'rule_based'},

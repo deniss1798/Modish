@@ -1,5 +1,6 @@
 """Pure eligibility rules and shared features for the initial fashion segment."""
 import re
+from ..money import as_rubles
 from ..catalog_normalize import normalize_category, normalize_colors_value
 from .catalog.catalog_quality import product_is_feed_eligible
 from .catalog.affiliate_link_service import _public_web_url
@@ -39,7 +40,7 @@ def product_ok(product, fit, session, *, rules=None):
         return False
     if str(product.currency or 'RUB').upper() not in {'RUB', 'RUR'}:
         return False
-    if not 300 <= int(product.price or 0) <= min(25000, int(fit.budget_max or 0)):
+    if not 300 <= as_rubles(product.price) <= min(25000, as_rubles(fit.budget_max)):
         return False
     return (evaluate_eligibility(product, fit).eligible and bool(_public_web_url(product.image_url))
             and (rules is None or product_passes_source_rules(product, rules)))

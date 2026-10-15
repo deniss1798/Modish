@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../app.dart';
+import '../../core/presentation/price_format.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/modish_widgets.dart';
@@ -435,7 +436,7 @@ class _OnboardingV2ScreenState extends State<OnboardingV2Screen> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            '${p.price} ₽',
+                            '${formatPriceAmount(p.price)} ₽',
                             style: const TextStyle(
                               fontWeight: FontWeight.w700,
                               color: AppColors.accentSoft,

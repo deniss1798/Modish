@@ -5,6 +5,7 @@ train taste. Its only relaxed admission rule is exact size matching, and only
 callers of the dedicated discovery routes use it.
 """
 from __future__ import annotations
+from ..money import as_rubles
 
 import base64
 from dataclasses import dataclass
@@ -107,7 +108,7 @@ def _allowed(product, scope, rules, now, *, category='', minimum=MIN_PRICE, maxi
     return False
   if str(product.currency or '').upper() not in {'RUB', 'RUR'}:
     return False
-  if not minimum <= int(product.price or 0) <= (scope.budget_max if maximum is None else maximum):
+  if not minimum <= as_rubles(product.price) <= (scope.budget_max if maximum is None else maximum):
     return False
   if product.gender_target not in {scope.gender_target, 'unisex'} or not product_gender_compatible(product, scope.gender_target):
     return False

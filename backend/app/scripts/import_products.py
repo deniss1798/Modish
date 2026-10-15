@@ -19,6 +19,7 @@ from ..catalog_normalize import (
 )
 from ..db import SessionLocal
 from ..models import Product
+from ..money import json_rubles, parse_rubles
 
 _HEADER_ALIASES: dict[str, str] = {
   "id": "external_id",
@@ -76,15 +77,6 @@ def _parse_bool(raw: str | None, default: bool = True) -> bool:
   return default
 
 
-def _parse_int(raw: str | None, default: int = 0) -> int:
-  if raw is None or str(raw).strip() == "":
-    return default
-  try:
-    return int(float(str(raw).strip().replace(",", ".")))
-  except ValueError:
-    return default
-
-
 def _parse_float_opt(raw: str | None) -> float | None:
   if raw is None or str(raw).strip() == "":
     return None
@@ -138,8 +130,8 @@ def load_csv(path: Path) -> list[dict[str, Any]]:
       colors_raw = base.pop("colors", None)
       style_tags_raw = base.pop("style_tags", None)
 
-      price = _parse_int(base.get("price"), 0)
-      old_price = _parse_int(base.get("old_price"), 0) or None
+      price = parse_rubles(base.get("price")) or 0
+      old_price = parse_rubles(base.get("old_price")) or None
 
       is_available = _parse_bool(base.get("is_available"), True)
       is_active = _parse_bool(base.get("is_active"), True)
@@ -232,6 +224,8 @@ def load_items(path: Path) -> list[dict[str, Any]]:
 
 def _json_item_normalized(it: dict[str, Any]) -> dict[str, Any]:
   out = dict(it)
+  out['price'] = parse_rubles(it.get('price')) or 0
+  out['old_price'] = parse_rubles(it.get('old_price')) or None
 
   out["category"] = normalize_category(str(it.get("category") or "").strip())
 
@@ -261,7 +255,7 @@ def upsert_products(items: list[dict[str, Any]], *, source: str | None = None) -
       title = str(it.get("title") or "").strip()
       brand = str(it.get("brand") or src or "unknown").strip()
       category = normalize_category(str(it.get("category") or "").strip())
-      price = int(it.get("price") or 0)
+      price = parse_rubles(it.get("price")) or 0
       image_url = str(it.get("image_url") or "").strip()
       product_url = str(it.get("product_url") or "").strip()
       affiliate_url = str(it.get("affiliate_url") or product_url).strip()
@@ -274,7 +268,7 @@ def upsert_products(items: list[dict[str, Any]], *, source: str | None = None) -
         it.get("external_id")
         or it.get("vendor_code")
         or it.get("barcode")
-        or f"{brand}:{title}:{price}"
+        or f"{brand}:{title}:{json_rubles(price)}"
       ).strip()
 
       if not external_id:
@@ -299,12 +293,11 @@ def upsert_products(items: list[dict[str, Any]], *, source: str | None = None) -
         if str(x).strip()
       ]
 
-      old_price = it.get("old_price")
-      old_price_int = int(old_price) if old_price else None
+      old_price_amount = parse_rubles(it.get('old_price')) or None
 
       discount_percent = None
-      if old_price_int and old_price_int > price > 0:
-        discount_percent = int(round((old_price_int - price) / old_price_int * 100))
+      if old_price_amount and old_price_amount > price > 0:
+        discount_percent = int(round((old_price_amount - price) / old_price_amount * 100))
 
       existing = db.execute(
         select(Product).where(Product.external_id == external_id, Product.source == src)
@@ -319,7 +312,7 @@ def upsert_products(items: list[dict[str, Any]], *, source: str | None = None) -
         "subcategory": str(it.get("subcategory")).strip() if it.get("subcategory") else None,
         "price": price,
         "currency": str(it.get("currency") or "RUB").strip() or "RUB",
-        "old_price": old_price_int,
+        "old_price": old_price_amount,
         "discount_percent": discount_percent,
         "availability_status": "available" if it.get("is_available", True) else "unavailable",
         "image_url": image_url,

@@ -15,6 +15,7 @@ from ...catalog_normalize import (
 from .normalized_product import NormalizedProduct
 from .size_evidence import explicit_size_system
 from .size_resolver import resolve_product_sizes
+from ...money import as_rubles
 
 
 def normalized_to_dict(n: NormalizedProduct) -> dict[str, Any]:
@@ -35,8 +36,8 @@ def normalized_to_dict(n: NormalizedProduct) -> dict[str, Any]:
     "brand": (n.brand or "")[:128],
     "category": cat,
     "subcategory": (n.subcategory or "")[:64] if n.subcategory else None,
-    "price": int(n.price),
-    "old_price": n.old_price,
+    "price": as_rubles(n.price),
+    "old_price": as_rubles(n.old_price) if n.old_price is not None else None,
     "discount_percent": n.discount_percent,
     "currency": (n.currency or "")[:8],
     "availability_status": n.availability_status,

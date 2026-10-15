@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import '../../app.dart';
+import '../../core/presentation/price_format.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/modish_widgets.dart';
@@ -250,7 +251,7 @@ class _FeedScreenState extends State<FeedScreen> {
                           style: AppTextStyles.caption,
                         ),
                         Text(
-                          '${r.price} ₽',
+                          '${formatPriceAmount(r.price)} ₽',
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -707,13 +708,13 @@ class _ProductCardView extends StatelessWidget {
                     Row(
                       children: [
                         Text(
-                          '${p.price} $currency',
+                          '${formatPriceAmount(p.price)} $currency',
                           style: AppTextStyles.price.copyWith(fontSize: 20),
                         ),
                         if (p.oldPrice != null && p.oldPrice! > p.price) ...[
                           const SizedBox(width: 10),
                           Text(
-                            '${p.oldPrice} $currency',
+                            '${formatPriceAmount(p.oldPrice!)} $currency',
                             style: const TextStyle(
                               fontSize: 12,
                               color: AppColors.muted,

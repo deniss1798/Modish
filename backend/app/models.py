@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
+from decimal import Decimal
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, JSON, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .db import Base
 
@@ -265,9 +266,9 @@ class Product(Base):
   brand: Mapped[str] = mapped_column(String(128), index=True)
   category: Mapped[str] = mapped_column(String(64), index=True)
   subcategory: Mapped[str | None] = mapped_column(String(64), nullable=True)
-  price: Mapped[int] = mapped_column(Integer)
+  price: Mapped[Decimal] = mapped_column(Numeric(14, 2))
   currency: Mapped[str] = mapped_column(String(8), default="RUB")
-  old_price: Mapped[int | None] = mapped_column(Integer, nullable=True)
+  old_price: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
   discount_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)
   availability_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
   image_url: Mapped[str] = mapped_column(Text)
@@ -456,7 +457,7 @@ class Outfit(Base):
   user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
   items_json: Mapped[dict] = mapped_column(JSON, default=dict)  # {top: product_id, bottom:..., shoes:...}
   intent_constraints_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-  total_price: Mapped[int] = mapped_column(Integer, default=0)
+  total_price: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=Decimal('0.00'))
   style_direction: Mapped[str] = mapped_column(String(128), default="")
   reason: Mapped[str] = mapped_column(Text, default="")
   score: Mapped[float] = mapped_column(Float, default=0.0)

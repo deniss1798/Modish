@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../../app.dart';
+import '../../core/presentation/price_format.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/modish_widgets.dart';
@@ -353,7 +354,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                     ),
                                     const SizedBox(height: 8),
                                     Text(
-                                      '${product.price} ${product.currency == 'RUB' ? '₽' : product.currency}',
+                                      '${formatPriceAmount(product.price)} ${product.currency == 'RUB' ? '₽' : product.currency}',
                                       style: AppTextStyles.price.copyWith(
                                         fontSize: 16,
                                       ),
