@@ -1,8 +1,10 @@
 # Short owner transactions for feed and Shopping Intent
 
-Date: 14 October 2026. Status: implementation proposal; the P1 defect is **not
-resolved** by this document. This review changes no backend, Flutter, release
-package, database or deployment configuration. It follows the remaining
+Date: 14 October 2026. This document records the original implementation proposal.
+Its HTTP scope was implemented and accepted locally on 16 October;
+see [acceptance and remaining limits](closed-alpha-12-intent-outfits.md).
+This design document itself changes no release package, production database
+or deployment configuration. It follows the remaining
 whole-catalogue owner-lock finding in
 [backend-engineering-audit-20261013.md](backend-engineering-audit-20261013.md).
 

@@ -241,10 +241,13 @@ def onboarding_complete(
 ) -> dict[str, Any]:
   """Complete only after durable taste learning; retries return the same Wow."""
   user = user_from_token(credentials, db)
-  from ..services.activation_service import complete_wow
+  from ..services.wow_session import build_wow_response
+  user_id, bind = user.id, db.get_bind()
+  if db.new or db.dirty or db.deleted:
+    raise RuntimeError('Wow request cannot own uncommitted writes')
+  db.close()
   try:
-    result = complete_wow(db, user, _activation(db, user))
-    db.commit()
+    result = build_wow_response(bind, user_id)
   except HTTPException:
     db.rollback()
     raise

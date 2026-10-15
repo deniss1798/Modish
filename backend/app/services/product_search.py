@@ -60,6 +60,7 @@ def personalized_search(db, user, activation, query, *, limit=50, offset=0):
     from .catalog.rule_filters import load_rules_by_source_id
     from .mie_scoring import load_user_taste_feature_map
     from .product_identity import product_identity_keys
+    from .recommendation_budget import check_ranking_budget
     profile, fit, taste = load_preferences(db, user)
     taste_features = load_user_taste_feature_map(db, user_id=user.id)
     scorer = AffinityScorer(profile, taste, taste_features=taste_features, fit=fit,
@@ -68,17 +69,20 @@ def personalized_search(db, user, activation, query, *, limit=50, offset=0):
     start, page_size = max(0, offset), min(200, max(1, limit))
     count = start + page_size
     best, seen = [], set()
-    for product in db.scalars(query.execution_options(yield_per=200)):
-        if not product_ok(product, fit, activation, rules=rules):
-            continue
-        keys = product_identity_keys(product)
-        if keys & seen:
-            continue
-        seen.update(keys)
-        score = scorer.score(product)
-        entry = (score, product.id, product)
-        if len(best) < count:
-            heapq.heappush(best, entry)
-        elif entry[:2] > best[0][:2]:
-            heapq.heapreplace(best, entry)
+    with db.scalars(query.execution_options(yield_per=200)) as products:
+        for product in products:
+            check_ranking_budget(db)
+            if not product_ok(product, fit, activation, rules=rules):
+                continue
+            keys = product_identity_keys(product)
+            if keys & seen:
+                continue
+            seen.update(keys)
+            score = scorer.score(product)
+            entry = (score, product.id, product)
+            if len(best) < count:
+                heapq.heappush(best, entry)
+            elif entry[:2] > best[0][:2]:
+                heapq.heapreplace(best, entry)
+    check_ranking_budget(db)
     return [item[2] for item in sorted(best, key=lambda x: (x[0], x[1]), reverse=True)[start:]]

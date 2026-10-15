@@ -45,16 +45,24 @@ def identity_signature(keys):
         separators=(',', ':')).encode('utf-8')).hexdigest()
 
 
+def identity_rows_signature(rows):
+    """Keep identity ownership when consumers compare separate outfit groups."""
+    values = sorted((row.id, sorted(product_identity_keys(row))) for row in rows)
+    return sha256(json.dumps(values, ensure_ascii=True,
+        separators=(',', ':')).encode('utf-8')).hexdigest()
+
+
 def lock_catalogue(db, finalists, *, excluded_ids=(), excluded_identity_signature=None,
-        include_source_rules=True):
+        excluded_identity_rows_signature=None, include_source_rules=True, max_finalists=100):
     """Lock finalist and exclusion evidence in one declared stable order.
 
     Finalists are bounded by the path. Exclusions must stay complete; a timeout
     rejects the proposal rather than silently truncating the personal history.
     Returned ORM objects remain inside the caller's publication Session.
     """
-    if len(finalists) > 100:
-        raise ValueError('Publication has more than 100 finalists')
+    maximum = max(1, min(201, int(max_finalists)))
+    if len(finalists) > maximum:
+        raise ValueError(f'Publication has more than {maximum} finalists')
     if db.get_bind().dialect.name == 'postgresql':
         db.execute(text("SET LOCAL lock_timeout = '750ms'"))
         db.execute(text("SET LOCAL statement_timeout = '2000ms'"))
@@ -70,6 +78,7 @@ def lock_catalogue(db, finalists, *, excluded_ids=(), excluded_identity_signatur
             rules.setdefault(rule.source_id, []).append(rule)
     excluded_ids = set(excluded_ids)
     keys = set()
+    identity_rows = []
     locked_ids = sorted(set(ids) | excluded_ids)
     if locked_ids:
         with db.execute(identity_projection(locked_ids).with_for_update(read=True)
@@ -77,7 +86,11 @@ def lock_catalogue(db, finalists, *, excluded_ids=(), excluded_identity_signatur
             for row in identities:
                 if row.id in excluded_ids:
                     keys.update(product_identity_keys(row))
+                    if excluded_identity_rows_signature is not None:
+                        identity_rows.append(row)
     if excluded_identity_signature is not None and identity_signature(keys) != excluded_identity_signature:
+        raise RecommendationSnapshotChanged()
+    if excluded_identity_rows_signature is not None and identity_rows_signature(identity_rows) != excluded_identity_rows_signature:
         raise RecommendationSnapshotChanged()
     products = {row.id: row for row in db.scalars(select(Product).where(Product.id.in_(ids)))} if ids else {}
     return LockedCatalogue(products, rules, {pid: product_evidence(row) for pid, row in products.items()})

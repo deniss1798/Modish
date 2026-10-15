@@ -28,6 +28,15 @@ def _independent_feed_response(db, user, **options):
   return build_feed_response(bind, user_id, **options)
 
 
+def _independent_product_read(db, user, **options):
+  from ..services.product_read_session import build_product_read_response
+  user_id, bind = user.id, db.get_bind()
+  if db.new or db.dirty or db.deleted:
+    raise RuntimeError('Product read request cannot own uncommitted writes')
+  db.close()
+  return build_product_read_response(bind, user_id, **options)
+
+
 def _feed_scored_items(
   db: Session,
   user: User,
@@ -129,10 +138,10 @@ def products_list(
   if user and isinstance(search_query, str) and search_query.strip():
     activation = db.get(ActivationSession, user.id)
     if activation and activation.completed_at:
-      from ..services.product_search import personalized_search
       # Current query is explicit intent. It does not train or overwrite taste.
-      return [product_to_api(p) for p in personalized_search(db, user, activation, query,
-        limit=limit, offset=offset if isinstance(offset, int) else 0)]
+      return _independent_product_read(db, user, operation='search', q=search_query,
+        category=category, source=source, brand=brand, limit=limit,
+        offset=offset if isinstance(offset, int) else 0)
   rows = []
   skipped = 0
   offset = offset if isinstance(offset, int) else 0
@@ -225,9 +234,5 @@ def product_complements(
   db: Session = Depends(get_db),
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> list[dict[str, Any]]:
-  from ..services.product_complements import complementary_products
   user = user_from_token(credentials, db)
-  anchor = db.get(Product, product_id)
-  if anchor is None:
-    raise HTTPException(status_code=404, detail="Товар не найден")
-  return [product_to_api(p) for p in complementary_products(db, user, anchor, limit=limit)]
+  return _independent_product_read(db, user, operation='complements', product_id=product_id, limit=limit)

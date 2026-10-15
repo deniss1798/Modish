@@ -18,6 +18,7 @@ from .shopping_intent_parser import parse_intent, replacement_slot
 from .intent_outfits import build_intent_outfits, outfit_problem, serialize_outfit
 from .intent_explanations import product_reasons
 from .intent_metrics import emit
+from .recommendation_budget import check_ranking_budget
 
 INTENT_TTL = timedelta(hours=24)
 RESULT_LIMIT = 10
@@ -152,6 +153,7 @@ def item_results(db, user, spec, *, excluded_ids=(), stats=None):
     # Admission precedes identity/scoring; this is not a best-score alias search.
     # No arbitrary updated-at cutoff is applied to the candidate catalogue.
     for product in db.scalars(query.order_by(Product.id).execution_options(yield_per=200)):
+        check_ranking_budget(db)
         problem = intent_commerce_problem(product, fit, spec)
         stats['candidate_count_after_stock_budget'] = stats.get('candidate_count_after_stock_budget', 0)+1
         if problem not in {'fit_profile_unknown', 'gender_mismatch', 'explicit_filter_mismatch'}:
@@ -195,7 +197,9 @@ def intent_response(db, user, intent, *, remember=False):
     stats = {}
     context = intent.context_json or {}
     generate = remember and context.get('result_version') != intent.version
-    excluded = context.get('excluded_product_ids', [])
+    excluded = set(context.get('excluded_product_ids', []))
+    if spec.intent_type == 'outfit':
+        excluded.update((context.get('replacement') or {}).get('excluded_ids', []))
     products, outfits = [], []
     if not spec.unresolved:
         if not generate and ('product_ids' in context or 'outfits' in context):
@@ -206,20 +210,50 @@ def intent_response(db, user, intent, *, remember=False):
             issued_ids.update(pid for o in context.get('outfits', []) for pid in o['items'].values())
             issued = {p.id: p for p in db.scalars(select(Product).where(Product.id.in_(issued_ids))
                 .execution_options(populate_existing=True))} if issued_ids else {}
+            # An import can turn an excluded offer into an alias of an
+            # unchanged issued item after publication. Replay never rescans or
+            # substitutes catalogue rows, but must remove these new aliases.
+            from .recommendation_publication import identity_projection
+            excluded_keys = set()
+            if excluded:
+                with db.execute(identity_projection(excluded)) as identities:
+                    for row in identities:
+                        excluded_keys.update(product_identity_keys(row))
             if spec.intent_type == 'single_item':
                 features = load_user_taste_feature_map(db, user_id=user.id)
+                seen = set(excluded_keys)
                 for pid in context.get('product_ids', []):
                     product = issued.get(pid)
                     if product is None or pid in excluded or intent_product_problem(product, fit, spec):
                         continue
+                    keys = product_identity_keys(product)
+                    if keys & seen:
+                        continue
+                    seen.update(keys)
                     products.append({'product': product_to_api(product), 'reasons': product_reasons(
                         product, fit, spec, facts=intent_facts(product), taste_features=features,
                         behavior=getattr(taste, 'behavior_snapshot', {}))[:3]})
             else:
+                previous_keys = []
                 for old in context.get('outfits', []):
                     group = {slot: issued.get(pid) for slot, pid in old['items'].items()}
                     if any(p is None or p.id in excluded for p in group.values()) or outfit_problem(group, fit, spec):
                         continue
+                    seen = set(excluded_keys)
+                    duplicate = False
+                    for product in group.values():
+                        keys = product_identity_keys(product)
+                        if keys & seen:
+                            duplicate = True
+                            break
+                        seen.update(keys)
+                    if duplicate:
+                        continue
+                    if not (context.get('replacement') or {}).get('locked') and any(
+                            sum(bool(product_identity_keys(p) & keys) for p in group.values()) > len(group) - 2
+                            for keys in previous_keys):
+                        continue
+                    previous_keys.append(seen - excluded_keys)
                     outfits.append(serialize_outfit(group, fit, spec, intent_id=intent.id, version=intent.version))
         elif spec.intent_type == 'single_item':
             products = item_results(db, user, spec, excluded_ids=excluded, stats=stats)
@@ -333,6 +367,9 @@ def save_intent_outfit(db, user, intent_id, outfit_id, *, expected_version):
     if not previously_saved:
         emit(db, user.id, 'outfit_saved', intent_id=intent.id, version=intent.version, outfit_id=outfit_id)
     db.flush()
+    if not previously_saved:
+        from .recommendation_revision import accept_personal_change
+        accept_personal_change(db, user.id)
     return {'status': 'ok', 'outfit_id': outfit.id}
 
 

@@ -332,3 +332,23 @@ class IntentSessionTests(unittest.TestCase):
         with self.assertRaises(intents.RecommendationSnapshotChanged):
             intents._publish(self.sessions, self.user_id, proposal)
         self.assertEqual(self.metrics(), 0)
+
+    def test_ready_replay_and_http_get_remove_new_hidden_alias_without_ranking(self):
+        first = self.build()
+        forbidden = first['products'][0]['product']['id']
+        with self.sessions() as db:
+            hidden = self.product(db, 'already-excluded-later-alias')
+            row = db.get(ShoppingIntent, first['id'])
+            row.context_json = {**row.context_json, 'excluded_product_ids': [hidden.id]}
+            db.flush()
+            hidden.image_url = db.get(Product, forbidden).image_url
+            db.commit()
+        with patch.object(intents, 'item_results', side_effect=AssertionError('Replay must not rank')), \
+                patch.object(service, 'item_results', side_effect=AssertionError('GET must not rank')):
+            replay = self.build()
+            with self.sessions() as db, patch.object(api, 'user_from_token', return_value=db.get(User, self.user_id)):
+                read = api.read(first['id'], db=db, credentials=None)
+        expected = {row['product']['id'] for row in first['products']} - {forbidden}
+        self.assertEqual({row['product']['id'] for row in replay['products']}, expected)
+        self.assertEqual({row['product']['id'] for row in read['products']}, expected)
+        self.assertEqual(self.metrics(), 1)

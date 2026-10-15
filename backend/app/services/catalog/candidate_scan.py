@@ -7,9 +7,11 @@ query scope and live identity-map values; never cap the candidate catalogue.
 from ...models import Product
 from ..fit_size_profile import requested_size_for_product
 from .size_resolver import may_match_flat_size
+from ..recommendation_budget import check_ranking_budget
 
 
 def iter_size_candidates(db, query, fit, *, batch_size=200):
+    check_ranking_budget(db)
     if not 1 <= batch_size <= 500:
         raise ValueError('batch_size must be between 1 and 500')
     # Autoflush is disabled in production. Full ORM reads preserve pending
@@ -29,6 +31,7 @@ def iter_size_candidates(db, query, fit, *, batch_size=200):
     pending = []
 
     def hydrate():
+        check_ranking_budget(db)
         # Repeat the original scope so a concurrent importer cannot move a
         # now-forbidden row into the shortlist between the two reads.
         # Pagination already chose the projected IDs. Applying its offset to
@@ -43,6 +46,7 @@ def iter_size_candidates(db, query, fit, *, batch_size=200):
 
     with db.execute(projection.execution_options(yield_per=500)) as rows:
         for row in rows:
+            check_ranking_budget(db)
             evidence = loaded.get(row.id, row)
             requested, system = requested_size_for_product(fit, evidence)
             if not may_match_flat_size(evidence, requested, requested_system=system):

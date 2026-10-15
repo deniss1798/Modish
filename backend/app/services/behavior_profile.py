@@ -6,7 +6,7 @@ Price history uses server-recorded event snapshots, never today's changed price.
 """
 from datetime import datetime, timedelta, timezone
 from math import exp
-from sqlalchemy import select
+from sqlalchemy import DateTime, literal, select
 from ..models import Product, RecommendationEventV2
 from ..money import as_rubles
 from ..catalog_normalize import normalize_category
@@ -80,7 +80,18 @@ def aggregate_behavior(rows):
 
 
 def load_behavior_profile(db, *, user_id, as_of=None):
-    now = as_of or datetime.now(timezone.utc)
+    from .feedback_preview import current_feedback_preview, cached_preview_behavior, cache_preview_behavior, merge_behavior_rows
+    now = as_of or db.info.get('recommendation_as_of') or datetime.now(timezone.utc)
+    preview = current_feedback_preview(db, user_id, as_of=now)
+    if preview is not None:
+        cached = cached_preview_behavior(db, user_id, as_of=now)
+        if cached is not None:
+            return cached
+    # PostgreSQL decodes timestamptz in the connection's session timezone.
+    # Match that day boundary for prospective rows just as for stored rows;
+    # this remains one bounded scalar projection, without catalogue/owner locks.
+    clocks = db.execute(select(*(literal(event.occurred_at, type_=DateTime(timezone=True))
+        for event in preview.events))).one() if preview is not None and preview.events else ()
     rows = db.execute(select(RecommendationEventV2.product_id, Product.brand, Product.category,
         RecommendationEventV2.event_type, RecommendationEventV2.meta_json, RecommendationEventV2.created_at)
         .join(Product, Product.id == RecommendationEventV2.product_id)
@@ -89,7 +100,12 @@ def load_behavior_profile(db, *, user_id, as_of=None):
             RecommendationEventV2.event_type.in_(EXPOSURE_EVENTS))
         .order_by(RecommendationEventV2.created_at.desc())
         .execution_options(yield_per=500))
-    return aggregate_behavior(rows)
+    with rows:
+        result = aggregate_behavior(merge_behavior_rows(rows, preview, as_of=now,
+            database_clocks=clocks) if preview is not None else rows)
+    if preview is not None:
+        cache_preview_behavior(db, user_id, result, as_of=now)
+    return result
 
 
 def behavior_adjustment(product, snapshot):

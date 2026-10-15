@@ -1,7 +1,7 @@
-"""Single-item create: durable claim, read-only ranking, short publication.
+"""Intent creation: durable claim, read-only ranking, short publication.
 
-Outfit creation keeps its existing protected implementation. Intent constraints
-and exclusions retain their own policy; feed rules are not added here.
+Intent constraints and exclusions retain their own policy; feed rules are not
+added here. Edits still use the protected service until separately converted.
 """
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -19,10 +19,12 @@ from ..schemas.shopping_intent import IntentSpec
 from . import shopping_intent_service as service
 from .activation_service import require_warm_feed
 from .intent_eligibility import intent_product_problem
+from .intent_outfits import build_intent_outfits, outfit_problem, serialize_outfit
 from .product_identity import product_identity_keys
 from .profile_repository import ensure_style_profile, ensure_taste_profile
 from .recommendation_publication import identity_projection, identity_signature, lock_catalogue, product_evidence
 from .recommendation_revision import RecommendationOwnerMissing, RecommendationSnapshotChanged, owner_mutation, profile_input_signature
+from .recommendation_budget import begin_ranking, check_ranking_budget, RecommendationRankingTimeout, TIMEOUT_MESSAGE
 from .shopping_intent_service import item_results
 
 PENDING_LEASE_SECONDS = 120
@@ -63,6 +65,7 @@ class IntentProposal:
     stats: tuple[tuple[str, int], ...]
     excluded_ids: tuple[str, ...]
     excluded_identity_signature: str
+    outfits: tuple[tuple[tuple[str, str], ...], ...] = ()
 
 
 def _now():
@@ -76,6 +79,14 @@ def _generation(intent):
 
 def _constraints(intent):
     return json.dumps(intent.constraints_json, sort_keys=True, ensure_ascii=True, separators=(',', ':'))
+
+
+def _result_exclusions(intent):
+    context = intent.context_json or {}
+    ids = set(context.get('excluded_product_ids', []))
+    if (intent.constraints_json or {}).get('intent_type') == 'outfit':
+        ids.update((context.get('replacement') or {}).get('excluded_ids', []))
+    return tuple(sorted(ids))
 
 
 def _active(intent):
@@ -122,10 +133,10 @@ def _admit(sessions, user_id, *, text, request_id):
                 outcome = IntentAdmission(intent.id)
             else:
                 spec = IntentSpec.model_validate(intent.constraints_json)
-                if spec.intent_type == 'single_item' and db.get_bind().dialect.name == 'postgresql':
+                if db.get_bind().dialect.name == 'postgresql':
                     db.execute(sql_text("SET LOCAL statement_timeout = '2000ms'"))
-                if spec.intent_type != 'single_item' or spec.unresolved:
-                    # This slice does not remove the existing outfit owner lock.
+                if spec.unresolved:
+                    # Clarification needs no catalogue search.
                     response = service.intent_response(db, user, intent, remember=True)
                     outcome = IntentAdmission(intent.id, response=response)
                 else:
@@ -152,6 +163,7 @@ def _prepare(sessions, user_id, claim):
             db.connection(execution_options={'isolation_level': 'REPEATABLE READ'})
             db.execute(sql_text('SET TRANSACTION READ ONLY'))
         db.info.update(recommendation_read_only=True, recommendation_as_of=_now())
+        begin_ranking(db)
         user = db.get(User, user_id)
         if user is None:
             raise RecommendationOwnerMissing()
@@ -163,20 +175,31 @@ def _prepare(sessions, user_id, claim):
             raise service.IntentError('Запрос уже изменён. Обновите результат.', 409)
         signature = profile_input_signature(db, user_id)
         spec = IntentSpec.model_validate(intent.constraints_json)
-        excluded_ids = tuple(sorted(set((intent.context_json or {}).get('excluded_product_ids', []))))
+        excluded_ids = _result_exclusions(intent)
         excluded_keys = set()
         if excluded_ids:
             with db.execute(identity_projection(excluded_ids)) as identities:
                 for row in identities:
                     excluded_keys.update(product_identity_keys(row))
         stats = {}
-        rows = item_results(db, user, spec, excluded_ids=excluded_ids, stats=stats)
-        finalists = []
-        for row in rows:
-            product = db.get(Product, row['product']['id'])
-            finalists.append(IntentFinalist(product.id, product.source_id, product_evidence(product), tuple(row['reasons'])))
+        finalists, outfits = [], ()
+        if spec.intent_type == 'single_item':
+            rows = item_results(db, user, spec, excluded_ids=excluded_ids, stats=stats)
+            selected = [(row['product']['id'], tuple(row['reasons'])) for row in rows]
+        else:
+            replacement = (intent.context_json or {}).get('replacement') or {}
+            locked = {slot: db.get(Product, pid) for slot, pid in replacement.get('locked', {}).items()}
+            rows = [] if any(p is None for p in locked.values()) else build_intent_outfits(
+                db, user, spec, intent_id=intent.id, version=intent.version, locked=locked,
+                excluded_ids=excluded_ids, stats=stats)
+            outfits = tuple(tuple(sorted(row['items'].items())) for row in rows)
+            selected = [(pid, ()) for pid in dict.fromkeys(pid for row in rows for pid in row['items'].values())]
+        for pid, reasons in selected:
+            product = db.get(Product, pid)
+            finalists.append(IntentFinalist(product.id, product.source_id, product_evidence(product), reasons))
+        check_ranking_budget(db)
         return IntentProposal(claim, user.recommendation_revision, signature, _constraints(intent),
-            tuple(finalists), tuple(stats.items()), excluded_ids, identity_signature(excluded_keys))
+            tuple(finalists), tuple(stats.items()), excluded_ids, identity_signature(excluded_keys), outfits)
 
 
 def _publish(sessions, user_id, proposal):
@@ -190,7 +213,7 @@ def _publish(sessions, user_id, proposal):
             if not _same_claim(intent, proposal.claim):
                 raise service.IntentError('Запрос уже изменён. Обновите результат.', 409)
             if (_constraints(intent) != proposal.constraints or
-                    tuple(sorted(set((intent.context_json or {}).get('excluded_product_ids', [])))) != proposal.excluded_ids):
+                    _result_exclusions(intent) != proposal.excluded_ids):
                 raise service.IntentError('Запрос уже изменён. Обновите результат.', 409)
             if mutation.owner.recommendation_revision != proposal.revision or profile_input_signature(db, user_id) != proposal.profile_signature:
                 raise RecommendationSnapshotChanged()
@@ -202,13 +225,20 @@ def _publish(sessions, user_id, proposal):
                 if (product is None or catalogue.evidence[product.id] != finalist.evidence
                         or intent_product_problem(product, fit, spec)):
                     raise RecommendationSnapshotChanged()
-                products.append({'product': product_to_api(product), 'reasons': list(finalist.reasons)})
-            service.remember_results(db, mutation.owner, intent, spec, fit, products, [], dict(proposal.stats))
+                if spec.intent_type == 'single_item':
+                    products.append({'product': product_to_api(product), 'reasons': list(finalist.reasons)})
+            outfits = []
+            for items in proposal.outfits:
+                group = {slot: catalogue.products[pid] for slot, pid in items}
+                if outfit_problem(group, fit, spec):
+                    raise RecommendationSnapshotChanged()
+                outfits.append(serialize_outfit(group, fit, spec, intent_id=intent.id, version=intent.version))
+            service.remember_results(db, mutation.owner, intent, spec, fit, products, outfits, dict(proposal.stats))
             generation = _generation(intent)
             intent.context_json = {**intent.context_json, service.GENERATION_KEY: {
                 **generation, 'state': 'ready', 'lease_until': None}}
             intent.updated_at = _now()
-            response = service.response_payload(intent, spec, fit, products, [])
+            response = service.response_payload(intent, spec, fit, products, outfits)
         db.commit()
         return response
 
@@ -251,14 +281,18 @@ def build_intent_response(bind, user_id, *, text, request_id):
         if claim is None:
             return _replay(sessions, user_id, admission.intent_id)
         for attempt in range(2):
+            preparing = True
             try:
                 proposal = _prepare(sessions, user_id, claim)
+                preparing = False
                 response = _publish(sessions, user_id, proposal)
                 completed = True
                 return response
             except RecommendationSnapshotChanged:
                 pass
             except DBAPIError as error:
+                if preparing and getattr(error.orig, 'sqlstate', None) == '57014':
+                    raise RecommendationRankingTimeout() from error
                 if getattr(error.orig, 'sqlstate', None) not in _RETRYABLE_SQLSTATES:
                     raise
             if attempt == 1:
@@ -267,6 +301,8 @@ def build_intent_response(bind, user_id, *, text, request_id):
         raise HTTPException(status_code=error.status, detail=str(error), headers=error.headers) from error
     except RecommendationOwnerMissing as error:
         raise HTTPException(status_code=401, detail='Войдите снова, чтобы продолжить.') from error
+    except RecommendationRankingTimeout as error:
+        raise HTTPException(status_code=409, detail=TIMEOUT_MESSAGE) from error
     except DBAPIError as error:
         if getattr(error.orig, 'sqlstate', None) in _RETRYABLE_SQLSTATES:
             raise HTTPException(status_code=409, detail=CONFLICT_MESSAGE) from error

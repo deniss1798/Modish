@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import Any
+from datetime import timezone
 
 from ..catalog_normalize import normalize_interest_category, normalize_style_scenario
 from ..models import FitProfile, Outfit, Recommendation, TasteProfile
@@ -106,6 +107,8 @@ def taste_to_api(tp: TasteProfile) -> dict[str, Any]:
 
 def outfit_to_api(o: Outfit, products: dict[str, Any] | None = None) -> dict[str, Any]:
   items = dict(o.items_json or {})
+  created_at = o.created_at
+  created_at = created_at.replace(tzinfo=timezone.utc) if created_at.tzinfo is None else created_at.astimezone(timezone.utc)
   return {
     "id": o.id,
     "items": items,
@@ -115,7 +118,7 @@ def outfit_to_api(o: Outfit, products: dict[str, Any] | None = None) -> dict[str
     "reason": o.reason,
     "score": o.score,
     "is_saved": bool(o.is_saved),
-    "created_at": o.created_at.isoformat(),
+    "created_at": created_at.isoformat(),
   }
 
 

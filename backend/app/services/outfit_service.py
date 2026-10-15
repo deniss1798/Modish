@@ -19,6 +19,7 @@ from .catalog.stock_freshness import fresh_stock_conditions
 from .catalog.rule_filters import load_rules_by_source_id, product_gender_compatible, product_passes_source_rules
 from .recommendation_config import OUTFIT_ENGINE_VERSION
 from .recommendation_engine import ensure_style_profile
+from .recommendation_revision import owner_mutation, accept_personal_change
 
 logger = logging.getLogger(__name__)
 
@@ -361,13 +362,15 @@ def _generate_outfits_fallback(
   budget_max = int(fit.budget_max) if fit and fit.budget_max else None
 
   if replace_existing:
-    db.execute(
+    removed = db.execute(
       delete(Outfit).where(
         Outfit.user_id == user.id,
         Outfit.style_direction == scenario_key,
         Outfit.is_saved == 0,
       )
     )
+    if removed.rowcount:
+      accept_personal_change(db, user.id)
     db.flush()
 
   need = max(1, min(10, int(count)))
@@ -473,6 +476,8 @@ def _generate_outfits_fallback(
     created.append(out)
 
   db.flush()
+  if created:
+    accept_personal_change(db, user.id)
   return created
 
 
@@ -524,10 +529,11 @@ def generate_outfits(
       _record_outfit_engine_v2_failure(db, user, scenario=scenario, exc=exc)
       raise
 
-  return _generate_outfits_fallback(
-    db,
-    user,
-    count=count,
-    scenario=scenario,
-    replace_existing=replace_existing,
-  )
+  with owner_mutation(db, user.id):
+    return _generate_outfits_fallback(
+      db,
+      user,
+      count=count,
+      scenario=scenario,
+      replace_existing=replace_existing,
+    )

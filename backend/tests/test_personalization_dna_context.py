@@ -144,6 +144,9 @@ class PersonalizationDNAContextTests(unittest.TestCase):
         wrong = self.product(title='Хлопковая рубашка', available_sizes=['L'])
         for _ in range(8):
             apply_event_to_user_twin(self.db, user_id=self.user.id, product=cotton, event_type='like')
+        # HTTP reads release authentication before opening an independent snapshot.
+        self.db.expire_on_commit = False
+        self.db.commit()
         with patch('app.api.products.user_from_token', return_value=self.user):
             rows = products_list(q='рубашка', db=self.db, credentials=object())
             self.assertEqual(rows[0]['id'], cotton.id)
@@ -161,13 +164,15 @@ class PersonalizationDNAContextTests(unittest.TestCase):
         session.completed_at = datetime.now(timezone.utc)
         for _ in range(8):
             apply_event_to_user_twin(self.db, user_id=other.id, product=linen, event_type='like')
-        self.db.flush()
+        self.db.commit()
         with patch('app.api.products.user_from_token', return_value=other):
             self.assertEqual(products_list(q='рубашка', db=self.db, credentials=object())[0]['id'], linen.id)
 
     def test_search_pagination_is_stable_for_equal_scores(self):
         from app.api.products import products_list
         expected = {self.product().id for _ in range(45)}
+        self.db.expire_on_commit = False
+        self.db.commit()
         with patch('app.api.products.user_from_token', return_value=self.user):
             pages = [products_list(q='рубашка', limit=20, offset=i, db=self.db, credentials=object())
                      for i in (0, 20, 40)]

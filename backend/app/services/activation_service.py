@@ -30,6 +30,7 @@ from .activation_policy import (
 from .profile_repository import load_preferences as _preferences
 from .personalization_scoring import AffinityScorer, affinity_score as _affinity, load_ranking_seen_counts
 from .recommendation_revision import profile_input_writer, accept_personal_change, owner_mutation
+from .recommendation_budget import check_ranking_budget
 
 MIN_SWIPES = 15
 SWIPE_TARGET = 20
@@ -105,6 +106,7 @@ def _required_roles_available(db, *, required_roles, conditions, hidden, hidden_
 
         with db.execute(query.execution_options(yield_per=500)) as role_rows:
             for row in role_rows:
+                check_ranking_budget(db)
                 evidence = loaded.get(row.id, row)
                 if product_role(evidence) != role:
                     continue
@@ -638,16 +640,25 @@ def complete_wow(db, user, session):
         profile.completed_at = session.completed_at
         profile.onboarding_step = 4
         db.flush()
+    return wow_response(db, user, session, profile, fit)
+
+
+def wow_response(db, user, session, profile, fit, *, rules=None):
+    """Read only the completed issued snapshot; never regenerate on replay."""
+    from ..models import Outfit
+    from ..api.outfits import visible_outfits
     result = []
     for snapshot in session.wow_json or []:
         row = db.get(Outfit, snapshot['id'])
-        visible = visible_outfits(db, user, [row]) if row else []
+        visible = visible_outfits(db, user, [row], rules=rules) if row else []
         if visible:
             products = [db.get(Product, pid) for pid in visible[0]['items'].values()]
             # Old completed sessions retain v23 snapshots. Revalidated products
             # must not receive stale general-size/budget claims from that text.
             result.append({**visible[0], **snapshot,
                 'explanation': _wow_explanation(products, profile, fit)})
-    return {'completed': True, 'outfits': result, 'completed_at': session.completed_at.isoformat(),
+    completed_at = session.completed_at
+    completed_at = completed_at.replace(tzinfo=timezone.utc) if completed_at.tzinfo is None else completed_at.astimezone(timezone.utc)
+    return {'completed': True, 'outfits': result, 'completed_at': completed_at.isoformat(),
             'recommendation_features': ['context_v1', 'dna_ranking_v1', 'personalized_search_v1'],
             'activation_version': 1, 'first_session_feed': True}

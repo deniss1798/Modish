@@ -49,11 +49,13 @@ def _norm_feature(value: object) -> str:
 
 
 def load_user_taste_feature_map(db: Session, *, user_id: str, as_of: datetime | None = None) -> TasteFeatureMap:
-  rows = db.execute(
+  from .feedback_preview import current_feedback_preview
+  checked_at = as_of or db.info.get('recommendation_as_of') or datetime.now(timezone.utc)
+  preview = current_feedback_preview(db, user_id, as_of=checked_at)
+  rows = preview.features if preview is not None else db.execute(
     select(UserTasteFeature).where(UserTasteFeature.user_id == user_id)
   ).scalars().all()
   out: TasteFeatureMap = {}
-  checked_at = as_of or db.info.get('recommendation_as_of') or datetime.now(timezone.utc)
   for row in rows:
     key = (str(row.feature_type or "").strip(), str(row.feature_value or "").strip().lower())
     if not key[0] or not key[1]:
@@ -69,9 +71,10 @@ def load_user_taste_feature_map(db: Session, *, user_id: str, as_of: datetime | 
     out[key] = (snapshot.preference_score, snapshot.confidence)
   from .behavior_profile import load_behavior_profile
   behavior = load_behavior_profile(db, user_id=user_id, as_of=checked_at)
-  taste = db.scalar(select(TasteProfile).where(TasteProfile.user_id == user_id))
-  if taste is not None:
-    taste.behavior_snapshot = behavior
+  if preview is None:
+    taste = db.scalar(select(TasteProfile).where(TasteProfile.user_id == user_id))
+    if taste is not None:
+      taste.behavior_snapshot = behavior
   for brand, evidence in behavior['brands'].items():
     out[('brand', brand)] = (evidence['affinity']-evidence['negative_affinity'], evidence['confidence'])
   return out

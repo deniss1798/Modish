@@ -26,7 +26,7 @@
 | 0.4 | Предсказуемая цена и единица хранения | Закрыт локально; [контракт и приёмка](closed-alpha-04-money.md) |
 | 0.5 | Пол null до явного выбора | Закрыт локально; [изменения и приёмка](closed-alpha-05-gender-choice.md) |
 | 1.1 | Качество первых15–20 карточек | Закрыт на локальных критериях admission; [изменения и приёмка](closed-alpha-11-first-session.md) |
-| 1.2 | Snapshot→rank→короткая публикация | В работе: [ревизия](closed-alpha-12-owner-revision.md), [HTTP feed](closed-alpha-12-feed-publication.md), [Style Swipe и single-item Intent create](closed-alpha-12-intent-deck.md) проверены; остаются Intent edits/WOW/outfits; [целевой контракт](owner-lock-redesign-20261014.md) |
+| 1.2 | Snapshot→rank→короткая публикация | Закрыт локально: [ревизия](closed-alpha-12-owner-revision.md), [HTTP feed](closed-alpha-12-feed-publication.md), [Style Swipe](closed-alpha-12-intent-deck.md), [Intent edits, образы, WOW, поиск и дополнения](closed-alpha-12-intent-outfits.md); настоящие concurrent HTTP/PG проверки |
 | 1.3 | Reservation фото/request id | Основная реализация есть; повторить concurrency/replay и проверить ручной повтор потерянного ответа |
 | 1.4 | Максимум3 честных WOW/legacy образа | Проверить весь охват count и empty state |
 | 1.5 | Переранжирование после10 реакций | Проверить save и серверный путь, а не только advancing actions клиента |

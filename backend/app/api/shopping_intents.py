@@ -45,14 +45,23 @@ def read(intent_id: str, db: Session = Depends(get_db),
 def refine(intent_id: str, payload: IntentRefineRequest, db: Session = Depends(get_db),
            credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme)):
     user = user_from_token(credentials, db)
-    return _execute(db, user, lambda: service.refine_intent(db, user, intent_id, **payload.model_dump()), remember=True)
+    return _independent_mutation(db, user, intent_id, operation='refine', **payload.model_dump())
 
 
 @router.post('/{intent_id}/outfits/{outfit_id}/replace')
 def replace_outfit(intent_id: str, outfit_id: str, payload: IntentOutfitReplace,
                    db: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme)):
     user = user_from_token(credentials, db)
-    return _execute(db, user, lambda: service.replace_outfit_item(db, user, intent_id, outfit_id, **payload.model_dump()), remember=True)
+    return _independent_mutation(db, user, intent_id, operation='replace', outfit_id=outfit_id, **payload.model_dump())
+
+
+def _independent_mutation(db, user, intent_id, **options):
+    from ..services.intent_mutation_session import build_mutation_response
+    user_id, bind = user.id, db.get_bind()
+    if db.new or db.dirty or db.deleted:
+        raise RuntimeError('Intent mutation request cannot own uncommitted writes')
+    db.close()
+    return build_mutation_response(bind, user_id, intent_id, **options)
 
 
 @router.post('/{intent_id}/outfits/{outfit_id}/save')
@@ -73,7 +82,7 @@ def save_outfit(intent_id: str, outfit_id: str, payload: IntentOutfitAction,
 def feedback(intent_id: str, payload: IntentFeedbackRequest,
              db: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme)):
     user = user_from_token(credentials, db)
-    return _execute(db, user, lambda: service.feedback(db, user, intent_id, **payload.model_dump()), remember=True)
+    return _independent_mutation(db, user, intent_id, operation='feedback', **payload.model_dump())
 
 
 @router.post('/{intent_id}/close')

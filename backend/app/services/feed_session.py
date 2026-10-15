@@ -23,6 +23,7 @@ from .profile_repository import ensure_style_profile, ensure_taste_profile
 from .product_identity import product_identity_keys
 from .recommendation_cache_service import persist_recommendation_cache_ids
 from .recommendation_engine import ScoredProduct, expand_product_exclusions, generate_feed
+from .recommendation_budget import begin_ranking, check_ranking_budget, RecommendationRankingTimeout, TIMEOUT_MESSAGE
 from .recommendation_publication import (
     product_evidence as _product_evidence,
     identity_projection as _identity_projection,
@@ -88,6 +89,7 @@ def _prepare(sessions, user_id, *, limit, source, scenario, filters, exclude_ids
             db.execute(text('SET TRANSACTION READ ONLY'))
         as_of = datetime.now(timezone.utc)
         db.info.update(recommendation_read_only=True, recommendation_as_of=as_of)
+        begin_ranking(db)
         user = db.get(User, user_id)
         if user is None:
             raise HTTPException(status_code=401, detail='Войдите снова, чтобы продолжить.')
@@ -113,6 +115,7 @@ def _prepare(sessions, user_id, *, limit, source, scenario, filters, exclude_ids
             row.final_score, tuple(row.breakdown.items()), row.reason, tuple(row.reasons),
             tuple(row.candidate_sources), row.algorithm_version, row.ranking_algorithm)
             for row in scored[:100])
+        check_ranking_budget(db)
         # Closing the read transaction releases its connection/cursors. Only
         # scalar/tuple DTOs leave this scope. Finalists/cache are bounded;
         # exclusion IDs remain complete, including for an empty result.
@@ -164,15 +167,21 @@ def build_feed_response(bind, user_id, *, limit=30, source=None, scenario='daily
     except RecommendationOwnerMissing as error:
         raise HTTPException(status_code=401, detail='Войдите снова, чтобы продолжить.') from error
     for attempt in range(2):
+        preparing = True
         try:
             proposal = _prepare(sessions, user_id, limit=limit, source=source, scenario=scenario,
                 filters=filters, exclude_ids=tuple(exclude_ids or ()))
+            preparing = False
             return _publish(sessions, user_id, proposal, source=source, scenario=scenario, filters=filters)
         except RecommendationSnapshotChanged:
             pass
+        except RecommendationRankingTimeout as error:
+            raise HTTPException(status_code=409, detail=TIMEOUT_MESSAGE) from error
         except RecommendationOwnerMissing as error:
             raise HTTPException(status_code=401, detail='Войдите снова, чтобы продолжить.') from error
         except DBAPIError as error:
+            if preparing and getattr(error.orig, 'sqlstate', None) == '57014':
+                raise HTTPException(status_code=409, detail=TIMEOUT_MESSAGE) from error
             if getattr(error.orig, 'sqlstate', None) not in {'55P03', '57014', '40001', '40P01'}:
                 raise
         if attempt == 1:

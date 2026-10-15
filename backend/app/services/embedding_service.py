@@ -339,7 +339,7 @@ def build_user_taste_embedding(
   since_days: int = 365,
   max_events: int = 200,
 ) -> UserTasteEmbedding:
-  since = _now() - timedelta(days=max(1, int(since_days)))
+  since = (db.info.get('recommendation_as_of') or _now()) - timedelta(days=max(1, int(since_days)))
   rows = db.execute(
     select(RecommendationEventV2.product_id, RecommendationEventV2.event_type)
     .where(

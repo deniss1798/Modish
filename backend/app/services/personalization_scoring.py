@@ -11,7 +11,7 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import DateTime, func, literal, select
 
 from ..models import Product, RecommendationEventV2, StyleProfile, TasteProfile
 from .activation_policy import features
@@ -46,15 +46,40 @@ def load_ranking_seen_counts(db, *, user_id, as_of=None):
     """Real visible actions, deduplicated by product/day; delivery is not sight."""
     from .behavior_profile import EXPOSURE_EVENTS
     now = as_of or db.info.get('recommendation_as_of') or datetime.now(timezone.utc)
+    conditions = (RecommendationEventV2.user_id == user_id,
+        RecommendationEventV2.product_id.is_not(None),
+        RecommendationEventV2.event_type.in_(EXPOSURE_EVENTS),
+        RecommendationEventV2.created_at >= now - timedelta(days=90),
+        RecommendationEventV2.created_at <= now)
     rows = db.execute(select(RecommendationEventV2.product_id,
         func.count(func.distinct(func.date(RecommendationEventV2.created_at))))
-        .where(RecommendationEventV2.user_id == user_id,
-            RecommendationEventV2.product_id.is_not(None),
-            RecommendationEventV2.event_type.in_(EXPOSURE_EVENTS),
-            RecommendationEventV2.created_at >= now - timedelta(days=90),
-            RecommendationEventV2.created_at <= now)
+        .where(*conditions)
         .group_by(RecommendationEventV2.product_id))
-    return {pid: count for pid, count in rows}
+    with rows:
+        counts = {pid: count for pid, count in rows}
+    from .feedback_preview import current_feedback_preview, _utc
+    preview = current_feedback_preview(db, user_id, as_of=now)
+    if preview is None:
+        return counts
+    events = [event for event in preview.events if event.event_type in EXPOSURE_EVENTS
+        and _utc(now) - timedelta(days=90) <= _utc(event.occurred_at) <= _utc(now)]
+    if not events:
+        return counts
+    # Match the database's date/timezone semantics, rather than assuming that
+    # today's exposure is always a new day or incrementing repeated signals.
+    days = db.execute(select(*(func.date(literal(event.occurred_at, type_=DateTime(timezone=True)))
+        for event in events))).one()
+    prospective = {}
+    for event, day in zip(events, days):
+        prospective.setdefault(event.product_id, set()).add(str(day))
+    with db.execute(select(RecommendationEventV2.product_id,
+            func.date(RecommendationEventV2.created_at)).where(*conditions,
+            RecommendationEventV2.product_id.in_(prospective)).distinct()) as existing:
+        for product_id, day in existing:
+            prospective[product_id].discard(str(day))
+    for product_id, extra_days in prospective.items():
+        counts[product_id] = counts.get(product_id, 0) + len(extra_days)
+    return counts
 
 
 def _clamp(value):

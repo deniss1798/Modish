@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from dataclasses import dataclass, fields
 from math import exp
 from uuid import uuid4
+from types import SimpleNamespace
 
 from sqlalchemy import select, tuple_
 from sqlalchemy.orm import Session
@@ -256,6 +258,61 @@ def _apply_signal(feature: UserTasteFeature, *, signal: float, as_of: datetime) 
   feature.last_signal_at = as_of
   feature.last_decay_at = as_of
   feature.updated_at = as_of
+
+
+@dataclass(frozen=True)
+class TasteFeatureSnapshot:
+  """Immutable feature data; never attached to a SQLAlchemy Session."""
+  id: str | None
+  user_id: str
+  feature_type: str
+  feature_value: str
+  preference_score: float
+  confidence: float
+  positive_count: int
+  negative_count: int
+  last_positive_at: datetime | None
+  last_negative_at: datetime | None
+  last_signal_at: datetime | None
+  last_decay_at: datetime | None
+  created_at: datetime
+  updated_at: datetime
+
+  def copy_values(self):
+    return SimpleNamespace(**{field.name: getattr(self, field.name) for field in fields(self)})
+
+
+@dataclass(frozen=True)
+class UserTwinPreview:
+  features: tuple[TasteFeatureSnapshot, ...]
+  touched: tuple[tuple[str, str], ...]
+
+
+def preview_user_twin_features(rows, *, user_id, product, event_type, meta=None, occurred_at):
+  """Reduce a signal on transient copies using the exact persistence maths."""
+  existing = {}
+  names = tuple(field.name for field in fields(TasteFeatureSnapshot))
+  for row in rows:
+    if row.user_id != user_id:
+      raise ValueError('Feature preview owner mismatch')
+    existing[(row.feature_type, row.feature_value)] = SimpleNamespace(
+      **{name: getattr(row, name) for name in names})
+  event_type = normalize_event_type(event_type)
+  signal, targets = user_twin_event_signal(event_type), _targets_for_event(event_type, meta)
+  features = product_taste_features(product) if targets and signal else {}
+  keys = sorted((kind, value) for kind in targets if kind in TASTE_FEATURE_TYPES
+    for value in features.get(kind, set())) if signal else []
+  for feature_type, feature_value in keys:
+    row = existing.get((feature_type, feature_value))
+    if row is None:
+      row = SimpleNamespace(id=None, user_id=user_id, feature_type=feature_type,
+        feature_value=feature_value, preference_score=0.0, confidence=0.0,
+        positive_count=0, negative_count=0, last_positive_at=None, last_negative_at=None,
+        last_signal_at=None, last_decay_at=None, created_at=occurred_at, updated_at=occurred_at)
+      existing[(feature_type, feature_value)] = row
+    _apply_signal(row, signal=signal * _target_multiplier(event_type, meta, feature_type), as_of=occurred_at)
+  return UserTwinPreview(tuple(TasteFeatureSnapshot(**{name: getattr(row, name) for name in names})
+    for _, row in sorted(existing.items())), tuple(keys))
 
 
 def apply_event_to_user_twin(

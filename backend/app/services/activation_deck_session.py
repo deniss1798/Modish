@@ -16,6 +16,7 @@ from .product_identity import product_identity_keys
 from .profile_repository import ensure_style_profile, ensure_taste_profile
 from .recommendation_publication import ProductEvidence, identity_projection, identity_signature, lock_catalogue, product_evidence
 from .recommendation_revision import RecommendationOwnerMissing, RecommendationSnapshotChanged, owner_mutation, profile_input_signature
+from .recommendation_budget import begin_ranking, check_ranking_budget, RecommendationRankingTimeout, TIMEOUT_MESSAGE
 
 
 @dataclass(frozen=True)
@@ -55,6 +56,7 @@ def _prepare(sessions, user_id):
             db.connection(execution_options={'isolation_level': 'REPEATABLE READ'})
             db.execute(text('SET TRANSACTION READ ONLY'))
         db.info.update(recommendation_read_only=True, recommendation_as_of=datetime.now(timezone.utc))
+        begin_ranking(db)
         user, activation = _owner(db, user_id), _activation(db, user_id)
         excluded_ids = tuple(sorted(set(activation.swipe_product_ids or ()) | set(activation.swipes_json or {})))
         keys = set()
@@ -68,6 +70,7 @@ def _prepare(sessions, user_id):
         ids = [row['id'] for row in response['products'][:30]]
         products = {p.id: p for p in db.scalars(select(Product).where(Product.id.in_(ids)))} if ids else {}
         finalists = tuple(ProductEvidence(pid, products[pid].source_id, product_evidence(products[pid])) for pid in ids)
+        check_ranking_budget(db)
         return DeckProposal(user.recommendation_revision, signature, allocation_signature, finalists,
             db.info['prepared_swipe_product_ids'], excluded_ids, identity_signature(keys), response['target'])
 
@@ -107,11 +110,18 @@ def build_swipe_deck(bind, user_id):
             ensure_taste_profile(db, user_id)
             db.commit()
         for attempt in range(2):
+            preparing = True
             try:
-                return _publish(sessions, user_id, _prepare(sessions, user_id))
+                proposal = _prepare(sessions, user_id)
+                preparing = False
+                return _publish(sessions, user_id, proposal)
             except RecommendationSnapshotChanged:
                 pass
+            except RecommendationRankingTimeout as error:
+                raise HTTPException(status_code=409, detail=TIMEOUT_MESSAGE) from error
             except DBAPIError as error:
+                if preparing and getattr(error.orig, 'sqlstate', None) == '57014':
+                    raise HTTPException(status_code=409, detail=TIMEOUT_MESSAGE) from error
                 if getattr(error.orig, 'sqlstate', None) not in {'55P03', '57014', '40001', '40P01'}:
                     raise
             if attempt == 1:

@@ -18,6 +18,7 @@ from .profile_repository import load_preferences
 from .recommendation_context import context_for
 from .outfit_quality import pair_compatible, outfit_compatible
 from .product_identity import product_identity_keys
+from .recommendation_budget import check_ranking_budget
 
 SLOT_OPTIONS = (('top', 'bottom', 'shoes'), ('one_piece', 'shoes'))
 
@@ -82,7 +83,8 @@ def build_intent_outfits(db, user, spec, *, intent_id, version, locked=None, exc
     maximum = min(fit.budget_max, spec.budget_max or fit.budget_max)
     context = context_for(spec.occasion or 'daily', budget_max=maximum)
     scorer = AffinityScorer(profile, taste, fit=fit,
-        seen_counts=load_ranking_seen_counts(db, user_id=user.id, as_of=datetime.now(timezone.utc)),
+        seen_counts=load_ranking_seen_counts(db, user_id=user.id,
+            as_of=db.info.get('recommendation_as_of') or datetime.now(timezone.utc)),
         taste_features=load_user_taste_feature_map(db, user_id=user.id), context=context,
         preferred_colors=spec.preferred_colors, preferred_styles=spec.preferred_styles,
         requested_categories=spec.requested_categories)
@@ -103,6 +105,7 @@ def build_intent_outfits(db, user, spec, *, intent_id, version, locked=None, exc
     for row in db.execute(select(Product.id, Product.title, Product.category,
             Product.category_name, Product.subcategory).where(*conditions)
             .order_by(Product.id).execution_options(yield_per=500)):
+        check_ranking_budget(db)
         slot = product_role(row)
         if slot in {'top', 'bottom', 'one_piece', 'shoes'} and slot not in locked:
             role_ids.setdefault(slot, []).append(row.id)
@@ -125,6 +128,7 @@ def build_intent_outfits(db, user, spec, *, intent_id, version, locked=None, exc
             # an IN predicate alone does not guarantee hydration row order.
             for product in db.scalars(select(Product).where(Product.id.in_(ids[offset:offset+200]))
                     .order_by(Product.id)):
+                check_ranking_budget(db)
                 # An import may change classification between the thin index
                 # and this full read. A stale role must never fill a wrong slot.
                 if product_role(product) != slot:
@@ -177,6 +181,7 @@ def build_intent_outfits(db, user, spec, *, intent_id, version, locked=None, exc
         if not set(locked) <= set(slots) or any(not pools.get(slot) for slot in slots):
             continue
         for group in combinations(*(pools[slot] for slot in slots)):
+            check_ranking_budget(db)
             total = sum(p.price for p in group)
             if not (spec.budget_min or 0) <= total <= maximum:
                 continue

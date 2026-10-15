@@ -2,7 +2,8 @@ from __future__ import annotations
 from fit_fixtures import confirmed_fit
 
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
 from uuid import uuid4
 
 from sqlalchemy import create_engine, select
@@ -202,6 +203,23 @@ class EmbeddingServiceTests(unittest.TestCase):
 
     self.assertEqual(user_embedding.negative_events, 0)
     self.assertIsNone(user_embedding.negative_centroid)
+
+  def test_event_window_uses_captured_ranking_clock_at_year_boundary(self) -> None:
+    as_of = datetime(2026, 10, 16, 0, 0, tzinfo=timezone.utc)
+    liked = _product(title='Captured clock cotton blouse')
+    self.db.add(liked)
+    self.db.flush()
+    self.db.add(RecommendationEventV2(id=str(uuid4()), user_id=self.user.id,
+      product_id=liked.id, event_type='like', event_weight=2, meta_json={},
+      created_at=as_of - timedelta(days=365) + timedelta(seconds=1)))
+    self.db.flush()
+    self.db.info['recommendation_as_of'] = as_of
+    with patch('app.services.embedding_service._now', return_value=as_of + timedelta(seconds=2)):
+      captured = build_user_taste_embedding(self.db, user_id=self.user.id)
+      self.db.info.pop('recommendation_as_of')
+      later = build_user_taste_embedding(self.db, user_id=self.user.id)
+    self.assertEqual(captured.positive_events, 1)
+    self.assertEqual(later.positive_events, 0)
 
   def test_batch_indexes_active_catalog_embeddings(self) -> None:
     active = _product(title="Active black oversized hoodie")

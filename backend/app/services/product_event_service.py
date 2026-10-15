@@ -4,55 +4,65 @@ The user row lock serializes taste/state writes across workers. With commit=Fals
 the caller owns the transaction (including rollback); no events are committed here.
 """
 from datetime import datetime, timezone
+import logging
 from typing import Any
 from uuid import uuid4
 
 from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 
 from ..models import RecommendationEventV2, User, UserProductState
 from ..money import json_rubles
 from ..schemas.product_event import EventRequest
-from .outfit_service import generate_outfits
 from .profile_repository import ensure_taste_profile
 from .recommendation_config import (
-    HIDE_FOR, LAST_SEEN_EVENTS, NEGATIVE_LIST_EVENTS, POSITIVE_LIST_EVENTS,
-    TASTE_UPDATE_EVENTS, event_weight, feature_targets_for_event,
-    legacy_feature_signal_multiplier, normalize_event_type,
+    HIDE_FOR, LAST_SEEN_EVENTS, event_weight, normalize_event_type,
     normalized_event_meta, recommendation_algorithm_metadata,
 )
-from .recommendation_engine import _product_category_norms
+from .legacy_taste_reducer import legacy_product_facts, reduce_legacy_taste
 from .user_twin_service import apply_event_to_user_twin
 from .recommendation_revision import accept_personal_change, owner_mutation
 
+logger = logging.getLogger(__name__)
 
-def record_product_event(db: Session, user: User, payload: EventRequest, *, commit: bool = True) -> dict[str, Any]:
+
+def record_product_event(db: Session, user: User, payload: EventRequest, *, commit: bool = True,
+                         occurred_at: datetime | None = None) -> dict[str, Any]:
   # Refresh cached owner rows BEFORE reading legacy taste/state. A late revision
   # bump alone cannot repair a signal overwritten after waiting for the lock.
   with owner_mutation(db, user.id):
-    result = _apply_product_event(db, user, payload)
+    result = _apply_product_event(db, user, payload, occurred_at=occurred_at)
   if result.get('idempotent'):
     return result
   if not commit:
     return {'status': result['status'], 'event_type': result['event_type']}
   db.commit()
-  total = db.scalar(select(func.count()).select_from(RecommendationEventV2).where(
-    RecommendationEventV2.user_id == user.id)) or 0
-  from ..models import ActivationSession, Outfit
-  milestone = total in (20, 30) and db.get(ActivationSession, user.id) is None
-  generated = 0
-  if milestone:
-    existing = db.scalar(select(Outfit).where(Outfit.user_id == user.id).limit(1))
-    if existing is None:
-      items = generate_outfits(db, user, count=3)
-      db.commit()
+  total, milestone, generated = None, False, 0
+  try:
+    total = db.scalar(select(func.count()).select_from(RecommendationEventV2).where(
+      RecommendationEventV2.user_id == user.id)) or 0
+    from ..models import ActivationSession
+    milestone = total in (20, 30) and db.get(ActivationSession, user.id) is None
+    if milestone:
+      # The reaction is already durable. Release its connection before the
+      # optional catalogue computation, including the read used for the count.
+      from .outfit_session import build_outfits_response
+      user_id, bind = user.id, db.get_bind()
+      db.close()
+      items = build_outfits_response(bind, user_id, count=3, only_if_empty=True)
       generated = len(items)
-  return {**result, 'total_events': int(total), 'milestone_reached': milestone,
+  except Exception:
+    # Even the optional count may fail after the event committed. Preserve the
+    # successful reaction; an unknown count is not a fabricated zero.
+    db.rollback()
+    logger.exception('Optional milestone outfit generation failed')
+  return {**result, 'total_events': int(total) if total is not None else None, 'milestone_reached': milestone,
     'outfits_generated': generated}
 
 
-def _apply_product_event(db: Session, user: User, payload: EventRequest) -> dict[str, Any]:
+def _apply_product_event(db: Session, user: User, payload: EventRequest, *, occurred_at=None) -> dict[str, Any]:
   """Commit-free application; caller holds and refreshes the owner first."""
   from ..models import Product
 
@@ -142,7 +152,7 @@ def _apply_product_event(db: Session, user: User, payload: EventRequest) -> dict
       }
 
   if payload.product_id:
-    now = datetime.now(timezone.utc)
+    now = occurred_at or datetime.now(timezone.utc)
     st = db.execute(
       select(UserProductState).where(
         UserProductState.user_id == user.id,
@@ -169,6 +179,11 @@ def _apply_product_event(db: Session, user: User, payload: EventRequest) -> dict
     if hide_for is not None:
       st.hidden_until = now + hide_for
     st.updated_at = now
+    if occurred_at is not None:
+      # A newly inserted state was flushed above with this same timestamp.
+      # Force it into the subsequent UPDATE so onupdate cannot replace the
+      # accepted event clock merely because this scalar compares equal.
+      flag_modified(st, 'updated_at')
 
   ev = RecommendationEventV2(
     id=str(uuid4()),
@@ -178,7 +193,7 @@ def _apply_product_event(db: Session, user: User, payload: EventRequest) -> dict
     event_type=canonical_event_type,
     event_weight=weight,
     meta_json=meta,
-    created_at=datetime.now(timezone.utc),
+    created_at=occurred_at or datetime.now(timezone.utc),
   )
   db.add(ev)
   from .intent_metrics import emit
@@ -196,107 +211,11 @@ def _apply_product_event(db: Session, user: User, payload: EventRequest) -> dict
   if payload.product_id:
     p = db.execute(select(Product).where(Product.id == payload.product_id)).scalar_one_or_none()
     if p and not (canonical_event_type == 'view' and meta.get('surface') == 'shopping_intent'):
-      cat_keys = _product_category_norms(p)
-      cat = next(iter(cat_keys), "") or (p.category or "").strip().lower()
-      brand = (p.brand or "").strip().lower()
-      from ..catalog_normalize import normalize_colors_value
-      cols = normalize_colors_value(p.colors or p.color_original)
-      from .catalog.style_tagger import infer_style_tags
-      styles = [str(t).strip().lower() for t in (p.style_tags or infer_style_tags(title=p.title, category=p.category)) if str(t).strip()]
-      liked_categories = list(tp.liked_categories or [])
-      liked_brands = list(tp.liked_brands or [])
-      liked_colors = list(tp.liked_colors or [])
-      liked_styles = list(tp.liked_styles or [])
-      disliked_categories = list(tp.disliked_categories or [])
-      disliked_brands = list(tp.disliked_brands or [])
-      disliked_colors = list(tp.disliked_colors or [])
-      disliked_styles = list(tp.disliked_styles or [])
-      category_weights = dict(tp.category_weights or {})
-      brand_weights = dict(tp.brand_weights or {})
-      color_weights = dict(tp.color_weights or {})
-      style_weights = dict(tp.style_weights or {})
-
-      def add_unique(lst: list[str], v: str) -> None:
-        if v and v not in lst:
-          lst.append(v)
-
-      def bump(d: dict, key: str, delta: float) -> None:
-        if not key:
-          return
-        cur = d.get(key, 0)
-        try:
-          cur = float(cur)
-        except Exception:
-          cur = 0.0
-        nxt = cur + float(delta)
-        if nxt > 50:
-          nxt = 50.0
-        if nxt < -50:
-          nxt = -50.0
-        d[key] = nxt
-
-      def prune(d: dict, limit: int = 200) -> None:
-        if not isinstance(d, dict) or len(d) <= limit:
-          return
-        items: list[tuple[str, float]] = []
-        for k, v in d.items():
-          try:
-            items.append((str(k), float(v)))
-          except Exception:
-            continue
-        items.sort(key=lambda x: abs(x[1]), reverse=True)
-        keep = {k for k, _ in items[:limit]}
-        drop = [k for k in list(d.keys()) if str(k) not in keep]
-        for k in drop:
-          d.pop(k, None)
-
-      if canonical_event_type in POSITIVE_LIST_EVENTS or (meta.get("surface") == "style_swipe" and canonical_event_type == "like"):
-        add_unique(liked_categories, cat)
-        add_unique(liked_brands, brand)
-        for c in cols[:3]:
-          add_unique(liked_colors, c)
-        for t in styles[:3]:
-          add_unique(liked_styles, t)
-      elif canonical_event_type in NEGATIVE_LIST_EVENTS:
-        add_unique(disliked_categories, cat)
-        add_unique(disliked_brands, brand)
-        for c in cols[:3]:
-          add_unique(disliked_colors, c)
-        for t in styles[:3]:
-          add_unique(disliked_styles, t)
-
-      if canonical_event_type in TASTE_UPDATE_EVENTS:
-        delta = weight * legacy_feature_signal_multiplier(canonical_event_type, meta)
-        targets = feature_targets_for_event(canonical_event_type, meta)
-        if "category" in targets:
-          for ck in (cat_keys or {cat}):
-            bump(category_weights, ck, delta)
-        if "brand" in targets:
-          bump(brand_weights, brand, delta)
-        if "color" in targets:
-          for c in cols[:3]:
-            bump(color_weights, c, delta)
-        if "style" in targets:
-          for t in styles[:3]:
-            bump(style_weights, t, delta)
-        prune(category_weights)
-        prune(brand_weights)
-        prune(color_weights)
-        prune(style_weights)
-
-      tp.liked_categories = liked_categories
-      tp.liked_brands = liked_brands
-      tp.liked_colors = liked_colors
-      tp.liked_styles = liked_styles
-      tp.disliked_categories = disliked_categories
-      tp.disliked_brands = disliked_brands
-      tp.disliked_colors = disliked_colors
-      tp.disliked_styles = disliked_styles
-      tp.category_weights = category_weights
-      tp.brand_weights = brand_weights
-      tp.color_weights = color_weights
-      tp.style_weights = style_weights
-      tp.updated_at = datetime.now(timezone.utc)
+      changes = reduce_legacy_taste(tp, legacy_product_facts(p),
+        event_type=canonical_event_type, meta=meta, weight=weight)
+      for field, value in changes.items():
+        setattr(tp, field, value)
+      tp.updated_at = occurred_at or datetime.now(timezone.utc)
       apply_event_to_user_twin(
         db,
         user_id=user.id,

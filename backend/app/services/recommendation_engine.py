@@ -22,6 +22,7 @@ from .product_eligibility import evaluate_eligibility
 from .mie_scoring import TasteFeatureMap, compute_mie_score, load_user_taste_feature_map
 from .profile_repository import ensure_style_profile, ensure_taste_profile
 from .recommendation_config import ALGORITHM_VERSION, DEFAULT_RANKING_ALGORITHM
+from .recommendation_budget import check_ranking_budget
 from ..schemas.photo_analysis import extract_analysis_section
 
 
@@ -363,6 +364,7 @@ def generate_feed(
 
   filtered: list[Product] = []
   for p in products:
+    check_ranking_budget(db)
     if not evaluate_eligibility(p, fit, filters=filters).eligible:
       continue
     if not product_is_feed_eligible(p):
@@ -445,6 +447,7 @@ def generate_feed(
         conditions.append(condition)
     query = _ordered_recent(select(Product).where(*conditions)).limit(5000)
     for p in db.execute(query.execution_options(yield_per=250)).scalars():
+      check_ranking_budget(db)
       keys = product_identity_keys(p)
       if keys & seen_keys or _is_hidden_category(p):
         continue
@@ -465,6 +468,7 @@ def generate_feed(
 
   if read_only:
     db.info['prepared_feed_candidate_ids'] = tuple(p.id for p in filtered[:400])
+    db.info['prepared_feed_top_ids'] = tuple(row.product.id for row in top[:100])
   else:
     persist_recommendation_caches(
       db, user_id=user.id, filtered_products=filtered, scored_top=top,

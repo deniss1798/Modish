@@ -14,7 +14,7 @@ from ..services.outfit_engine_v2 import SCENARIO_SLOT_OPTIONS, _hard_ok, _scenar
 from ..services.outfit_quality import scenario_product_ok, outfit_compatible
 from ..services.product_identity import product_identity_keys
 from ..services.catalog.rule_filters import load_rules_by_source_id
-from ..services.outfit_service import generate_outfits
+from ..services.recommendation_revision import owner_mutation
 from .deps import auth_scheme, get_db, user_from_token
 from .serializers import outfit_to_api
 from ..schemas.api_product import product_to_api
@@ -33,10 +33,10 @@ def _outfit_products(db: Session, o: Outfit) -> dict[str, Any]:
   return products
 
 
-def visible_outfits(db: Session, user: User, rows: list[Outfit]) -> list[dict[str, Any]]:
+def visible_outfits(db: Session, user: User, rows: list[Outfit], *, rules=None) -> list[dict[str, Any]]:
   """Validate older stored outfits too, without deleting saved user data."""
   fit = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
-  rules = load_rules_by_source_id(db)
+  rules = load_rules_by_source_id(db) if rules is None else rules
   from ..models import ActivationSession
   from ..services.activation_service import product_ok
   activation = db.get(ActivationSession, user.id)
@@ -80,16 +80,21 @@ def outfits_generate(
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> list[dict[str, Any]]:
   user = user_from_token(credentials, db)
+  from ..services.outfit_session import build_outfits_response
+  user_id, bind = user.id, db.get_bind()
+  if db.new or db.dirty or db.deleted:
+    raise RuntimeError('Outfit request cannot own uncommitted writes')
+  db.close()
   try:
-    items = generate_outfits(db, user, count=count, scenario=scenario)
-    db.commit()
+    return build_outfits_response(bind, user_id, count=count, scenario=scenario)
+  except HTTPException:
+    raise
   except Exception as exc:
     db.rollback()
     raise HTTPException(
       status_code=500,
       detail="Не удалось собрать образы. Попробуйте ещё раз через несколько секунд.",
     ) from exc
-  return visible_outfits(db, user, items)
 
 
 @router.get("/outfits")
@@ -116,15 +121,7 @@ def outfits_save(
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> dict[str, Any]:
   user = user_from_token(credentials, db)
-  o = db.execute(
-    select(Outfit).where(Outfit.id == outfit_id, Outfit.user_id == user.id)
-  ).scalar_one_or_none()
-  if o is None:
-    raise HTTPException(status_code=404, detail="Outfit not found")
-  o.is_saved = 1
-  o.updated_at = datetime.now(timezone.utc)
-  db.commit()
-  return {"status": "ok", "outfit_id": outfit_id}
+  return _set_saved(db, user.id, outfit_id, True)
 
 
 @router.post("/outfits/unsave")
@@ -134,12 +131,18 @@ def outfits_unsave(
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> dict[str, Any]:
   user = user_from_token(credentials, db)
-  o = db.execute(
-    select(Outfit).where(Outfit.id == outfit_id, Outfit.user_id == user.id)
-  ).scalar_one_or_none()
-  if o is None:
-    raise HTTPException(status_code=404, detail="Outfit not found")
-  o.is_saved = 0
-  o.updated_at = datetime.now(timezone.utc)
+  return _set_saved(db, user.id, outfit_id, False)
+
+
+def _set_saved(db, user_id, outfit_id, saved):
+  # Saved rows survive a refresh and therefore affect its rotation inputs.
+  with owner_mutation(db, user_id) as mutation:
+    o = db.scalar(select(Outfit).where(Outfit.id == outfit_id, Outfit.user_id == user_id))
+    if o is None:
+      raise HTTPException(status_code=404, detail="Образ не найден. Обновите список образов.")
+    if bool(o.is_saved) != saved:
+      o.is_saved = int(saved)
+      o.updated_at = datetime.now(timezone.utc)
+      mutation.mark_changed()
   db.commit()
   return {"status": "ok", "outfit_id": outfit_id}

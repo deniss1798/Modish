@@ -29,6 +29,8 @@ from .product_identity import product_identity_keys
 from .outfit_quality import FORMAL_SCENARIOS, FORMAL_SHOE_TERMS, garment_text, scenario_product_ok, pair_compatible, outfit_compatible
 from .garment_roles import product_role
 from .catalog_audience import adult_catalog_conditions
+from .recommendation_revision import owner_mutation, accept_personal_change
+from .recommendation_budget import check_ranking_budget
 
 
 SLOT_CATEGORIES: dict[str, set[str]] = {
@@ -93,6 +95,16 @@ class OutfitCandidate:
   reasons: list[str]
 
 
+@dataclass(frozen=True)
+class OutfitBatch:
+  """Session-local computation; orchestration must detach selected evidence."""
+  scenario: str
+  selected: tuple[OutfitCandidate, ...]
+  history_name: str
+  previous_history_ids: tuple[str, ...]
+  dependency_ids: tuple[str, ...]
+
+
 def _clamp01(value: float) -> float:
   return max(0.0, min(1.0, float(value)))
 
@@ -150,7 +162,7 @@ def _excluded_product_ids(db: Session, user: User, *, scenario: str) -> set[str]
 
 
 def _recent_skip_product_ids(db: Session, user: User) -> set[str]:
-  cutoff = datetime.now(timezone.utc) - timedelta(hours=SKIP_PENALTY_COOLDOWN_HOURS)
+  cutoff = (db.info.get('recommendation_as_of') or datetime.now(timezone.utc)) - timedelta(hours=SKIP_PENALTY_COOLDOWN_HOURS)
   ids = db.execute(
     select(RecommendationEventV2.product_id).where(
       RecommendationEventV2.user_id == user.id,
@@ -201,6 +213,7 @@ def _catalog_slot_candidates(
   hidden = excluded | existing_ids
   if hidden:
     for p in db.execute(select(Product).where(Product.id.in_(hidden))).scalars():
+      check_ranking_budget(db)
       seen_keys.update(product_identity_keys(p))
   # Retrieve each role independently: a recent run of tops or size variants
   # must not crowd all shoes/bottoms out of the bounded candidate pool.
@@ -208,7 +221,7 @@ def _catalog_slot_candidates(
   for slot in sorted(slots):
     found = 0
     query = select(Product).where(
-      *fresh_stock_conditions(),
+      *fresh_stock_conditions(checked_at=db.info.get('recommendation_as_of')),
       Product.is_active == 1, Product.is_available == 1,
       Product.is_deleted_from_feed == 0, Product.source != "demo",
       Product.price > 0, _slot_category_conditions({slot}), *adult_catalog_conditions(),
@@ -221,6 +234,7 @@ def _catalog_slot_candidates(
     if slot == "shoes" and scenario in FORMAL_SCENARIOS:
       query = query.where(or_(*(Product.title.ilike(f"%{term}%") for term in FORMAL_SHOE_TERMS)))
     for product in db.execute(query.limit(6000).execution_options(yield_per=300)).scalars():
+      check_ranking_budget(db)
       keys = product_identity_keys(product)
       if keys & seen_keys or product_slot(product) != slot:
         continue
@@ -266,6 +280,7 @@ def _build_slot_candidates(
         taste_features=taste_features, scorer=scorer, preferences=preferences,
         required_roles=required_roles)
     for product in rows:
+      check_ranking_budget(db)
       slot = product_slot(product)
       if slot not in buckets or len(buckets[slot]) >= per_slot: continue
       if excluded_keys and product_identity_keys(product) & excluded_keys: continue
@@ -285,8 +300,10 @@ def _build_slot_candidates(
     exclude_product_ids=excluded,
     scenario=scenario,
     max_to_score=900,
+    read_only=bool(db.info.get('recommendation_read_only')),
   )
   for scored in scored_feed:
+    check_ranking_budget(db)
     slot = product_slot(scored.product)
     if slot not in buckets or scored.product.id in seen:
       continue
@@ -325,6 +342,7 @@ def _build_slot_candidates(
     rows = [product for product in rows if _hard_ok(product, fit=fit, rules_by_source=rules_by_source)]
     ctx = build_feed_context(db, user, product_ids=[product.id for product in rows], scenario=scenario)
     for product in rows:
+      check_ranking_budget(db)
       keys = product_identity_keys(product)
       if keys & seen_keys:
         continue
@@ -499,6 +517,7 @@ def _build_combinations(
   scenario: str,
   fit: FitProfile | None,
   limit: int,
+  db: Session | None = None,
 ) -> list[OutfitCandidate]:
   candidates: list[OutfitCandidate] = []
   for required_slots in SCENARIO_SLOT_OPTIONS[scenario]:
@@ -506,6 +525,8 @@ def _build_combinations(
       continue
     slot_options = [buckets[slot][:10] for slot in required_slots]
     for combo in cartesian_product(*slot_options):
+      if db is not None:
+        check_ranking_budget(db)
       slot_items = [item for item in combo if item is not None]
       if not outfit_compatible([item.product for item in slot_items]):
         continue
@@ -589,17 +610,25 @@ def generate_outfits_v2(
   scenario: str = "daily",
   replace_existing: bool = True,
 ) -> list[Outfit]:
+  # Compatibility callers still own their transaction. HTTP orchestration can
+  # use prepare_outfit_batch in a distinct read-only Session instead.
+  with owner_mutation(db, user.id):
+    batch = prepare_outfit_batch(db, user, count=count, scenario=scenario)
+    return persist_outfit_batch(db, user, batch, replace_existing=replace_existing)
+
+
+def prepare_outfit_batch(db, user, *, count=3, scenario='daily', extra_existing=()) -> OutfitBatch:
   scenario_key = _scenario_key(scenario)
   need = max(1, min(10, int(count)))
-  # Serialize refreshes for this user; read history only after acquiring the lock.
-  db.execute(select(User.id).where(User.id == user.id).with_for_update()).scalar_one()
+  history_name = f"outfit_rotation:{scenario_key}"
   fit = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
   if fit is None or fit.gender_target not in {"menswear", "womenswear", "unisex"}:
-    return []
+    return OutfitBatch(scenario_key, (), history_name, (), ())
   excluded = _excluded_product_ids(db, user, scenario=scenario_key)
   activation = db.get(ActivationSession, user.id)
   skipped_ids = _recent_skip_product_ids(db, user)
   existing = db.execute(select(Outfit).where(Outfit.user_id == user.id)).scalars().all()
+  existing.extend(extra_existing)
   prior_ids = {str(pid) for row in existing for pid in (row.items_json or {}).values() if pid}
   prior_products = {p.id: p for p in db.execute(select(Product).where(Product.id.in_(prior_ids))).scalars()} if prior_ids else {}
   recent_keys: list[set[str]] = []
@@ -610,7 +639,6 @@ def generate_outfits_v2(
 
   # Keep five batches, including identity snapshots so deleted/aliased offers
   # cannot make the previous look appear new. No catalogue or schema mutation.
-  history_name = f"outfit_rotation:{scenario_key}"
   history = db.execute(select(MetricEvent).where(
     MetricEvent.user_id == user.id, MetricEvent.name == history_name,
   ).order_by(MetricEvent.created_at.desc(), MetricEvent.id.desc()).limit(5)).scalars().all()
@@ -622,13 +650,14 @@ def generate_outfits_v2(
   # Prefer unused garments. With scarce footwear, allow a shared item only
   # when at least two parts differ from every recent look in this scenario.
   for fresh_only in ([True, False] if recent_keys else [False]):
+    check_ranking_budget(db)
     buckets = _build_slot_candidates(
       db, user, scenario=scenario_key, fit=fit,
       excluded=excluded | used_ids if fresh_only else excluded,
       skipped_ids=skipped_ids, per_slot=10,
       excluded_keys=used_keys if fresh_only else None,
     )
-    combinations = _build_combinations(buckets, scenario=scenario_key, fit=fit, limit=need)
+    combinations = _build_combinations(buckets, scenario=scenario_key, fit=fit, limit=need, db=db)
     if activation is not None:
       combinations = [candidate for candidate in combinations if candidate.total_price <= as_rubles(fit.budget_max)]
     combinations = [candidate for candidate in combinations if all(
@@ -642,6 +671,17 @@ def generate_outfits_v2(
     selected = _diverse_top(combinations, limit=need)
     if selected:
       break
+  dependencies = excluded | prior_ids | used_ids
+  if activation:
+    dependencies.update(pid for pid, reaction in (activation.swipes_json or {}).items()
+        if reaction in {'dislike', 'unavailable'})
+  return OutfitBatch(scenario_key, tuple(selected), history_name, tuple(row.id for row in history),
+      tuple(sorted(dependencies)))
+
+
+def persist_outfit_batch(db, user, batch, *, replace_existing=True, history_id=None) -> list[Outfit]:
+  """Persist only prepared choices; no catalogue scan or scoring here."""
+  selected, scenario_key, history_name = batch.selected, batch.scenario, batch.history_name
   if not selected:
     return []  # Preserve the current outfits when alternatives are exhausted.
   if replace_existing:
@@ -674,12 +714,15 @@ def generate_outfits_v2(
     created.append(outfit)
 
   db.add(MetricEvent(
-    id=str(uuid4()), user_id=user.id, name=history_name, created_at=now,
+    id=history_id or str(uuid4()), user_id=user.id, name=history_name, created_at=now,
     meta_json={"outfits": [sorted(set().union(*(product_identity_keys(item.product) for item in candidate.items.values()))) for candidate in selected]},
   ))
   # The new batch plus the previous four are enough; bound storage per user.
-  stale = history[4:]
+  stale = batch.previous_history_ids[4:]
   if stale:
-    db.execute(delete(MetricEvent).where(MetricEvent.id.in_([event.id for event in stale])))
+    db.execute(delete(MetricEvent).where(MetricEvent.id.in_(stale)))
   db.flush()
+  # Rotation is an input to the next outfit calculation. This revision records
+  # allocation freshness, without training Taste or creating real exposures.
+  accept_personal_change(db, user.id)
   return created

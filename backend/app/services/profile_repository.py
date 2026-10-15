@@ -86,4 +86,10 @@ def load_preferences(db: Session, user: User) -> tuple[StyleProfile, FitProfile 
     profile = ensure_style_profile(db, user.id)
     fit = db.scalar(select(FitProfile).where(FitProfile.user_id == user.id))
     taste = ensure_taste_profile(db, user.id)
+    from .feedback_preview import current_feedback_preview
+    preview = current_feedback_preview(db, user.id)
+    if preview is not None:
+        from .behavior_profile import load_behavior_profile
+        taste = preview.taste_copy()
+        taste.behavior_snapshot = load_behavior_profile(db, user_id=user.id, as_of=preview.as_of)
     return profile, fit, taste
