@@ -74,11 +74,13 @@ def activation_preferences(payload: ActivationPreferencesRequest, db: Session = 
 
 @router.get('/style-swipe')
 def get_style_swipe(db: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme)):
-  from ..services.activation_service import swipe_deck
+  from ..services.activation_deck_session import build_swipe_deck
   user = user_from_token(credentials, db)
-  result = swipe_deck(db, user, _activation(db, user))
-  db.commit()
-  return result
+  user_id, bind = user.id, db.get_bind()
+  if db.new or db.dirty or db.deleted:
+    raise RuntimeError('Style Swipe request cannot own uncommitted writes')
+  db.close()
+  return build_swipe_deck(bind, user_id)
 
 
 @router.post('/style-swipe')

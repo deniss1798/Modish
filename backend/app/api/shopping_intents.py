@@ -12,19 +12,26 @@ router = APIRouter(prefix='/shopping-intents', tags=['shopping-intents'])
 def _execute(db, user, operation, *, remember=False):
     require_warm_feed(db, user)
     try:
-        result = service.intent_response(db, user, operation(), remember=remember)
+        intent = operation()
+        result = (service.intent_response(db, user, intent, remember=True) if remember else
+            service.issued_intent_response(db, user, intent))
         db.commit()
         return result
     except service.IntentError as error:
         db.rollback()
-        raise HTTPException(status_code=error.status, detail=str(error)) from error
+        raise HTTPException(status_code=error.status, detail=str(error), headers=error.headers) from error
 
 
 @router.post('')
 def create(payload: IntentCreateRequest, db: Session = Depends(get_db),
            credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme)):
     user = user_from_token(credentials, db)
-    return _execute(db, user, lambda: service.create_intent(db, user, **payload.model_dump()), remember=True)
+    from ..services.intent_session import build_intent_response
+    user_id, bind = user.id, db.get_bind()
+    if db.new or db.dirty or db.deleted:
+        raise RuntimeError('Intent create request cannot own uncommitted writes')
+    db.close()
+    return build_intent_response(bind, user_id, **payload.model_dump())
 
 
 @router.get('/{intent_id}')
@@ -59,7 +66,7 @@ def save_outfit(intent_id: str, outfit_id: str, payload: IntentOutfitAction,
         return result
     except service.IntentError as error:
         db.rollback()
-        raise HTTPException(status_code=error.status, detail=str(error)) from error
+        raise HTTPException(status_code=error.status, detail=str(error), headers=error.headers) from error
 
 
 @router.post('/{intent_id}/feedback')
@@ -79,4 +86,4 @@ def close(intent_id: str, payload: IntentCloseRequest, db: Session = Depends(get
         return result
     except service.IntentError as error:
         db.rollback()
-        raise HTTPException(status_code=error.status,detail=str(error)) from error
+        raise HTTPException(status_code=error.status,detail=str(error), headers=error.headers) from error

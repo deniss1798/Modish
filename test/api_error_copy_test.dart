@@ -137,6 +137,26 @@ void main() {
     },
   );
 
+  test('Intent pending and publication conflicts have useful retry copy', () {
+    final request = RequestOptions(path: '/shopping-intents');
+    for (final entry in {
+      'Подборка ещё готовится. Повторите запрос чуть позже.':
+          'Подборка ещё готовится. Подождите немного и повторите тот же запрос.',
+      'Параметры или каталог изменились во время подбора. Повторите запрос.':
+          'Условия подбора изменились. Повторите запрос, чтобы увидеть актуальные вещи.',
+    }.entries) {
+      final error = DioException(
+        requestOptions: request,
+        response: Response(
+          requestOptions: request,
+          statusCode: 409,
+          data: {'detail': entry.key},
+        ),
+      );
+      expect(ApiClient.formatError(error), entry.value);
+    }
+  });
+
   test('Arbitrary server content never becomes visible UI text', () {
     const diagnostic =
         'Ошибка! SQL UniqueViolation product_id=private-id '

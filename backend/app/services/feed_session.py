@@ -7,15 +7,13 @@ a second conflict returns an actionable 409 without partial delivery writes.
 """
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from hashlib import sha256
-import json
 
 from fastapi import HTTPException
 from sqlalchemy import select, text
 from sqlalchemy.exc import DBAPIError
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
-from ..models import ActivationSession, FitProfile, Product, ProductSource, RecommendationEventV2, SourceRule, User, UserProductState
+from ..models import ActivationSession, FitProfile, RecommendationEventV2, User, UserProductState
 from .activation_policy import product_ok
 from .activation_service import require_warm_feed
 from .catalog.rule_filters import product_passes_source_rules
@@ -25,6 +23,12 @@ from .profile_repository import ensure_style_profile, ensure_taste_profile
 from .product_identity import product_identity_keys
 from .recommendation_cache_service import persist_recommendation_cache_ids
 from .recommendation_engine import ScoredProduct, expand_product_exclusions, generate_feed
+from .recommendation_publication import (
+    product_evidence as _product_evidence,
+    identity_projection as _identity_projection,
+    identity_signature as _identity_signature,
+    lock_catalogue,
+)
 from .recommendation_revision import RecommendationOwnerMissing, RecommendationSnapshotChanged, owner_mutation, profile_input_signature
 
 
@@ -53,12 +57,6 @@ class FeedProposal:
     excluded_identity_signature: str
 
 
-def _product_evidence(product):
-    values = {column.name: getattr(product, column.name) for column in Product.__table__.columns}
-    return sha256(json.dumps(values, sort_keys=True, ensure_ascii=True, default=str,
-        separators=(',', ':')).encode('utf-8')).hexdigest()
-
-
 def _exclusions(db, user_id, requested, as_of):
     hidden = set(requested or ())
     hidden.update(db.scalars(select(UserProductState.product_id).where(
@@ -68,18 +66,6 @@ def _exclusions(db, user_id, requested, as_of):
         RecommendationEventV2.event_type.in_(['like', 'dislike', 'skip', 'save']),
         RecommendationEventV2.created_at >= as_of - timedelta(days=30)).distinct()))
     return set(map(str, hidden))
-
-
-def _identity_projection(ids):
-    # Hidden products can have large merchant blobs. Only their identity fields
-    # contribute to exclusion. Do not hydrate the entire personal history.
-    return select(Product.id, Product.original_url, Product.source, Product.group_id,
-        Product.vendor_code, Product.image_url).where(Product.id.in_(ids)).order_by(Product.id)
-
-
-def _identity_signature(keys):
-    return sha256(json.dumps(sorted(keys), ensure_ascii=True,
-        separators=(',', ':')).encode('utf-8')).hexdigest()
 
 
 def _initialize(sessions, user_id):
@@ -137,38 +123,8 @@ def _prepare(sessions, user_id, *, limit, source, scenario, filters, exclude_ids
 
 def _publish(sessions, user_id, proposal, *, source, scenario, filters):
     with sessions() as db:
-        if db.get_bind().dialect.name == 'postgresql':
-            db.execute(text("SET LOCAL lock_timeout = '750ms'"))
-            db.execute(text("SET LOCAL statement_timeout = '2000ms'"))
-        source_ids = sorted({row.source_id for row in proposal.finalists if row.source_id})
-        ids = sorted({row.product_id for row in proposal.finalists})
-        if source_ids:
-            list(db.scalars(select(ProductSource.id).where(ProductSource.id.in_(source_ids))
-                .order_by(ProductSource.id).with_for_update(read=True)))
-        rules = {}
-        if source_ids:
-            for rule in db.scalars(select(SourceRule).where(SourceRule.source_id.in_(source_ids),
-                    SourceRule.is_active == 1).order_by(SourceRule.id).with_for_update(read=True)):
-                rules.setdefault(rule.source_id, []).append(rule)
-        # Import can change the identity of an already hidden item into an
-        # alias of an unchanged finalist. Lock both sides before owning User.
-        # Never truncate exclusions to manufacture a page. The lock/statement
-        # budget bounds waits; no history scan or identity work holds User.
-        locked_ids = sorted(set(ids) | set(proposal.excluded_ids))
-        excluded_ids = set(proposal.excluded_ids)
-        excluded_keys = set()
-        if locked_ids:
-            with db.execute(_identity_projection(locked_ids).with_for_update(read=True)
-                    .execution_options(yield_per=200)) as identities:
-                for row in identities:
-                    if row.id in excluded_ids:
-                        excluded_keys.update(product_identity_keys(row))
-        if _identity_signature(excluded_keys) != proposal.excluded_identity_signature:
-            raise RecommendationSnapshotChanged()
-        products = {row.id: row for row in db.scalars(select(Product).where(Product.id.in_(ids)))} if ids else {}
-        # Evidence hashing is outside the owner lock too. Row locks keep these
-        # bounded finalists unchanged until delivery commits.
-        evidence = {pid: _product_evidence(row) for pid, row in products.items()}
+        catalogue = lock_catalogue(db, proposal.finalists, excluded_ids=proposal.excluded_ids,
+            excluded_identity_signature=proposal.excluded_identity_signature)
         with owner_mutation(db, user_id) as mutation:
             if mutation.owner.recommendation_revision != proposal.revision:
                 raise RecommendationSnapshotChanged()
@@ -180,12 +136,12 @@ def _publish(sessions, user_id, proposal, *, source, scenario, filters):
                 raise RecommendationSnapshotChanged()
             accepted = []
             for row in proposal.finalists:
-                product = products.get(row.product_id)
-                if product is None or evidence[row.product_id] != row.evidence:
+                product = catalogue.products.get(row.product_id)
+                if product is None or catalogue.evidence[row.product_id] != row.evidence:
                     raise RecommendationSnapshotChanged()
-                valid = (product_ok(product, fit, activation, rules=rules) if activation else
+                valid = (product_ok(product, fit, activation, rules=catalogue.rules) if activation else
                     evaluate_eligibility(product, fit, filters=filters).eligible
-                    and product_passes_source_rules(product, rules))
+                    and product_passes_source_rules(product, catalogue.rules))
                 if not valid or (filters and not filters.matches(product)):
                     raise RecommendationSnapshotChanged()
                 accepted.append(ScoredProduct(product, row.final_score, dict(row.breakdown), row.reason,

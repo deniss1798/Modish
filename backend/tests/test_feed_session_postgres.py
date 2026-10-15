@@ -6,24 +6,20 @@ checks the server's data directory before creating its own generated schema.
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from decimal import Decimal
-import json
 import os
-from pathlib import Path
 import threading
 import time
 import unittest
 from unittest.mock import patch
-from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event, func, select, text
+from sqlalchemy import event, func, select, text
 from sqlalchemy.orm import Session
 
 from app.api.catalog_admin import SourceRuleCreate, admin_catalog_source_rule_create
 from app.api import products as products_api, recommendations as recommendations_api
 from app.api.deps import get_db
-from app.db import Base
 from app.models import (
     ActivationSession, FitProfile, Product, ProductImpression, ProductSource,
     RecommendationEventV2, SourceRule, TasteProfile, User, UserProductState, UserTasteFeature,
@@ -35,35 +31,14 @@ from app.services.catalog.admitad_bootstrap import _ensure_clothing_rules
 from app.services.product_event_service import record_product_event
 from app.services.recommendation_revision import profile_input_mutation
 import test_closed_alpha_first_session as fixtures
+from isolated_postgres import create_isolated_postgres
 
 
 @unittest.skipUnless(os.getenv('MODISH_ISOLATED_PG_RUNTIME'), 'Opt-in disposable PostgreSQL fixture')
 class FeedSessionPostgresTests(unittest.TestCase):
     def setUp(self):
-        workspace = Path(__file__).resolve().parents[2]
-        runtime = Path(os.environ['MODISH_ISOLATED_PG_RUNTIME']).resolve()
-        self.assertTrue(runtime.is_relative_to(workspace / '.tmp'))
-        metadata = json.loads(runtime.read_text(encoding='utf-8-sig'))
-        directory = Path(metadata['data']).resolve()
-        root = Path(metadata['root']).resolve()
-        self.assertTrue(root.is_relative_to(workspace / '.tmp'))
-        self.assertTrue(root.name.startswith('alpha12-pg-'))
-        self.assertEqual(directory, root / 'data')
-        self.assertEqual(metadata['port'], 55439)
-        url = 'postgresql+psycopg://modish_alpha_fixture@127.0.0.1:55439/postgres'
-        self.admin = create_engine(url, connect_args={'connect_timeout': 3})
-        self.addCleanup(self.admin.dispose)
-        with self.admin.connect() as connection:
-            self.assertEqual(Path(connection.scalar(text('SHOW data_directory'))).resolve(), directory)
-            self.assertEqual(connection.scalar(text('SHOW port')), '55439')
-        self.schema = 'alpha12_feed_' + uuid4().hex
-        with self.admin.begin() as connection:
-            connection.execute(text(f'CREATE SCHEMA {self.schema}'))
-        self.addCleanup(self.drop_schema)
-        self.engine = create_engine(url, pool_size=4, max_overflow=0,
-            connect_args={'connect_timeout': 3, 'options': f'-c search_path={self.schema} -c statement_timeout=5000'})
-        self.addCleanup(self.engine.dispose)
-        Base.metadata.create_all(self.engine)
+        isolated = create_isolated_postgres(self, namespace='feed')
+        self.admin, self.engine, self.schema = isolated.admin, isolated.engine, isolated.schema
         # Reuse the independent fixed SKU labels without importing a TestCase
         # into this module's discoverable namespace or bypassing warm-up gates.
         fixture = fixtures.ClosedAlphaFirstSessionTests()
@@ -84,11 +59,6 @@ class FeedSessionPostgresTests(unittest.TestCase):
             db.flush()
             fixture.warm()
             self.user_id = fixture.user.id
-
-    def drop_schema(self):
-        self.assertTrue(self.schema.startswith('alpha12_feed_'))
-        with self.admin.begin() as connection:
-            connection.execute(text(f'DROP SCHEMA {self.schema} CASCADE'))
 
     def feed(self):
         return feed_session.build_feed_response(self.engine, self.user_id, limit=5)

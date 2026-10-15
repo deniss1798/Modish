@@ -21,12 +21,24 @@ from .intent_metrics import emit
 
 INTENT_TTL = timedelta(hours=24)
 RESULT_LIMIT = 10
+GENERATION_KEY = 'generation_v1'
+PENDING_MESSAGE = 'Подборка ещё готовится. Повторите запрос чуть позже.'
 
 
 class IntentError(ValueError):
-    def __init__(self, message, status=400):
+    def __init__(self, message, status=400, *, headers=None):
         super().__init__(message)
         self.status = status
+        self.headers = headers
+
+
+def generation_pending(intent):
+    generation = (intent.context_json or {}).get(GENERATION_KEY) or {}
+    return generation.get('state') == 'pending' and generation.get('intent_version') == intent.version
+
+
+def pending_error():
+    return IntentError(PENDING_MESSAGE, 409, headers={'Retry-After': '2'})
 
 
 def _utc(value):
@@ -46,6 +58,8 @@ def get_intent(db, user, intent_id, *, lock=False, now=None):
         raise IntentError('Запрос не найден', 404)
     if not intent.active or _utc(intent.expires_at) <= _utc(now or datetime.now(timezone.utc)):
         raise IntentError('Этот запрос завершён. Создайте новый.', 410)
+    if generation_pending(intent):
+        raise pending_error()
     return intent
 
 
@@ -110,7 +124,8 @@ def item_results(db, user, spec, *, excluded_ids=(), stats=None):
     maximum = min(fit.budget_max, spec.budget_max or fit.budget_max)
     context = context_for(spec.occasion or 'daily', budget_max=maximum)
     scorer = AffinityScorer(profile, taste, fit=fit,
-        seen_counts=load_ranking_seen_counts(db, user_id=user.id, as_of=datetime.now(timezone.utc)),
+        seen_counts=load_ranking_seen_counts(db, user_id=user.id,
+            as_of=db.info.get('recommendation_as_of') or datetime.now(timezone.utc)),
         taste_features=load_user_taste_feature_map(db, user_id=user.id), context=context,
         preferred_colors=spec.preferred_colors, preferred_styles=spec.preferred_styles,
         requested_categories=spec.requested_categories)
@@ -174,6 +189,8 @@ def item_results(db, user, spec, *, excluded_ids=(), stats=None):
 
 
 def intent_response(db, user, intent, *, remember=False):
+    if generation_pending(intent):
+        raise pending_error()
     spec = IntentSpec.model_validate(intent.constraints_json)
     stats = {}
     context = intent.context_json or {}
@@ -216,24 +233,45 @@ def intent_response(db, user, intent, *, remember=False):
         Outfit.is_saved == 1, Outfit.id.in_([o['id'] for o in outfits])))) if outfits else set()
     for outfit in outfits:
         outfit['is_saved'] = outfit['id'] in saved_ids
-    state = 'needs_clarification' if spec.unresolved else 'ready'
-    if generate:
-        intent.context_json = {**(intent.context_json or {}), 'product_ids': [p['product']['id'] for p in products],
-            'outfits': [{'id': o['id'], 'items': o['items']} for o in outfits], 'result_version': intent.version}
     fit = db.scalar(select(FitProfile).where(FitProfile.user_id == user.id))
     if generate:
-        returned = {row['product']['id'] for row in products}
-        returned.update(pid for outfit in outfits for pid in outfit['items'].values())
-        invalid = sum(bool(intent_product_problem(db.get(Product, pid), fit, spec)) for pid in returned)
-        emit(db, user.id, 'results_generated', intent_id=intent.id, version=intent.version, intent_type=spec.intent_type,
-            **stats, returned_count=len(returned), invalid_returned_count=invalid,
-            outfit_count=len(outfits), empty=not (products or outfits))
-        emit(db, user.id, 'availability_filtered', intent_id=intent.id, version=intent.version,
-            catalog_count=stats.get('catalog_count', 0), available_count=stats.get('available_count', 0))
-        emit(db, user.id, 'size_filtered', intent_id=intent.id, version=intent.version,
-            size_checked=stats.get('size_checked', 0), size_passed=stats.get('size_passed', 0))
-        for outfit in outfits:
-            emit(db, user.id, 'outfit_generated', intent_id=intent.id, version=intent.version, outfit_id=outfit['id'])
+        remember_results(db, user, intent, spec, fit, products, outfits, stats)
+    return response_payload(intent, spec, fit, products, outfits)
+
+
+def issued_intent_response(db, user, intent):
+    """HTTP reads/replays only revalidate a published snapshot; never rank."""
+    context = intent.context_json or {}
+    if generation_pending(intent) or context.get('result_version') != intent.version:
+        raise pending_error()
+    if 'product_ids' not in context and 'outfits' not in context:
+        raise pending_error()
+    return intent_response(db, user, intent)
+
+
+def remember_results(db, user, intent, spec, fit, products, outfits, stats):
+    """Persist one issued version and its metrics in the caller's transaction."""
+    context = intent.context_json or {}
+    if context.get('result_version') == intent.version:
+        return
+    intent.context_json = {**context, 'product_ids': [p['product']['id'] for p in products],
+        'outfits': [{'id': o['id'], 'items': o['items']} for o in outfits], 'result_version': intent.version}
+    returned = {row['product']['id'] for row in products}
+    returned.update(pid for outfit in outfits for pid in outfit['items'].values())
+    invalid = sum(bool(intent_product_problem(db.get(Product, pid), fit, spec)) for pid in returned)
+    emit(db, user.id, 'results_generated', intent_id=intent.id, version=intent.version, intent_type=spec.intent_type,
+        **stats, returned_count=len(returned), invalid_returned_count=invalid,
+        outfit_count=len(outfits), empty=not (products or outfits))
+    emit(db, user.id, 'availability_filtered', intent_id=intent.id, version=intent.version,
+        catalog_count=stats.get('catalog_count', 0), available_count=stats.get('available_count', 0))
+    emit(db, user.id, 'size_filtered', intent_id=intent.id, version=intent.version,
+        size_checked=stats.get('size_checked', 0), size_passed=stats.get('size_passed', 0))
+    for outfit in outfits:
+        emit(db, user.id, 'outfit_generated', intent_id=intent.id, version=intent.version, outfit_id=outfit['id'])
+
+
+def response_payload(intent, spec, fit, products, outfits):
+    state = 'needs_clarification' if spec.unresolved else 'ready'
     return {'id': intent.id, 'version': intent.version, 'text': intent.free_text,
         'expires_at': _utc(intent.expires_at).isoformat(), 'state': state,
         'constraints': spec.model_dump(), 'products': products, 'outfits': outfits,

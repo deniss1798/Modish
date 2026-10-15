@@ -384,16 +384,27 @@ def _require_activation_gender(fit):
         raise HTTPException(status_code=409, detail='Явно выберите женский гардероб в настройках.')
 
 
-def swipe_deck(db, user, session):
+def swipe_deck(db, user, session, *, read_only=False):
     from ..schemas.api_product import product_to_api
-    lock_user(db, user)
+    if not read_only:
+        lock_user(db, user)
     profile, fit, _ = _preferences(db, user)
     _require_activation_gender(fit)
     rules = load_rules_by_source_id(db)
     ids = list(session.swipe_product_ids or [])
     rated = session.swipes_json or {}
     products = {p.id: p for p in db.scalars(select(Product).where(Product.id.in_(ids)))} if ids else {}
-    remaining = [products[pid] for pid in ids if pid not in rated and pid in products and product_ok(products[pid], fit, session, rules=rules)]
+    seen = set().union(*(product_identity_keys(products[pid]) for pid in rated if pid in products))
+    remaining = []
+    for pid in ids:
+        product = products.get(pid)
+        if pid in rated or product is None or not product_ok(product, fit, session, rules=rules):
+            continue
+        keys = product_identity_keys(product)
+        if keys & seen:
+            continue
+        remaining.append(product)
+        seen.update(keys)
     count = rated_count(session)
     target = 30 if count >= MIN_SWIPES and not can_complete(session) else SWIPE_TARGET
     need = max(0, target - count - len(remaining))
@@ -401,7 +412,11 @@ def swipe_deck(db, user, session):
         pool = candidate_pool(db, user, session, exclude_ids=ids)
         extra = diverse_products(pool, need)
         remaining.extend(extra)
-        session.swipe_product_ids = ids + [p.id for p in extra]
+        ids = ids + [p.id for p in extra]
+    if read_only:
+        db.info['prepared_swipe_product_ids'] = tuple(ids)
+    else:
+        session.swipe_product_ids = ids
     return {'products': [product_to_api(p) for p in remaining], 'rated': count, 'target': target,
             'minimum': MIN_SWIPES, 'can_continue': can_complete(session)}
 

@@ -50,6 +50,7 @@ class TaskApi extends FakeApi {
 
   Completer<Map<String, dynamic>>? pending;
   bool fail = false;
+  bool createPending = false;
   bool conflict = false;
   bool expired = false;
   final closures = <String>[];
@@ -69,6 +70,20 @@ class TaskApi extends FakeApi {
   ) async {
     keys.add(requestId);
     if (fail) throw Exception('offline');
+    if (createPending) {
+      final request = RequestOptions(path: '/shopping-intents');
+      throw DioException(
+        requestOptions: request,
+        type: DioExceptionType.badResponse,
+        response: Response(
+          requestOptions: request,
+          statusCode: 409,
+          data: {
+            'detail': 'Подборка ещё готовится. Повторите запрос чуть позже.',
+          },
+        ),
+      );
+    }
     return pending?.future ?? response();
   }
 
@@ -280,6 +295,29 @@ void main() {
       await pending;
       expect(task.result, isNull);
       expect(task.busy, isFalse);
+      task.dispose();
+    },
+  );
+
+  test(
+    'Pending generation preserves the request key and retries once on user action',
+    () async {
+      final api = TaskApi()..createPending = true;
+      final task = ShoppingTaskController(api);
+      await task.submit('Брюки до 7000');
+      expect(task.result, isNull);
+      expect(task.busy, isFalse);
+      expect(
+        task.error,
+        'Подборка ещё готовится. Подождите немного и повторите тот же запрос.',
+      );
+      expect(api.keys, hasLength(1));
+      api.createPending = false;
+      await task.submit('Брюки до 7000');
+      expect(api.keys, hasLength(2));
+      expect(api.keys[0], api.keys[1]);
+      expect(task.error, isNull);
+      expect(task.result!['id'], 'task-id');
       task.dispose();
     },
   );
