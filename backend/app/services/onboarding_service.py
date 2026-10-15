@@ -20,6 +20,7 @@ from .photo_analysis import (
   HEIGHT_CATEGORY_OPTIONS,
 )
 from .recommendation_engine import ensure_style_profile
+from .recommendation_revision import profile_input_writer
 
 PRICE_SEGMENT_BUDGET: dict[str, tuple[int, int]] = {
   "economy": (0, 4_000),
@@ -64,6 +65,7 @@ def _gender_to_style_target(gender: str | None) -> str:
   return "unknown"
 
 
+@profile_input_writer('user')
 def _ensure_fit_profile(db: Session, user: User) -> FitProfile:
   fp = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
   if fp is not None:
@@ -73,6 +75,7 @@ def _ensure_fit_profile(db: Session, user: User) -> FitProfile:
     user_id=user.id,
     height_cm=user.height_cm or 170,
     weight_kg=user.weight_kg,
+    recommended_fit=user.fit_preference,
     gender_target=None,
     clothing_size=None,
     budget_min=0,
@@ -96,6 +99,7 @@ def _apply_analysis_to_fit(fp: FitProfile, analysis: dict[str, Any]) -> None:
   ]
 
 
+@profile_input_writer('user')
 def apply_step1(
   db: Session,
   *,
@@ -125,6 +129,7 @@ def apply_step1(
   }
 
 
+@profile_input_writer('profile')
 def apply_photo_analysis_pending(
   db: Session,
   *,
@@ -153,6 +158,7 @@ def apply_photo_analysis_pending(
   }
 
 
+@profile_input_writer('user')
 def apply_photo_confirm(
   db: Session,
   *,
@@ -197,6 +203,7 @@ def apply_photo_confirm(
   }
 
 
+@profile_input_writer('user')
 def apply_step3(
   db: Session,
   *,
@@ -266,6 +273,7 @@ def _wow_explanation(
   return " — ".join(parts) + "."
 
 
+@profile_input_writer('user')
 def complete_onboarding_wow(
   db: Session,
   *,

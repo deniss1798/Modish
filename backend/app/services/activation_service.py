@@ -29,6 +29,7 @@ from .activation_policy import (
 )
 from .profile_repository import load_preferences as _preferences
 from .personalization_scoring import AffinityScorer, affinity_score as _affinity, load_ranking_seen_counts
+from .recommendation_revision import profile_input_writer, accept_personal_change
 
 MIN_SWIPES = 15
 SWIPE_TARGET = 20
@@ -321,6 +322,7 @@ def diverse_products(products, limit, *, exploration=False, allow_category_fallb
     return result
 
 
+@profile_input_writer('user')
 def configure(db, user, *, age_group, clothing_size, shoe_size, styles, price_segment,
               clothing_size_system=None, shoe_size_system=None, height=None, sizes=None, gender_target=None):
     from .onboarding_service import apply_step1, apply_step3
@@ -403,6 +405,7 @@ def swipe_deck(db, user, session):
             'minimum': MIN_SWIPES, 'can_continue': can_complete(session)}
 
 
+@profile_input_writer('user')
 def swipe_feedback(db, user, session, product_id, reaction):
     from ..schemas.product_event import EventRequest
     from .product_event_service import record_product_event
@@ -530,6 +533,7 @@ def record_exposure_event(db, user, product_id, event_type, *, surface=None):
     if not session or not session.completed_at or surface == 'style_swipe': return
     lock_user(db, user)
     row = db.scalar(select(ActivationExposure).where(ActivationExposure.user_id == user.id, ActivationExposure.product_id == product_id))
+    before = None if row is None else (row.reaction, row.saved, row.opened, row.clicked)
     if row is None:
         # Only actual feed interactions start first-session exposures.
         if surface != 'feed' or product_id not in (session.issued_feed_ids or []): return
@@ -543,6 +547,8 @@ def record_exposure_event(db, user, product_id, event_type, *, surface=None):
     if event_type == 'open_product': row.opened = 1
     if event_type == 'affiliate_click': row.clicked = 1
     db.flush()
+    if before != (row.reaction, row.saved, row.opened, row.clicked):
+        accept_personal_change(db, user.id)
 
 
 def activation_metrics(db, days=7):
@@ -570,6 +576,7 @@ def activation_metrics(db, days=7):
             'basis':'Actual unique card views, excluding Style Swipe and server prefetch. Like/Save counted as a union. Card-10 reach is among users who started the feed; onboarding-to-card-10 uses all completed onboarding users in the cohort.'}
 
 
+@profile_input_writer('user')
 def complete_wow(db, user, session):
     from ..models import Outfit
     from ..api.outfits import visible_outfits

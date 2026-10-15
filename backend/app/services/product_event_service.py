@@ -24,6 +24,7 @@ from .recommendation_config import (
 )
 from .recommendation_engine import _product_category_norms
 from .user_twin_service import apply_event_to_user_twin
+from .recommendation_revision import accept_personal_change
 
 
 def record_product_event(db: Session, user: User, payload: EventRequest, *, commit: bool = True) -> dict[str, Any]:
@@ -284,6 +285,7 @@ def record_product_event(db: Session, user: User, payload: EventRequest, *, comm
   if meta.get("surface") != "style_swipe" and payload.product_id:
     record_exposure_event(db, user, payload.product_id, canonical_event_type, surface=meta.get('surface'))
   db.flush()
+  accept_personal_change(db, user.id)
   if not commit:
     return {"status": "ok", "event_type": canonical_event_type}
   db.commit()

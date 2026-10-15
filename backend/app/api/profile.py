@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from ..services.recommendation_revision import profile_input_mutation
+
 from .. import business
 from ..models import (
   FitProfile,
@@ -154,10 +156,11 @@ def users_me_preferences_patch(
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> dict[str, Any]:
   user = user_from_token(credentials, db)
-  user.height_cm = int(payload.height)
-  user.weight_kg = int(payload.weight) if payload.weight is not None else None
-  user.fit_preference = payload.fit_preference
-  user.updated_at = datetime.now(timezone.utc)
+  with profile_input_mutation(db, user.id):
+    user.height_cm = int(payload.height)
+    user.weight_kg = int(payload.weight) if payload.weight is not None else None
+    user.fit_preference = payload.fit_preference
+    user.updated_at = datetime.now(timezone.utc)
   db.commit()
   return as_user_payload(user)
 
@@ -195,18 +198,19 @@ def style_profile_patch(
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> dict[str, Any]:
   user = user_from_token(credentials, db)
-  profile = db.execute(select(StyleProfile).where(StyleProfile.user_id == user.id)).scalar_one()
-  if payload.style_target is not None:
-    if payload.style_target not in {"menswear", "womenswear", "unisex", "unknown"}:
-      raise HTTPException(status_code=400, detail="Некорректный style_target")
-    profile.style_target = payload.style_target
-  if payload.profile_json is not None:
-    merged = dict(profile.profile_json or {})
-    merged.update(payload.profile_json)
-    profile.profile_json = merged
-  profile.updated_at = datetime.now(timezone.utc)
-  db.commit()
-  business.rebuild_user_summary(db, user.id)
+  with profile_input_mutation(db, user.id):
+    profile = db.execute(select(StyleProfile).where(StyleProfile.user_id == user.id)).scalar_one()
+    if payload.style_target is not None:
+      if payload.style_target not in {"menswear", "womenswear", "unisex", "unknown"}:
+        raise HTTPException(status_code=400, detail="Некорректный style_target")
+      profile.style_target = payload.style_target
+    if payload.profile_json is not None:
+      merged = dict(profile.profile_json or {})
+      merged.update(payload.profile_json)
+      profile.profile_json = merged
+    profile.updated_at = datetime.now(timezone.utc)
+    db.flush()
+    business.rebuild_user_summary(db, user.id)
   db.commit()
   return {
     "id": profile.id,
@@ -224,11 +228,12 @@ def patch_style_target(
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> dict[str, Any]:
   user = user_from_token(credentials, db)
-  profile = db.execute(select(StyleProfile).where(StyleProfile.user_id == user.id)).scalar_one()
-  profile.style_target = payload.style_target
-  profile.updated_at = datetime.now(timezone.utc)
-  db.commit()
-  business.rebuild_user_summary(db, user.id)
+  with profile_input_mutation(db, user.id):
+    profile = db.execute(select(StyleProfile).where(StyleProfile.user_id == user.id)).scalar_one()
+    profile.style_target = payload.style_target
+    profile.updated_at = datetime.now(timezone.utc)
+    db.flush()
+    business.rebuild_user_summary(db, user.id)
   db.commit()
   return {
     "id": profile.id,

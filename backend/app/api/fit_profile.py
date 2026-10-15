@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..services.recommendation_revision import profile_input_mutation
+
 from ..models import ActivationSession, FitProfile, User
 from ..schemas.fit_sizes import FitSizesInput, BodyMeasurementsInput
 from ..services.fit_size_profile import submitted_sizes, update_size_profile, size_profile_to_api
@@ -48,31 +50,8 @@ def fit_profile_me(
   user = user_from_token(credentials, db)
   fp = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
   if fp is None:
-    now = datetime.now(timezone.utc)
-    fp = FitProfile(
-      id=str(uuid4()),
-      user_id=user.id,
-      height_cm=user.height_cm,
-      weight_kg=user.weight_kg,
-      gender_target=None,
-      clothing_size=None,
-      body_proportions="",
-      contrast_level="",
-      color_palette=[],
-      avoid_colors=[],
-      recommended_silhouettes=[],
-      avoid_silhouettes=[],
-      recommended_fit=user.fit_preference,
-      avoid_fit=[],
-      style_constraints={},
-      interest_categories=[],
-      style_scenarios=[],
-      budget_min=0,
-      budget_max=10000,
-      created_at=now,
-      updated_at=now,
-    )
-    db.add(fp)
+    from ..services.onboarding_service import _ensure_fit_profile
+    fp = _ensure_fit_profile(db, user)
     db.commit()
   activation = db.get(ActivationSession, user.id)
   return _response(fp, activation)
@@ -85,66 +64,67 @@ def fit_profile_patch(
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> dict:
   user = user_from_token(credentials, db)
-  from ..services.activation_service import lock_user
-  lock_user(db, user)
-  activation = db.get(ActivationSession, user.id)
-  if activation and payload.gender_target != 'womenswear':
-    raise HTTPException(status_code=400, detail='Новый подбор пока доступен для женского гардероба.')
-  user.height_cm = payload.height
-  user.weight_kg = payload.weight
-  if activation and payload.shoe_size is not None:
-    activation.shoe_size = payload.shoe_size
-  fp = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
-  now = datetime.now(timezone.utc)
-  if fp is None:
-    fp = FitProfile(
-      id=str(uuid4()),
-      user_id=user.id,
-      height_cm=payload.height,
-      weight_kg=payload.weight,
-      gender_target=payload.gender_target,
-      clothing_size=payload.clothing_size,
-      body_proportions="",
-      contrast_level="",
-      color_palette=[],
-      avoid_colors=[],
-      recommended_silhouettes=[],
-      avoid_silhouettes=[],
-      recommended_fit=user.fit_preference,
-      avoid_fit=[],
-      style_constraints={},
-      interest_categories=norm_fit_tag_list(payload.interest_categories),
-      style_scenarios=norm_style_scenario_list(payload.style_scenarios),
-      budget_min=payload.budget_min,
-      budget_max=payload.budget_max,
-      created_at=now,
-      updated_at=now,
-    )
-    db.add(fp)
-  else:
-    fp.height_cm = payload.height
-    fp.weight_kg = payload.weight
-    fp.gender_target = payload.gender_target
-    if 'clothing_size' in payload.model_fields_set:
-      fp.clothing_size = payload.clothing_size
-    fp.budget_min = payload.budget_min
-    fp.budget_max = payload.budget_max
-    fp.interest_categories = norm_fit_tag_list(payload.interest_categories)
-    fp.style_scenarios = norm_style_scenario_list(payload.style_scenarios)
-    fp.updated_at = now
-  constraints=dict(fp.style_constraints or {})
-  if 'clothing_size_system' in payload.model_fields_set:
-    constraints['clothing_size_system'] = payload.clothing_size_system
-  if payload.shoe_size is not None:
-    constraints['shoe_size_system']=payload.shoe_size_system
-  fp.style_constraints=constraints
-  update_size_profile(fp, sizes=submitted_sizes(
-      **({'clothing_size': payload.clothing_size} if 'clothing_size' in payload.model_fields_set else {}),
-      clothing_system=payload.clothing_size_system, shoe_size=payload.shoe_size,
-      shoe_system=payload.shoe_size_system,
-      overrides=payload.sizes.model_dump(exclude_unset=True) if payload.sizes else None), height_confirmed=True)
-  if payload.body_measurements is not None:
-    fp.body_measurements_json = {**(fp.body_measurements_json or {}),
-        **payload.body_measurements.model_dump(exclude_unset=True)}
+  with profile_input_mutation(db, user.id):
+    from ..services.activation_service import lock_user
+    lock_user(db, user)
+    activation = db.get(ActivationSession, user.id)
+    if activation and payload.gender_target != 'womenswear':
+      raise HTTPException(status_code=400, detail='Новый подбор пока доступен для женского гардероба.')
+    user.height_cm = payload.height
+    user.weight_kg = payload.weight
+    if activation and payload.shoe_size is not None:
+      activation.shoe_size = payload.shoe_size
+    fp = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
+    now = datetime.now(timezone.utc)
+    if fp is None:
+      fp = FitProfile(
+        id=str(uuid4()),
+        user_id=user.id,
+        height_cm=payload.height,
+        weight_kg=payload.weight,
+        gender_target=payload.gender_target,
+        clothing_size=payload.clothing_size,
+        body_proportions="",
+        contrast_level="",
+        color_palette=[],
+        avoid_colors=[],
+        recommended_silhouettes=[],
+        avoid_silhouettes=[],
+        recommended_fit=user.fit_preference,
+        avoid_fit=[],
+        style_constraints={},
+        interest_categories=norm_fit_tag_list(payload.interest_categories),
+        style_scenarios=norm_style_scenario_list(payload.style_scenarios),
+        budget_min=payload.budget_min,
+        budget_max=payload.budget_max,
+        created_at=now,
+        updated_at=now,
+      )
+      db.add(fp)
+    else:
+      fp.height_cm = payload.height
+      fp.weight_kg = payload.weight
+      fp.gender_target = payload.gender_target
+      if 'clothing_size' in payload.model_fields_set:
+        fp.clothing_size = payload.clothing_size
+      fp.budget_min = payload.budget_min
+      fp.budget_max = payload.budget_max
+      fp.interest_categories = norm_fit_tag_list(payload.interest_categories)
+      fp.style_scenarios = norm_style_scenario_list(payload.style_scenarios)
+      fp.updated_at = now
+    constraints=dict(fp.style_constraints or {})
+    if 'clothing_size_system' in payload.model_fields_set:
+      constraints['clothing_size_system'] = payload.clothing_size_system
+    if payload.shoe_size is not None:
+      constraints['shoe_size_system']=payload.shoe_size_system
+    fp.style_constraints=constraints
+    update_size_profile(fp, sizes=submitted_sizes(
+        **({'clothing_size': payload.clothing_size} if 'clothing_size' in payload.model_fields_set else {}),
+        clothing_system=payload.clothing_size_system, shoe_size=payload.shoe_size,
+        shoe_system=payload.shoe_size_system,
+        overrides=payload.sizes.model_dump(exclude_unset=True) if payload.sizes else None), height_confirmed=True)
+    if payload.body_measurements is not None:
+      fp.body_measurements_json = {**(fp.body_measurements_json or {}),
+          **payload.body_measurements.model_dump(exclude_unset=True)}
   db.commit()
   return _response(fp, activation)

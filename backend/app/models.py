@@ -19,6 +19,7 @@ class User(Base):
   height_cm: Mapped[int] = mapped_column(Integer, default=170)
   weight_kg: Mapped[int | None] = mapped_column(Integer, nullable=True)
   fit_preference: Mapped[str] = mapped_column(String(32), default="regular")
+  recommendation_revision: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
   trial_started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
   trial_ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
   created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)

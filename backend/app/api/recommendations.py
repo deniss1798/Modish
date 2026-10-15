@@ -10,6 +10,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
+from ..services.recommendation_revision import owner_mutation
 
 from .. import business
 from ..models import (
@@ -190,45 +191,47 @@ def recommendations_feedback(
   from ..models import SavedRecommendation
 
   user = user_from_token(credentials, db)
-  recommendation = db.execute(
-    select(Recommendation).where(Recommendation.id == recommendation_id)
-  ).scalar_one_or_none()
-  if recommendation is None or recommendation.user_id != user.id:
-    raise HTTPException(status_code=404, detail="Карточка не найдена")
-  weight = {"like": 2, "dislike": -2, "save": 3, "unsave": -1, "view_details": 0}[payload.event_type]
-  tags = recommendation.tags_json or {}
-  db.add(
-    RecommendationEvent(
-      id=str(uuid4()),
-      user_id=user.id,
-      recommendation_id=recommendation_id,
-      event_type=payload.event_type,
-      event_weight=weight,
-    )
-  )
-  business.apply_preferences_from_tags(db, user.id, tags, weight)
-  if payload.event_type == "save":
-    exists = db.execute(
-      select(SavedRecommendation).where(
-        SavedRecommendation.user_id == user.id,
-        SavedRecommendation.recommendation_id == recommendation_id,
-      )
+  with owner_mutation(db, user.id) as mutation:
+    recommendation = db.execute(
+      select(Recommendation).where(Recommendation.id == recommendation_id)
     ).scalar_one_or_none()
-    if exists is None:
-      db.add(
-        SavedRecommendation(
-          id=str(uuid4()),
-          user_id=user.id,
-          recommendation_id=recommendation_id,
+    if recommendation is None or recommendation.user_id != user.id:
+      raise HTTPException(status_code=404, detail="Карточка не найдена")
+    weight = {"like": 2, "dislike": -2, "save": 3, "unsave": -1, "view_details": 0}[payload.event_type]
+    tags = recommendation.tags_json or {}
+    db.add(
+      RecommendationEvent(
+        id=str(uuid4()),
+        user_id=user.id,
+        recommendation_id=recommendation_id,
+        event_type=payload.event_type,
+        event_weight=weight,
+      )
+    )
+    business.apply_preferences_from_tags(db, user.id, tags, weight)
+    if payload.event_type == "save":
+      exists = db.execute(
+        select(SavedRecommendation).where(
+          SavedRecommendation.user_id == user.id,
+          SavedRecommendation.recommendation_id == recommendation_id,
+        )
+      ).scalar_one_or_none()
+      if exists is None:
+        db.add(
+          SavedRecommendation(
+            id=str(uuid4()),
+            user_id=user.id,
+            recommendation_id=recommendation_id,
+          )
+        )
+    elif payload.event_type == "unsave":
+      db.execute(
+        delete(SavedRecommendation).where(
+          SavedRecommendation.user_id == user.id,
+          SavedRecommendation.recommendation_id == recommendation_id,
         )
       )
-  elif payload.event_type == "unsave":
-    db.execute(
-      delete(SavedRecommendation).where(
-        SavedRecommendation.user_id == user.id,
-        SavedRecommendation.recommendation_id == recommendation_id,
-      )
-    )
+    mutation.mark_changed()
   db.commit()
   total_events = db.execute(
     select(func.count()).select_from(RecommendationEvent).where(RecommendationEvent.user_id == user.id)

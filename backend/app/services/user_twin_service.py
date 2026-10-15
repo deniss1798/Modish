@@ -305,6 +305,9 @@ def apply_event_to_user_twin(
     taste.profile_version = TasteProfile.profile_version + 1
     taste.updated_at = occurred_at
   db.flush()
+  if touched:
+    from .recommendation_revision import accept_personal_change
+    accept_personal_change(db, user_id)
   return touched
 
 
@@ -333,14 +336,23 @@ def get_feature_preference(
   apply_time_decay: bool = False,
   as_of: datetime | None = None,
 ) -> UserTasteFeature | None:
-  row = db.execute(
-    select(UserTasteFeature).where(
+  query = select(UserTasteFeature).where(
       UserTasteFeature.user_id == user_id,
       UserTasteFeature.feature_type == feature_type,
       UserTasteFeature.feature_value == _norm(feature_value),
     )
-  ).scalar_one_or_none()
-  if row and apply_time_decay:
-    apply_decay(row, as_of=as_of)
-    db.flush()
-  return row
+  if not apply_time_decay:
+    return db.scalar(query)
+  from .recommendation_revision import owner_mutation
+  with owner_mutation(db, user_id) as mutation:
+    row = db.scalar(query.execution_options(populate_existing=True))
+    if row:
+      clock = row.last_decay_at
+      if clock is not None and clock.tzinfo is None:
+        clock = clock.replace(tzinfo=timezone.utc)
+      before = (row.preference_score, row.confidence, clock)
+      apply_decay(row, as_of=as_of)
+      db.flush()
+      if before != (row.preference_score, row.confidence, row.last_decay_at):
+        mutation.mark_changed()
+    return row

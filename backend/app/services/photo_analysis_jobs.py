@@ -167,6 +167,8 @@ def complete_photo(reservation: ReservedPhoto, analysis: dict[str, Any]) -> dict
     row.response_json = deepcopy(result)
     row.status = "completed"
     row.finished_at = now
+    from .recommendation_revision import accept_personal_change
+    accept_personal_change(db, row.user_id)
     db.commit()
     return result
 

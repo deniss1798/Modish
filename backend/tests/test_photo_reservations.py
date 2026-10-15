@@ -90,6 +90,10 @@ class PhotoReservationTests(unittest.IsolatedAsyncioTestCase):
       row = db.scalar(select(UserLimits).where(UserLimits.user_id == self.user_id))
       return row.photo_analysis_used if row else 0
 
+  def recommendation_revision(self):
+    with self.sessions() as db:
+      return db.get(User, self.user_id).recommendation_revision
+
   async def test_photo_denial_has_honest_copy_and_does_not_call_provider(self):
     for path, target, _ in ENDPOINTS:
       for exhausted in (False, True):
@@ -135,6 +139,7 @@ class PhotoReservationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(replay.json(), first.json())
         self.assertEqual(len(calls), 1)
         self.assertEqual(self.usage(), 1)
+        self.assertEqual(self.recommendation_revision(), 1)
         self.assertEqual(self.engine.pool.checkedout(), 0)
 
   async def test_in_flight_duplicate_conflicts_and_other_key_cannot_take_slot(self):
@@ -183,6 +188,7 @@ class PhotoReservationTests(unittest.IsolatedAsyncioTestCase):
         jobs.release_photo(saved)
         self.assertEqual(self.usage(), 0)
         self.assertEqual(self.engine.pool.checkedout(), 0)
+        self.assertEqual(self.recommendation_revision(), 0)
 
   async def test_both_endpoint_cancellations_stop_provider_and_release(self):
     for path, target, _ in ENDPOINTS:

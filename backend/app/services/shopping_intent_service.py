@@ -34,6 +34,10 @@ def _utc(value):
 
 
 def get_intent(db, user, intent_id, *, lock=False, now=None):
+    if lock:
+        from .recommendation_revision import owner_mutation
+        with owner_mutation(db, user.id):
+            pass  # Owner -> Intent is the shared lock order; lock lasts to commit.
     query = select(ShoppingIntent).where(ShoppingIntent.id == intent_id, ShoppingIntent.user_id == user.id)
     if lock:
         query = query.with_for_update().execution_options(populate_existing=True)
@@ -331,6 +335,9 @@ def feedback(db, user, intent_id, *, expected_version, product_id, reason):
 
 
 def close_intent(db, user, intent_id, *, expected_version, outcome):
+    from .recommendation_revision import owner_mutation
+    with owner_mutation(db, user.id):
+        pass
     intent=db.scalar(select(ShoppingIntent).where(ShoppingIntent.id==intent_id,
         ShoppingIntent.user_id==user.id).with_for_update().execution_options(populate_existing=True))
     if intent is None: raise IntentError('Запрос не найден',404)

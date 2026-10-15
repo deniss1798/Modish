@@ -83,7 +83,9 @@ class ArchitectureRegressionTests(unittest.TestCase):
         finally:
             event.remove(self.engine, 'before_cursor_execute', track)
         self.assertGreaterEqual(len(touched), 11)
-        self.assertLessEqual(statements['SELECT'], 3)
+        # The shared revision adds an owner reload and a serialized creation
+        # recheck. The bound stays constant across all learned feature rows.
+        self.assertLessEqual(statements['SELECT'], 6)
         self.assertLessEqual(statements['INSERT'], 2)
         self.assertTrue(all(row.positive_count == 1 for row in touched))
         self.db.rollback()

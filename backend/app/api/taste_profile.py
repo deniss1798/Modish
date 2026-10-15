@@ -7,6 +7,8 @@ from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from ..services.recommendation_revision import profile_input_mutation
+
 from ..services.recommendation_engine import ensure_taste_profile
 from .deps import auth_scheme, get_db, user_from_token
 from .serializers import taste_to_api
@@ -39,11 +41,12 @@ def taste_profile_patch(
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> dict:
   user = user_from_token(credentials, db)
-  tp = ensure_taste_profile(db, user.id)
-  tp.price_min = payload.price_min
-  tp.price_max = payload.price_max
-  tp.preferred_fit = payload.preferred_fit
-  tp.updated_at = datetime.now(timezone.utc)
+  with profile_input_mutation(db, user.id):
+    tp = ensure_taste_profile(db, user.id)
+    tp.price_min = payload.price_min
+    tp.price_max = payload.price_max
+    tp.preferred_fit = payload.preferred_fit
+    tp.updated_at = datetime.now(timezone.utc)
   db.commit()
   from ..services.behavior_profile import load_behavior_profile
   return {**taste_to_api(tp), 'behavior_profile': load_behavior_profile(db, user_id=user.id)}
