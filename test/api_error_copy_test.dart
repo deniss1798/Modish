@@ -22,6 +22,18 @@ DioException _response(int status, dynamic data, {String path = '/feed'}) {
 }
 
 void main() {
+  test('Changed swipe card asks to reload instead of retrying a stale vote', () {
+    expect(
+      ApiClient.formatError(
+        _response(409, {
+          'detail':
+              'Карточка больше не подходит вашим параметрам. Обновите подборку.',
+        }),
+      ),
+      'Цена, наличие или параметры вещи изменились. Обновите подборку и выберите другую вещь.',
+    );
+  });
+
   test('Missing gender directs the person to an explicit profile choice', () {
     for (final detail in [
       'Явно выберите гардероб.',

@@ -38,7 +38,7 @@ def product_ok(product, fit, session, *, rules=None):
         return False
     if product_role(product) not in {'top', 'bottom', 'one_piece', 'shoes', 'outerwear'}:
         return False
-    if str(product.currency or 'RUB').upper() not in {'RUB', 'RUR'}:
+    if str(product.currency or '').upper() not in {'RUB', 'RUR'}:
         return False
     if not 300 <= as_rubles(product.price) <= min(25000, as_rubles(fit.budget_max)):
         return False

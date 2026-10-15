@@ -480,6 +480,13 @@ class _OnboardingV2ScreenState extends State<OnboardingV2Screen> {
                 style: const TextStyle(color: AppColors.error, fontSize: 12),
               ),
             ),
+          if (c.error != null && p != null)
+            TextButton.icon(
+              key: const ValueKey('refresh-style-swipe'),
+              onPressed: c.isLoading ? null : c.loadStyleSwipe,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Обновить подборку'),
+            ),
           const SizedBox(height: 14),
           if (p != null && _unavailableId == p.id)
             PrimaryButton(

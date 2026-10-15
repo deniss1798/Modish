@@ -72,6 +72,32 @@ class ActivationApi extends FakeApi {
 }
 
 void main() {
+  testWidgets('Failed swipe offers a deck refresh without replaying the vote', (
+    tester,
+  ) async {
+    final api = ActivationApi()..feedbackFails = true;
+    final c = AppController(apiClient: api)..onboardingV2SubStep = 1;
+    await c.loadStyleSwipe();
+    await c.rateStyleSwipe('like');
+    expect(c.error, isNotNull);
+    expect(api.swipeCalls, 1);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: OnboardingV2Screen(controller: c)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('refresh-style-swipe')));
+    await tester.pumpAndSettle();
+    expect(api.deckCalls, 2);
+    expect(api.swipeCalls, 1);
+    expect(c.styleSwipeRated, 0);
+    expect(c.error, isNull);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+    c.dispose();
+  });
+
   test(
     'Only dislikes keep the user in Style Swipe until a positive signal',
     () async {

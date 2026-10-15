@@ -386,10 +386,11 @@ def swipe_deck(db, user, session):
     lock_user(db, user)
     profile, fit, _ = _preferences(db, user)
     _require_activation_gender(fit)
+    rules = load_rules_by_source_id(db)
     ids = list(session.swipe_product_ids or [])
     rated = session.swipes_json or {}
     products = {p.id: p for p in db.scalars(select(Product).where(Product.id.in_(ids)))} if ids else {}
-    remaining = [products[pid] for pid in ids if pid not in rated and pid in products and product_ok(products[pid], fit, session)]
+    remaining = [products[pid] for pid in ids if pid not in rated and pid in products and product_ok(products[pid], fit, session, rules=rules)]
     count = rated_count(session)
     target = 30 if count >= MIN_SWIPES and not can_complete(session) else SWIPE_TARGET
     need = max(0, target - count - len(remaining))
@@ -415,6 +416,9 @@ def swipe_feedback(db, user, session, product_id, reaction):
     ratings = dict(session.swipes_json or {})
     if product_id not in ratings:
         if reaction != 'unavailable':
+            product = db.get(Product, product_id)
+            if product is None or not product_ok(product, fit, session, rules=load_rules_by_source_id(db)):
+                raise HTTPException(status_code=409, detail='Карточка больше не подходит вашим параметрам. Обновите подборку.')
             record_product_event(db, user, EventRequest(product_id=product_id, event_type=reaction,
                 meta={'surface':'style_swipe', 'activation_version':1}), commit=False)
         ratings[product_id] = reaction
