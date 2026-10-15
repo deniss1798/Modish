@@ -28,7 +28,7 @@ class PersonalizationDNAContextTests(unittest.TestCase):
         self.addCleanup(self.db.close)
         self.user = User(id=str(uuid4()), email='context@example.test', password_hash='unused')
         self.db.add(self.user); self.db.flush()
-        self.session = activation.configure(self.db, self.user, age_group='25-34', height=170,
+        self.session = activation.configure(self.db, self.user, gender_target='womenswear', age_group='25-34', height=170,
             clothing_size='M', shoe_size='38', clothing_size_system='LETTER', shoe_size_system='EU',
             styles=['casual', 'minimalism'], price_segment='mass')
         self.session.completed_at = datetime.now(timezone.utc)
@@ -155,7 +155,7 @@ class PersonalizationDNAContextTests(unittest.TestCase):
             self.assertEqual(before, load_user_taste_feature_map(self.db, user_id=self.user.id, as_of=datetime(2026, 1, 1, tzinfo=timezone.utc)))
         other = User(id=str(uuid4()), email='other@example.test', password_hash='unused')
         self.db.add(other); self.db.flush()
-        session = activation.configure(self.db, other, age_group='25-34', height=170, clothing_size='M',
+        session = activation.configure(self.db, other, gender_target='womenswear', age_group='25-34', height=170, clothing_size='M',
             shoe_size='38', clothing_size_system='LETTER', shoe_size_system='EU',
             styles=['casual', 'minimalism'], price_segment='mass')
         session.completed_at = datetime.now(timezone.utc)

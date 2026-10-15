@@ -33,7 +33,10 @@ class CatalogueDiscoveryTests(unittest.TestCase):
     self.addCleanup(self.db.close)
     self.user = User(id='discovery-user', email='discovery@example.test', password_hash='unused')
     self.other = User(id='other-discovery', email='other@example.test', password_hash='unused')
-    self.db.add_all([self.user, self.other])
+    self.fit = FitProfile(id='fit', user_id=self.user.id, height_cm=170,
+        gender_target='womenswear', budget_max=0)
+    self.db.add_all([self.user, self.other, self.fit,
+        FitProfile(id='other-fit', user_id=self.other.id, height_cm=170, gender_target='womenswear')])
     self.db.commit()
     self.headers = {'Authorization': 'Bearer ' + create_access_token(self.user.id)}
     self.other_headers = {'Authorization': 'Bearer ' + create_access_token(self.other.id)}
@@ -81,17 +84,30 @@ class CatalogueDiscoveryTests(unittest.TestCase):
         ProductImpression, MetricEvent, ShoppingIntent, UserProductState, AffiliateClick)
     return {model.__name__: self.db.scalar(select(func.count()).select_from(model)) for model in models}
 
-  def test_cold_user_can_browse_without_creating_taste_fit_or_activation(self):
+  def test_cold_user_waits_for_gender_without_creating_taste_fit_or_activation(self):
+    self.db.delete(self.fit)
+    self.db.commit()
     self.product('unknown-unit', size_system='EU')  # Old guessed column is not proof.
     before = self.count_snapshot()
     response = self.get(category='shoes')
-    self.assertEqual(self.ids(response), ['unknown-unit'])
+    self.assertEqual(self.ids(response), [])
     body = response.json()
-    self.assertEqual(body['scope'], {'gender_target': 'womenswear',
-        'gender_basis': 'catalogue_default', 'budget_max': 10000, 'budget_basis': 'catalogue_default'})
+    self.assertEqual(body['scope'], {'gender_target': None,
+        'gender_basis': 'missing', 'budget_max': 10000, 'budget_basis': 'catalogue_default'})
     self.assertFalse(body['personalized'])
     self.assertEqual(body['mode'], 'catalogue_discovery')
-    product = body['products'][0]
+    self.assertIsNone(body['next_cursor'])
+    self.assertFalse(body['has_more'])
+    self.assertEqual(self.detail('unknown-unit').status_code, 404)
+    self.assertEqual(self.client.get('/feed', headers=self.headers).status_code, 409)
+    self.assertEqual(self.count_snapshot(), before)
+
+  def test_selected_gender_browses_without_confirming_sizes_or_training_taste(self):
+    self.product('unknown-unit', size_system='EU')
+    before = self.count_snapshot()
+    response = self.get(category='shoes')
+    self.assertEqual(self.ids(response), ['unknown-unit'])
+    product = response.json()['products'][0]
     self.assertTrue(product['catalogue_discovery'])
     self.assertEqual(product['size_verification'], 'not_verified')
     self.assertEqual(product['size_notice'], 'Размер нужно уточнить у магазина')
@@ -104,10 +120,10 @@ class CatalogueDiscoveryTests(unittest.TestCase):
     self.assertEqual(self.count_snapshot(), before)
 
   def test_unconfirmed_numeric_profile_does_not_bypass_strict_feed(self):
-    fit = FitProfile(id='fit', user_id=self.user.id, height_cm=170,
-        gender_target='womenswear', clothing_size='48', budget_max=12000,
-        size_profile_json={'sizes': {'top': {'value': '48', 'system': None, 'state': 'size_unknown'}}})
-    self.db.add(fit)
+    fit = self.fit
+    fit.clothing_size = '48'
+    fit.budget_max = 12000
+    fit.size_profile_json = {'sizes': {'top': {'value': '48', 'system': None, 'state': 'size_unknown'}}}
     self.db.commit()
     original = json.dumps(fit.size_profile_json, sort_keys=True)
     self.product('numeric-unknown')
@@ -161,8 +177,7 @@ class CatalogueDiscoveryTests(unittest.TestCase):
     self.assertEqual(self.ids(self.get(source='demo')), [])
 
   def test_server_ceiling_never_expands_with_request_or_premium_profile(self):
-    self.db.add(FitProfile(id='fit', user_id=self.user.id, height_cm=170,
-        gender_target='womenswear', budget_max=100000))
+    self.fit.budget_max = 100000
     self.db.commit()
     self.product('under-cap', price=24999)
     self.product('over-cap', price=25001)
@@ -173,8 +188,8 @@ class CatalogueDiscoveryTests(unittest.TestCase):
     self.assertEqual(self.ids(self.get(min_price=30000)), [])
 
   def test_known_profile_gender_is_respected_without_size_confirmation(self):
-    self.db.add(FitProfile(id='fit', user_id=self.user.id, height_cm=170,
-        gender_target='menswear', budget_max=10000))
+    self.fit.gender_target = 'menswear'
+    self.fit.budget_max = 10000
     self.db.commit()
     self.product('women')
     self.product('men', gender_target='menswear', title='лоферы мужские')

@@ -25,7 +25,7 @@ with SessionLocal() as db:
   started=perf_counter()
   user=User(id=str(uuid4()),email='warm-intent-audit-'+uuid4().hex+'@example.test',password_hash='disabled-test-only')
   db.add(user);db.flush()
-  session=activation.configure(db,user,age_group='25-34',height=168,clothing_size=size,
+  session=activation.configure(db,user,gender_target='womenswear', age_group='25-34',height=168,clothing_size=size,
       clothing_size_system=system,shoe_size=shoe,shoe_size_system='EU',styles=['casual','minimalism'],price_segment=segment)
   deck=activation.swipe_deck(db,user,session)
   row={'index':index,'clothing_system':system,'clothing_size':size,'shoe_size':shoe,'segment':segment,

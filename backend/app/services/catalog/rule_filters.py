@@ -90,8 +90,10 @@ def product_passes_source_rules(product: Product, rules_by_source_id: dict[str, 
 def product_gender_compatible(product: Product, user_gender: str | None) -> bool:
   """user_gender: fit_profiles.gender_target (menswear / womenswear / unisex)."""
   ug = (user_gender or "").strip().lower()
-  if not ug or ug in ("unisex", "unknown"):
+  if ug == "unisex":
     return True
+  if ug not in {"menswear", "womenswear"}:
+    return False
 
   # Explicit garment text must not be overridden by a bad/unisex feed label.
   hay = " ".join(str(getattr(product, name, "") or "") for name in (

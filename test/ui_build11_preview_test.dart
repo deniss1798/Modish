@@ -12,6 +12,12 @@ import 'package:modish/features/profile/profile_screen.dart';
 import 'package:modish/features/catalog/search_screen.dart';
 import 'app_regressions_test.dart' show FakeApi;
 
+// Override explicitly with --dart-define=BUILD11_PREVIEW_OUTPUT=path.
+const _destination = String.fromEnvironment(
+  'BUILD11_PREVIEW_OUTPUT',
+  defaultValue: '.tmp/ui-build11-preview',
+);
+
 void main() {
   testWidgets('Build11 screens respect system bars and render', (tester) async {
     await tester.runAsync(() async {
@@ -115,7 +121,7 @@ void main() {
             format: ui.ImageByteFormat.png,
           ))!;
           final file = File(
-            'docs/modish2/build11-preview/${entry.key}-${size.width.toInt()}.png',
+            '$_destination/${entry.key}-${size.width.toInt()}.png',
           );
           await file.parent.create(recursive: true);
           await file.writeAsBytes(bytes.buffer.asUint8List());

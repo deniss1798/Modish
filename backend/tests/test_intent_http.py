@@ -25,7 +25,7 @@ class IntentHTTPTests(unittest.TestCase):
         self.user=User(id=str(uuid4()),email='http-intent@example.test',password_hash='disabled')
         self.other=User(id=str(uuid4()),email='other-intent@example.test',password_hash='disabled')
         self.db.add_all([self.user,self.other]);self.db.flush()
-        session=activation.configure(self.db,self.user,age_group='25-34',height=168,
+        session=activation.configure(self.db,self.user,gender_target='womenswear', age_group='25-34',height=168,
             clothing_size='48',clothing_size_system='RU',shoe_size='38',shoe_size_system='EU',
             styles=['casual','minimalism'],price_segment='mid')
         session.completed_at=datetime.now(timezone.utc)
@@ -77,7 +77,7 @@ class IntentHTTPTests(unittest.TestCase):
 
     def test_owner_cannot_read_another_session_even_after_warmup(self):
         current=self.create().json()
-        session=activation.configure(self.db,self.other,age_group='25-34',height=168,
+        session=activation.configure(self.db,self.other,gender_target='womenswear', age_group='25-34',height=168,
             clothing_size='48',clothing_size_system='RU',shoe_size='38',shoe_size_system='EU',
             styles=['casual','minimalism'],price_segment='mid')
         session.completed_at=datetime.now(timezone.utc);self.db.commit()

@@ -49,17 +49,17 @@ class DiscoveryError(ValueError):
 
 @dataclass(frozen=True)
 class DiscoveryScope:
-  gender_target: str
+  gender_target: str | None
   gender_basis: str
   budget_max: int
   budget_basis: str
 
 
 def _scope(db, user):
-  # Missing/unconfirmed Fit does not block browsing and is never filled in here.
+  # Browsing never invents a gender or fills in an unconfirmed profile.
   fit = db.scalar(select(FitProfile).where(FitProfile.user_id == user.id))
   gender = getattr(fit, 'gender_target', None)
-  gender_confirmed = gender in {'womenswear', 'menswear'}
+  gender_confirmed = gender in {'womenswear', 'menswear', 'unisex'}
   budget = getattr(fit, 'budget_max', None)
   if budget is not None and int(budget) > 0:
     maximum, basis = min(MAX_PRICE, int(budget)), 'profile'
@@ -68,8 +68,14 @@ def _scope(db, user):
     segment = getattr(profile, 'price_segment', None)
     maximum = SEGMENT_BUDGETS.get(segment, SEGMENT_BUDGETS['mass'])
     basis = 'profile_segment' if segment in SEGMENT_BUDGETS else 'catalogue_default'
-  return DiscoveryScope(gender if gender_confirmed else 'womenswear',
-      'profile' if gender_confirmed else 'catalogue_default', maximum, basis)
+  return DiscoveryScope(gender if gender_confirmed else None,
+      'profile' if gender_confirmed else 'missing', maximum, basis)
+
+
+def _gender_targets(scope):
+  if scope.gender_target == 'unisex':
+    return {'womenswear', 'menswear', 'unisex'}
+  return {scope.gender_target, 'unisex'} if scope.gender_target else set()
 
 
 def _category(value):
@@ -110,7 +116,7 @@ def _allowed(product, scope, rules, now, *, category='', minimum=MIN_PRICE, maxi
     return False
   if not minimum <= as_rubles(product.price) <= (scope.budget_max if maximum is None else maximum):
     return False
-  if product.gender_target not in {scope.gender_target, 'unisex'} or not product_gender_compatible(product, scope.gender_target):
+  if product.gender_target not in _gender_targets(scope) or not product_gender_compatible(product, scope.gender_target):
     return False
   role = product_role(product)
   if role not in _ALLOWED_ROLES or (category and role != _ROLES[category]):
@@ -177,12 +183,17 @@ def catalogue_page(db, user, *, category=None, q=None, source=None,
   scope = _scope(db, user)
   minimum = max(MIN_PRICE, min_price or 0)
   maximum = min(scope.budget_max, max_price if max_price is not None else scope.budget_max)
+  if scope.gender_target is None:
+    return {'products': [], 'next_cursor': None, 'has_more': False,
+        'size_verification': 'not_verified', 'mode': 'catalogue_discovery', 'personalized': False,
+        'scope': {'gender_target': None, 'gender_basis': scope.gender_basis,
+                  'budget_max': maximum, 'budget_basis': scope.budget_basis}}
   now = datetime.now(timezone.utc)
   hidden = _hidden(db, user, now)
   fingerprint = _fingerprint(user, scope, category, q, source, minimum, maximum, hidden)
   after = _read_cursor(cursor, fingerprint)
   query = select(Product).where(*available_product_conditions(checked_at=now),
-      Product.gender_target.in_([scope.gender_target, 'unisex']),
+      Product.gender_target.in_(_gender_targets(scope)),
       Product.price.between(minimum, maximum),
       func.upper(Product.currency).in_(['RUB', 'RUR']),
       func.lower(func.trim(Product.source)).not_in(EXCLUDED_SOURCES))

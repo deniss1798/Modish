@@ -23,7 +23,7 @@ class WowAdmissionPerformanceTests(unittest.TestCase):
         self.addCleanup(self.db.close)
         self.user = User(id='wow-admission-user', email='wow-admission@example.test', password_hash='unused')
         self.db.add(self.user); self.db.flush()
-        self.session = activation.configure(self.db, self.user, age_group='25-34', height=170,
+        self.session = activation.configure(self.db, self.user, gender_target='womenswear', age_group='25-34', height=170,
             clothing_size='M', clothing_size_system='LETTER', shoe_size='38', shoe_size_system='EU',
             styles=['casual', 'minimalism'], price_segment='mass')
         self.fit = self.db.scalar(select(FitProfile).where(FitProfile.user_id == self.user.id))

@@ -28,7 +28,7 @@ class ActiveMIERankingTests(unittest.TestCase):
         self.addCleanup(self.db.close)
         self.user = User(id='active-mie-user', email='active-mie@example.test', password_hash='unused')
         self.db.add(self.user); self.db.flush()
-        self.session = activation.configure(self.db, self.user, age_group='25-34', height=168,
+        self.session = activation.configure(self.db, self.user, gender_target='womenswear', age_group='25-34', height=168,
             clothing_size='48', clothing_size_system='RU', shoe_size='38', shoe_size_system='EU',
             styles=['casual', 'minimalism'], price_segment='mid')
         self.session.completed_at = datetime.now(timezone.utc)

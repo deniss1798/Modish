@@ -410,7 +410,7 @@ class FitProfile(Base):
   user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), unique=True, index=True)
   height_cm: Mapped[int] = mapped_column(Integer)
   weight_kg: Mapped[int | None] = mapped_column(Integer, nullable=True)
-  gender_target: Mapped[str] = mapped_column(String(32), default="unisex")
+  gender_target: Mapped[str | None] = mapped_column(String(32), nullable=True)
   clothing_size: Mapped[str | None] = mapped_column(String(32), nullable=True)
   size_profile_json: Mapped[dict] = mapped_column(JSON, default=dict)
   body_measurements_json: Mapped[dict] = mapped_column(JSON, default=dict)

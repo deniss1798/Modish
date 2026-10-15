@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from .. import business
 from ..models import (
+  FitProfile,
   Recommendation,
   RecommendationEvent,
   StyleProfile,
@@ -24,6 +25,11 @@ from .deps import auth_scheme, get_db, user_from_token
 from .serializers import rec_to_dict
 
 router = APIRouter(tags=["recommendations"])
+
+
+def _has_gender_choice(db, user):
+  choice = db.scalar(select(FitProfile.gender_target).where(FitProfile.user_id == user.id))
+  return choice in {'menswear', 'womenswear', 'unisex'}
 
 
 class GenerateRequest(BaseModel):
@@ -53,6 +59,8 @@ def recommendations_generate(
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> list[dict[str, Any]]:
   user = user_from_token(credentials, db)
+  if not _has_gender_choice(db, user):
+    raise HTTPException(status_code=409, detail='Явно выберите гардероб в профиле.')
   try:
     limits = business.assert_can_generate(db, user)
   except PermissionError as e:
@@ -85,6 +93,8 @@ def recommendations_outfits_legacy(
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> list[dict[str, Any]]:
   user = user_from_token(credentials, db)
+  if not _has_gender_choice(db, user):
+    return []
   reviewed = set(
     db.execute(
       select(RecommendationEvent.recommendation_id).where(
@@ -105,6 +115,8 @@ def recommendations_saved(
   from ..models import SavedRecommendation
 
   user = user_from_token(credentials, db)
+  if not _has_gender_choice(db, user):
+    return []
   rows = db.execute(
     select(SavedRecommendation, Recommendation)
     .join(Recommendation, Recommendation.id == SavedRecommendation.recommendation_id)
@@ -155,6 +167,8 @@ def recommendation_detail(
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> dict[str, Any]:
   user = user_from_token(credentials, db)
+  if not _has_gender_choice(db, user):
+    raise HTTPException(status_code=404, detail="Карточка не найдена")
   rec = db.execute(
     select(Recommendation).where(
       Recommendation.id == recommendation_id,

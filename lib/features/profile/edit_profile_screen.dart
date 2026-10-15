@@ -27,7 +27,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _bottomSize;
   late TextEditingController _shoe;
   late TextEditingController _budgetMax;
-  String _gender = 'menswear';
+  String? _gender;
   final Set<String> _categories = {};
   final Set<String> _styles = {};
 
@@ -77,7 +77,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           : '${f['shoe_size'] ?? widget.controller.activationStatus['shoe_size'] ?? ''}',
     );
     _budgetMax = TextEditingController(text: '${f['budget_max'] ?? 10000}');
-    final g = '${f['gender_target'] ?? 'menswear'}';
+    final g = f['gender_target'];
     if (g == 'menswear' || g == 'womenswear' || g == 'unisex') {
       _gender = g;
     }
@@ -106,7 +106,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _save() async {
-    if (_gender != 'menswear' && _gender != 'womenswear') {
+    final gender = _gender;
+    if (gender != 'menswear' && gender != 'womenswear') {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -151,7 +152,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     await widget.controller.updateFitProfile(
       height: h,
       weight: w,
-      genderTarget: _gender,
+      genderTarget: gender!,
       clothingSize: dress['value']!,
       shoeSize: shoes['value']!,
       sizes: {'top': top, 'bottom': bottom, 'one_piece': dress, 'shoes': shoes},

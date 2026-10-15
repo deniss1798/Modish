@@ -148,7 +148,7 @@ def replay_checkpoint(desired_style, event_count):
                         email=f'{desired_style}-{event_count}@example.test', password_hash='unused')
             db.add(user)
             db.flush()
-            activation = a.configure(db, user, age_group='25-34', height=170, clothing_size='M', shoe_size='38',
+            activation = a.configure(db, user, gender_target='womenswear', age_group='25-34', height=170, clothing_size='M', shoe_size='38',
                 styles=list(STYLES), price_segment='mass', clothing_size_system='LETTER', shoe_size_system='EU')
             profile, fit, taste = a._preferences(db, user)
             # Explicit fixed interests prevent evolving category retrieval from

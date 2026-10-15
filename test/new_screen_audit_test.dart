@@ -1,5 +1,6 @@
 // Offline screen audit. Run explicitly; no production endpoint or CDN is used.
 // flutter test --no-pub test/new_screen_audit_test.dart --reporter expanded
+// Optional destination: --dart-define=AUDIT_OUTPUT=path (not a shell env var).
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -37,7 +38,7 @@ import 'support/load_app_fonts.dart';
 
 const _destination = String.fromEnvironment(
   'AUDIT_OUTPUT',
-  defaultValue: 'docs/modish2/ui-audit-20261012',
+  defaultValue: '.tmp/ui-screen-audit',
 );
 const _photoUrl = 'https://ui-fixture.invalid/blouse.jpg';
 const _offlineError =

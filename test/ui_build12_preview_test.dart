@@ -10,6 +10,12 @@ import 'package:modish/core/theme/app_theme.dart';
 import 'package:modish/features/products/models.dart' as prod;
 import 'app_regressions_test.dart' show FakeApi, product;
 
+// Override explicitly with --dart-define=BUILD12_PREVIEW_OUTPUT=path.
+const _destination = String.fromEnvironment(
+  'BUILD12_PREVIEW_OUTPUT',
+  defaultValue: '.tmp/ui-build12-preview',
+);
+
 class _ImageHttp extends HttpOverrides {
   _ImageHttp(this.bytes);
   final List<int> bytes;
@@ -188,9 +194,7 @@ void main() {
           final bytes = (await image.toByteData(
             format: ui.ImageByteFormat.png,
           ))!;
-          final file = File(
-            'docs/modish2/build12-preview/tab$tab-${size.width.toInt()}.png',
-          );
+          final file = File('$_destination/tab$tab-${size.width.toInt()}.png');
           await file.parent.create(recursive: true);
           await file.writeAsBytes(bytes.buffer.asUint8List());
           image.dispose();

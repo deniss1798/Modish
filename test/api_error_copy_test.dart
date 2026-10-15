@@ -22,6 +22,22 @@ DioException _response(int status, dynamic data, {String path = '/feed'}) {
 }
 
 void main() {
+  test('Missing gender directs the person to an explicit profile choice', () {
+    for (final detail in [
+      'Явно выберите гардероб.',
+      'Явно выберите гардероб в профиле.',
+      'Явно выберите женский гардероб в настройках.',
+      'Новый подбор пока доступен для женского гардероба.',
+    ]) {
+      final message = ApiClient.formatError(_response(409, {'detail': detail}));
+      expect(
+        message,
+        anyOf(contains('параметрах подбора'), contains('профиле')),
+      );
+      expect(message, isNot(contains('Данные уже изменились')));
+    }
+  });
+
   test(
     'Connection errors do not expose deployment instructions in product UI',
     () {

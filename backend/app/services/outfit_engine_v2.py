@@ -594,6 +594,8 @@ def generate_outfits_v2(
   # Serialize refreshes for this user; read history only after acquiring the lock.
   db.execute(select(User.id).where(User.id == user.id).with_for_update()).scalar_one()
   fit = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
+  if fit is None or fit.gender_target not in {"menswear", "womenswear", "unisex"}:
+    return []
   excluded = _excluded_product_ids(db, user, scenario=scenario_key)
   activation = db.get(ActivationSession, user.id)
   skipped_ids = _recent_skip_product_ids(db, user)

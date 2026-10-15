@@ -9,6 +9,12 @@ import 'package:modish/core/theme/app_theme.dart';
 import 'package:modish/features/onboarding/onboarding_v2_screen.dart';
 import 'activation_test.dart' show ActivationApi;
 
+// Override explicitly with --dart-define=ACTIVATION_PREVIEW_OUTPUT=path.
+const _destination = String.fromEnvironment(
+  'ACTIVATION_PREVIEW_OUTPUT',
+  defaultValue: '.tmp/ui-activation-preview',
+);
+
 void main() {
   testWidgets('Activation screens fit small phones and large text', (
     tester,
@@ -90,7 +96,7 @@ void main() {
             format: ui.ImageByteFormat.png,
           ))!;
           final file = File(
-            'docs/modish2/build9-preview/activation-$step-${size.width.toInt()}.png',
+            '$_destination/activation-$step-${size.width.toInt()}.png',
           );
           await file.parent.create(recursive: true);
           await file.writeAsBytes(bytes.buffer.asUint8List());

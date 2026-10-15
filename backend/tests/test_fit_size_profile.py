@@ -25,11 +25,11 @@ from app.services.fit_size_profile import (
 class FitSizeProfileTests(unittest.TestCase):
     def test_legacy_default_is_not_a_confirmed_size(self):
         fit = FitProfile(clothing_size='M', height_cm=170)
-        self.assertEqual(set(missing_fit_requirements(fit)), {'top', 'bottom', 'one_piece', 'shoes', 'height'})
+        self.assertEqual(set(missing_fit_requirements(fit)), {'top', 'bottom', 'one_piece', 'shoes', 'height', 'gender'})
         self.assertEqual(requested_size_for_product(fit, Product(title='Брюки', category='брюки')), (None, None))
 
     def test_slots_are_independent_and_null_clears_without_guessing(self):
-        fit = FitProfile(clothing_size=None)
+        fit = FitProfile(clothing_size=None, gender_target='unisex')
         update_size_profile(fit, sizes=submitted_sizes(clothing_size='M', shoe_size='38', shoe_system='EU',
             overrides={'bottom': {'value': '48', 'system': 'RU'}}), height_confirmed=True)
         self.assertEqual(missing_fit_requirements(fit), [])
@@ -41,7 +41,7 @@ class FitSizeProfileTests(unittest.TestCase):
         self.assertEqual(missing_fit_requirements(fit), ['shoes'])
 
     def test_numeric_profile_needs_a_system_and_height_needs_confirmation(self):
-        fit = FitProfile(height_cm=170)
+        fit = FitProfile(height_cm=170, gender_target='unisex')
         update_size_profile(fit, sizes=submitted_sizes(clothing_size='48', shoe_size='38'))
         self.assertEqual(len(missing_fit_requirements(fit)), 5)
 
@@ -123,7 +123,7 @@ class FitSizeProfileTests(unittest.TestCase):
             self.assertEqual(status['height'], 168)
 
     def test_activation_requires_explicit_height(self):
-        values = dict(age_group='25-34', clothing_size='M', shoe_size='38',
+        values = dict(gender_target='womenswear', age_group='25-34', clothing_size='M', shoe_size='38',
             styles=['casual', 'minimalism'], price_segment='mass')
         with self.assertRaises(ValidationError):
             ActivationPreferencesRequest(**values)

@@ -54,7 +54,7 @@ def fit_profile_me(
       user_id=user.id,
       height_cm=user.height_cm,
       weight_kg=user.weight_kg,
-      gender_target="unisex",
+      gender_target=None,
       clothing_size=None,
       body_proportions="",
       contrast_level="",
@@ -88,10 +88,10 @@ def fit_profile_patch(
   from ..services.activation_service import lock_user
   lock_user(db, user)
   activation = db.get(ActivationSession, user.id)
-  user.height_cm = payload.height
-  user.weight_kg = payload.weight
   if activation and payload.gender_target != 'womenswear':
     raise HTTPException(status_code=400, detail='Новый подбор пока доступен для женского гардероба.')
+  user.height_cm = payload.height
+  user.weight_kg = payload.weight
   if activation and payload.shoe_size is not None:
     activation.shoe_size = payload.shoe_size
   fp = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()

@@ -14,7 +14,7 @@ class FitQuizScreen extends StatefulWidget {
 }
 
 class _FitQuizScreenState extends State<FitQuizScreen> {
-  String _gender = 'menswear';
+  String? _gender;
   String? _size;
   final _height = TextEditingController();
   final _weight = TextEditingController();
@@ -47,12 +47,11 @@ class _FitQuizScreenState extends State<FitQuizScreen> {
   }
 
   void _continue() {
-    if (_gender != 'menswear' && _gender != 'womenswear') {
+    final gender = _gender;
+    if (gender != 'menswear' && gender != 'womenswear') {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Выберите «Мужское» или «Женское» — иначе лента будет случайной',
-          ),
+          content: Text('Выберите «Мужское» или «Женское», чтобы продолжить.'),
         ),
       );
       return;
@@ -73,7 +72,7 @@ class _FitQuizScreenState extends State<FitQuizScreen> {
     }
     final wRaw = _weight.text.trim();
     widget.controller.setPendingFitPrefs(
-      genderTarget: _gender,
+      genderTarget: gender!,
       clothingSize: size,
       budgetMin: 0,
       budgetMax: bMax,

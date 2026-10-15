@@ -74,7 +74,7 @@ def serialize_outfit(products, fit, spec, *, intent_id, version):
 
 def build_intent_outfits(db, user, spec, *, intent_id, version, locked=None, excluded_ids=(), limit=5, stats=None):
     profile, fit, taste = load_preferences(db, user)
-    if not fit or not fit.budget_max:
+    if not fit or fit.gender_target not in {'womenswear', 'menswear', 'unisex'} or not fit.budget_max:
         return []
     locked = locked or {}
     if any(product_role(p) != slot or intent_product_problem(p, fit, spec) for slot, p in locked.items()):

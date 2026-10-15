@@ -34,6 +34,7 @@ void main() {
       ..httpClientAdapter = adapter;
     final api = ApiClient(dio: dio);
     await api.activationPreferences(
+      genderTarget: 'womenswear',
       ageGroup: '25-34',
       clothingSize: '44',
       shoeSize: '38',
@@ -42,6 +43,7 @@ void main() {
       height: 168,
     );
     expect(adapter.data['clothing_size_system'], 'RU');
+    expect(adapter.data['gender_target'], 'womenswear');
     expect(adapter.data['shoe_size_system'], 'EU');
     expect(adapter.data['height'], 168);
     await api.fitProfilePatch(

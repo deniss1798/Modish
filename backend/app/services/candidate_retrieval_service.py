@@ -248,6 +248,8 @@ def retrieve_candidates(
   base = _base_conditions(source=source, exclude_product_ids=exclude, min_price=min_price)
   max_candidates = max(50, min(1500, int(max_candidates)))
   result = CandidateRetrievalResult(products=[])
+  if fit is None or fit.gender_target not in {"menswear", "womenswear", "unisex"}:
+    return result
   from .fit_size_profile import size_profile_to_api
   if not any(s.get('state') == 'confirmed' for s in size_profile_to_api(fit)['sizes'].values()):
     return result

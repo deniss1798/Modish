@@ -238,7 +238,7 @@ class AppController extends ChangeNotifier {
   List<String> get feedFilterSizes => _feedQuery.sizes;
   List<String> get feedFilterColors => _feedQuery.colors;
   String email = '';
-  String styleTarget = 'womenswear';
+  String? styleTarget;
   String? token;
   String? selectedPhotoPath;
   final photoPaths = <String>[];
@@ -463,7 +463,7 @@ class AppController extends ChangeNotifier {
       if (!_isCurrentSession(generation)) return;
       fitProfile = {};
     }
-    styleTarget = '${fitProfile['gender_target'] ?? 'womenswear'}';
+    styleTarget = fitProfile['gender_target'] as String?;
     final obStatus = await api.onboardingStatus();
     if (!_isCurrentSession(generation)) return;
     activationStatus = obStatus;
@@ -496,6 +496,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> startStyleSwipe({
+    required String genderTarget,
     required String ageGroup,
     required String clothingSize,
     required String shoeSize,
@@ -506,6 +507,7 @@ class AppController extends ChangeNotifier {
     final generation = _sessionGeneration;
     await _run(() async {
       await api.activationPreferences(
+        genderTarget: genderTarget,
         ageGroup: ageGroup,
         clothingSize: clothingSize,
         shoeSize: shoeSize,
@@ -514,8 +516,9 @@ class AppController extends ChangeNotifier {
         height: height,
       );
       if (!_isCurrentSession(generation)) return;
-      styleTarget = 'womenswear';
+      styleTarget = genderTarget;
       activationStatus = {
+        'gender_target': genderTarget,
         'age_group': ageGroup,
         'clothing_size': clothingSize,
         'shoe_size': shoeSize,
@@ -579,7 +582,12 @@ class AppController extends ChangeNotifier {
     await _run(() async {
       await api.onboardingStep1(gender: gender, ageGroup: ageGroup);
       if (!_isCurrentSession(generation)) return;
-      styleTarget = gender == 'female' ? 'womenswear' : 'menswear';
+      styleTarget = switch (gender) {
+        'female' => 'womenswear',
+        'male' => 'menswear',
+        'unisex' => 'unisex',
+        _ => null,
+      };
       _goOnboardingV2Sub(1);
     });
   }
@@ -745,19 +753,21 @@ class AppController extends ChangeNotifier {
     final height = (p['height'] as num?)?.toInt();
     final size = '${p['clothing_size'] ?? ''}'.trim();
     final budget = (p['budget_max'] as num?)?.toInt();
+    final gender = p['gender_target'];
     if (height == null ||
         height < 50 ||
         height > 250 ||
         size.isEmpty ||
         budget == null ||
-        budget <= 0) {
+        budget <= 0 ||
+        (gender != 'menswear' && gender != 'womenswear')) {
       return;
     }
     try {
       final profile = await api.fitProfilePatch(
         height: height,
         weight: (p['weight'] as num?)?.toInt(),
-        genderTarget: '${p['gender_target'] ?? 'menswear'}',
+        genderTarget: gender as String,
         clothingSize: size,
         budgetMin: (p['budget_min'] as num?)?.toInt() ?? 0,
         budgetMax: budget,
@@ -862,7 +872,8 @@ class AppController extends ChangeNotifier {
       stage = AppStage.analysis;
       analysisProgress = 25;
       notifyListeners();
-      await api.setStyleTarget(styleTarget);
+      final target = styleTarget;
+      if (target != null) await api.setStyleTarget(target);
       if (run != _analysisRun) return;
       await api.analyzeStyleProfile(photo);
       if (run != _analysisRun) return;
@@ -1153,7 +1164,7 @@ class AppController extends ChangeNotifier {
     selectedPhotoPath = null;
     photoPaths.clear();
     error = null;
-    styleTarget = '${fitProfile['gender_target'] ?? styleTarget}';
+    styleTarget = fitProfile['gender_target'] as String?;
     stage = AppStage.upload;
     notifyListeners();
   }
@@ -1197,7 +1208,7 @@ class AppController extends ChangeNotifier {
     _analysisRun++;
     analysisProgress = 0;
     tab = 0;
-    styleTarget = 'womenswear';
+    styleTarget = null;
     pendingFitPrefs = null;
     selectedPhotoPath = null;
     photoPaths.clear();

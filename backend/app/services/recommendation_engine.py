@@ -313,6 +313,10 @@ def generate_feed(
   # PostgreSQL holds this lock until the caller commits; SQLite tests ignore it.
   db.execute(select(User.id).where(User.id == user.id).with_for_update()).scalar_one()
 
+  fit = db.scalar(select(FitProfile).where(FitProfile.user_id == user.id))
+  if fit is None or fit.gender_target not in {"menswear", "womenswear", "unisex"}:
+    return []
+
   from ..models import ActivationSession
   activation = db.get(ActivationSession, user.id)
   if activation is not None:

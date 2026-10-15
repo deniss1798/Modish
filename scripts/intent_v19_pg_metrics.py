@@ -20,7 +20,7 @@ with SessionLocal() as db:
     user = User(id=str(uuid4()), email='pg-metric-'+uuid4().hex+'@example.test', password_hash='disabled-test-account')
     uid = user.id
     db.add(user); db.flush()
-    activation.configure(db, user, age_group='25-34', height=168, clothing_size='48',
+    activation.configure(db, user, gender_target='womenswear', age_group='25-34', height=168, clothing_size='48',
         clothing_size_system='RU', shoe_size='38', shoe_size_system='EU',
         styles=['casual', 'minimalism'], price_segment='mid')
     case = fixtures.ShoppingIntentTests()

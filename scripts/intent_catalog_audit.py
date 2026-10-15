@@ -54,7 +54,7 @@ with SessionLocal() as db:
         started=perf_counter()
         user=User(id=str(uuid4()),email='intent-audit-'+uuid4().hex+'@example.test',password_hash='disabled-isolated-audit')
         db.add(user);db.flush()
-        session=activation.configure(db,user,age_group='25-34',height=168,
+        session=activation.configure(db,user,gender_target='womenswear', age_group='25-34',height=168,
             clothing_size=size,clothing_size_system=system,shoe_size=shoe,shoe_size_system='EU',
             styles=['casual','minimalism'],price_segment=segment)
         session.completed_at=checked;db.flush()

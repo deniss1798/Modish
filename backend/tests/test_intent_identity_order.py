@@ -39,7 +39,7 @@ def catalogue(rows):
       user = User(id='identity-order-user', email='order@example.test', password_hash='unused')
       db.add(user)
       db.flush()
-      activation.configure(db, user, age_group='25-34', height=170,
+      activation.configure(db, user, gender_target='womenswear', age_group='25-34', height=170,
           clothing_size='M', clothing_size_system='LETTER', shoe_size='38', shoe_size_system='EU',
           styles=['casual', 'minimalism'], price_segment='mass')
       for fields in rows:

@@ -17,6 +17,7 @@ class OnboardingV2Screen extends StatefulWidget {
 }
 
 class _OnboardingV2ScreenState extends State<OnboardingV2Screen> {
+  String? _gender;
   String? _age;
   String? _size;
   String? _shoe;
@@ -38,6 +39,8 @@ class _OnboardingV2ScreenState extends State<OnboardingV2Screen> {
     super.initState();
     final c = widget.controller;
     final prefs = c.activationStatus;
+    final gender = prefs['gender_target'] ?? c.fitProfile['gender_target'];
+    _gender = gender == 'womenswear' ? 'womenswear' : null;
     _age = prefs['age_group'] as String?;
     _size = prefs['clothing_size'] as String?;
     _shoe = prefs['shoe_size'] as String?;
@@ -144,7 +147,25 @@ class _OnboardingV2ScreenState extends State<OnboardingV2Screen> {
         style: AppTextStyles.bodyMuted,
       ),
       const SizedBox(height: 24),
-      const Text('Пол: женский', style: AppTextStyles.caption),
+      const Text('Для кого подбираем?', style: AppTextStyles.sectionTitle),
+      const SizedBox(height: 6),
+      const Text(
+        'Сейчас доступна подборка женской одежды. Подтвердите ваш выбор.',
+        style: AppTextStyles.bodyMuted,
+      ),
+      const SizedBox(height: 8),
+      Align(
+        alignment: Alignment.centerLeft,
+        child: ChoiceChip(
+          key: const ValueKey('onboarding-gender-womenswear'),
+          label: const Text('Женское'),
+          selected: _gender == 'womenswear',
+          onSelected: c.isLoading
+              ? null
+              : (selected) =>
+                    setState(() => _gender = selected ? 'womenswear' : null),
+        ),
+      ),
       const SizedBox(height: 16),
       TextField(
         key: const ValueKey('onboarding-height'),
@@ -268,6 +289,7 @@ class _OnboardingV2ScreenState extends State<OnboardingV2Screen> {
         label: c.isLoading ? 'Подбираем вещи…' : 'Настроить мой вкус',
         onPressed:
             c.isLoading ||
+                _gender == null ||
                 _age == null ||
                 _size == null ||
                 _shoe == null ||
@@ -276,6 +298,7 @@ class _OnboardingV2ScreenState extends State<OnboardingV2Screen> {
                 _styles.length < 2
             ? null
             : () => c.startStyleSwipe(
+                genderTarget: _gender!,
                 ageGroup: _age!,
                 clothingSize: _size!,
                 shoeSize: _shoe!,

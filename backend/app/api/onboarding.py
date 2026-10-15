@@ -34,6 +34,7 @@ MAX_PHOTO_BYTES = business.MAX_PHOTO_BYTES
 
 
 class ActivationPreferencesRequest(BaseModel):
+  gender_target: str = Field(pattern='^(menswear|womenswear|unisex)$')
   age_group: str
   clothing_size: str = Field(max_length=16)
   shoe_size: str = Field(max_length=16)
@@ -63,7 +64,7 @@ def _activation(db, user):
 def activation_preferences(payload: ActivationPreferencesRequest, db: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme)):
   from ..services.activation_service import configure
   user = user_from_token(credentials, db)
-  configure(db, user, age_group=payload.age_group, clothing_size=payload.clothing_size,
+  configure(db, user, gender_target=payload.gender_target, age_group=payload.age_group, clothing_size=payload.clothing_size,
       shoe_size=payload.shoe_size, styles=payload.styles, price_segment=payload.price_segment,
       clothing_size_system=payload.clothing_size_system, shoe_size_system=payload.shoe_size_system,
       height=payload.height, sizes=payload.sizes.model_dump(exclude_unset=True) if payload.sizes else None)
@@ -142,7 +143,7 @@ def get_onboarding_status(
       recommendation_features=['fit_sizes_v1', 'shopping_intent_v1', 'catalogue_discovery_v1'] + (['context_v1', 'dna_ranking_v1', 'personalized_search_v1'] if activation else []),
       preferences_ready=activation is not None and not missing_fit, rated=rated_count(activation) if activation else 0,
       minimum=MIN_SWIPES, target=SWIPE_TARGET, clothing_size=fit.clothing_size if fit else None,
-      shoe_size=activation.shoe_size if activation else None)
+      shoe_size=activation.shoe_size if activation else None, gender_target=fit.gender_target if fit else None)
   result.update(fit_confirmation_required=bool(missing_fit), missing_fit_requirements=missing_fit,
       size_profile=size_profile_to_api(fit), height=fit.height_cm if fit and not 'height' in missing_fit else None)
   db.commit()

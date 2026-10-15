@@ -23,7 +23,7 @@ with SessionLocal() as db:
     count = db.scalar(select(func.count()).select_from(Product))
     user = User(id=str(uuid4()), email='latency-'+uuid4().hex+'@example.test', password_hash='disabled-test-account')
     db.add(user); db.flush()
-    activation.configure(db, user, age_group='25-34', height=168, clothing_size='L',
+    activation.configure(db, user, gender_target='womenswear', age_group='25-34', height=168, clothing_size='L',
         clothing_size_system='LETTER', shoe_size='38', shoe_size_system='EU',
         styles=['casual', 'minimalism'], price_segment='mid')
     fit = db.scalar(select(FitProfile).where(FitProfile.user_id == user.id))

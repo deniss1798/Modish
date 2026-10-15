@@ -22,7 +22,7 @@ class ActivationTests(unittest.TestCase):
         self.db = sessionmaker(bind=self.engine, autoflush=False)()
         self.user = User(id=str(uuid4()), email='activation@example.test', password_hash='unused')
         self.db.add(self.user); self.db.flush()
-        self.session = a.configure(self.db, self.user, age_group='25-34', height=170, clothing_size='M', shoe_size='38',
+        self.session = a.configure(self.db, self.user, gender_target='womenswear', age_group='25-34', height=170, clothing_size='M', shoe_size='38',
             styles=['casual','minimalism'], price_segment='mass', clothing_size_system='LETTER', shoe_size_system='EU')
         self.fit = self.db.scalar(select(FitProfile).where(FitProfile.user_id == self.user.id))
 
@@ -83,7 +83,7 @@ class ActivationTests(unittest.TestCase):
 
     def test_required_preferences_and_unissued_reaction_rejected(self):
         with self.assertRaises(HTTPException):
-            a.configure(self.db,self.user,age_group='25-34', height=170,clothing_size='M',shoe_size='38', shoe_size_system='EU',styles=['casual'],price_segment='mass')
+            a.configure(self.db,self.user,gender_target='womenswear', age_group='25-34', height=170,clothing_size='M',shoe_size='38', shoe_size_system='EU',styles=['casual'],price_segment='mass')
         with self.assertRaises(HTTPException): a.swipe_feedback(self.db,self.user,self.session,str(uuid4()),'like')
 
     def test_only_dislikes_cannot_enter_empty_feed_and_get_more_choices(self):

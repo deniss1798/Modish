@@ -99,7 +99,7 @@ class Build11Fixes(unittest.TestCase):
             description='Для холодных дней дополните пуховой курткой'), flats))
 
     def test_activation_complements_exclude_sandals_from_puffer(self):
-        activation_service.configure(self.db, self.user, age_group='25-34', height=170,
+        activation_service.configure(self.db, self.user, gender_target='womenswear', age_group='25-34', height=170,
             clothing_size='M', shoe_size='38', styles=['casual','minimalism'], price_segment='mid',
             clothing_size_system='LETTER', shoe_size_system='EU')
         def add(title, category, sizes):

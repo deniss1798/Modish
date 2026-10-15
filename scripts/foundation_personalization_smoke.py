@@ -27,7 +27,7 @@ report = {'scope': 'isolated_clone', 'checked_at': datetime.now(timezone.utc).is
 with SessionLocal() as db:
     user = User(id=str(uuid4()), email=f'dna-smoke-{uuid4().hex}@example.com', password_hash='disabled-test-only')
     db.add(user); db.flush()
-    session = activation.configure(db, user, age_group='25-34', clothing_size='M', shoe_size='38',
+    session = activation.configure(db, user, gender_target='womenswear', age_group='25-34', clothing_size='M', shoe_size='38',
         clothing_size_system='LETTER', shoe_size_system='EU', styles=['casual', 'minimalism'], price_segment='mass')
     pool = activation.candidate_pool(db, user, session)
     assert len(pool) >= 20, 'Insufficient honest letter-size catalogue'

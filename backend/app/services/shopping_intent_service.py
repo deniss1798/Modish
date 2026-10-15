@@ -100,7 +100,7 @@ def refine_intent(db, user, intent_id, *, text, expected_version, reference_prod
 
 def item_results(db, user, spec, *, excluded_ids=(), stats=None):
     profile, fit, taste = load_preferences(db, user)
-    if not fit or not fit.budget_max:
+    if not fit or fit.gender_target not in {'womenswear', 'menswear', 'unisex'} or not fit.budget_max:
         return []
     stats = stats if stats is not None else {}
     maximum = min(fit.budget_max, spec.budget_max or fit.budget_max)

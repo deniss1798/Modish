@@ -105,7 +105,7 @@ def run_profile(count: int, *, eligible_every: int, top: int):
             with Session(engine, autoflush=False) as db:
                 user = User(id='offline-activation-profiler', email='profile@example.test', password_hash='unused')
                 db.add(user); db.flush()
-                session = activation.configure(db, user, age_group='25-34', height=170,
+                session = activation.configure(db, user, gender_target='womenswear', age_group='25-34', height=170,
                     clothing_size='M', clothing_size_system='LETTER', shoe_size='38', shoe_size_system='EU',
                     styles=['casual', 'minimalism'], price_segment='mass')
                 profile, fit, taste = activation._preferences(db, user)

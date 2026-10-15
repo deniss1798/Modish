@@ -758,6 +758,7 @@ class ApiClient {
   }
 
   Future<void> activationPreferences({
+    required String genderTarget,
     required String ageGroup,
     required String clothingSize,
     required String shoeSize,
@@ -768,6 +769,7 @@ class ApiClient {
     await _dio.post(
       '/onboarding/preferences',
       data: {
+        'gender_target': genderTarget,
         'age_group': ageGroup,
         'clothing_size': clothingSize,
         'shoe_size': shoeSize,

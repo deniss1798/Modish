@@ -6,6 +6,8 @@ from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
 
+from fastapi.security import HTTPAuthorizationCredentials
+
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
@@ -101,7 +103,9 @@ class StockFreshnessTests(unittest.TestCase):
         retrieved = retrieve_candidates(self.db, user=self.user, fit=self.fit, taste=self.taste,
             taste_features={}, max_candidates=50)
         self.assertEqual([p.id for p in retrieved.products], [good.id])
-        self.assertEqual([p['id'] for p in products_list(limit=1, db=self.db, credentials=None)], [good.id])
+        credentials = HTTPAuthorizationCredentials(scheme='Bearer', credentials='SYNTHETIC_TOKEN')
+        with patch('app.api.products.user_from_token', return_value=self.user):
+            self.assertEqual([p['id'] for p in products_list(limit=1, db=self.db, credentials=credentials)], [good.id])
         self.assertEqual(products_brands(db=self.db), [{'brand': 'Fresh', 'count': 1}])
         self.assertEqual([s.product.id for s in generate_feed(self.db, self.user)], [good.id])
         # Alternate candidate providers must still pass the central read gate.

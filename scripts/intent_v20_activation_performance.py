@@ -165,7 +165,7 @@ def run_once(*, index, profile, top):
             db.add(user)
             db.flush()
             session, row['phases']['configure'] = measured_phase(engine, lambda: activation.configure(
-                db, user, age_group='25-34', height=168, clothing_size='L',
+                db, user, gender_target='womenswear', age_group='25-34', height=168, clothing_size='L',
                 clothing_size_system='LETTER', shoe_size='38', shoe_size_system='EU',
                 styles=['casual', 'minimalism'], price_segment='mid'), profile=profile, top=top)
             deck, row['phases']['cold_deck'] = measured_phase(

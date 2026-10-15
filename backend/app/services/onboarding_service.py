@@ -59,6 +59,8 @@ def _gender_to_style_target(gender: str | None) -> str:
     return "womenswear"
   if g in ("male", "man", "men", "menswear", "мужчина", "м"):
     return "menswear"
+  if g == "unisex":
+    return "unisex"
   return "unknown"
 
 
@@ -71,7 +73,7 @@ def _ensure_fit_profile(db: Session, user: User) -> FitProfile:
     user_id=user.id,
     height_cm=user.height_cm or 170,
     weight_kg=user.weight_kg,
-    gender_target="unisex",
+    gender_target=None,
     clothing_size=None,
     budget_min=0,
     budget_max=10_000,
@@ -103,6 +105,9 @@ def apply_step1(
   age_group: str | None,
 ) -> dict[str, Any]:
   style_target = _gender_to_style_target(gender)
+  if style_target == "unknown":
+    from fastapi import HTTPException
+    raise HTTPException(status_code=400, detail="Явно выберите гардероб.")
   profile.style_target = style_target
   profile.age_group = (age_group or "").strip() or None
   profile.onboarding_step = max(profile.onboarding_step or 0, 1)

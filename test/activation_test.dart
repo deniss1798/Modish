@@ -17,6 +17,7 @@ class ActivationApi extends FakeApi {
   final views = <String>[];
   @override
   Future<void> activationPreferences({
+    required String genderTarget,
     required String ageGroup,
     required String clothingSize,
     required String shoeSize,
@@ -110,6 +111,7 @@ void main() {
       final api = ActivationApi()..swipeGate = Completer<void>();
       final c = AppController(apiClient: api);
       await c.startStyleSwipe(
+        genderTarget: 'womenswear',
         height: 170,
         ageGroup: '25-34',
         clothingSize: 'M',

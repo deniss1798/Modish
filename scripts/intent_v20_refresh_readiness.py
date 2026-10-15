@@ -269,7 +269,7 @@ def run_profile(index, configuration, initial_catalogue):
                         password_hash="disabled-isolated-readiness-account")
             db.add(user)
             db.flush()
-            session = activation.configure(db, user, age_group="25-34", height=168,
+            session = activation.configure(db, user, gender_target='womenswear', age_group="25-34", height=168,
                 clothing_size=size, clothing_size_system=system, shoe_size=shoe,
                 shoe_size_system="EU", styles=["casual", "minimalism"], price_segment=segment)
             fit = db.scalar(select(FitProfile).where(FitProfile.user_id == uid))

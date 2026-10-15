@@ -5,9 +5,10 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..models import Recommendation, StyleProfile
+from ..models import FitProfile, Recommendation, StyleProfile
 from ..schemas.photo_analysis import extract_analysis_section
 
 
@@ -100,6 +101,9 @@ def generate_recommendations(
 
   Возвращает созданные Recommendation (db.add + db.flush, без commit).
   """
+  fit = db.scalar(select(FitProfile).where(FitProfile.user_id == profile.user_id))
+  if fit is None or fit.gender_target not in {"menswear", "womenswear", "unisex"}:
+    return []
   a = extract_analysis_section(profile.profile_json or {})
   palette = _pick_palette(a) or ["navy", "white", "graphite"]
   silhouettes = _pick_silhouettes(a) or ["straight", "structured"]

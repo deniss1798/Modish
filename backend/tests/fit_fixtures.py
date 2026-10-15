@@ -1,4 +1,4 @@
-"""Explicitly confirmed sizes for synthetic recommendation fixtures.
+"""Explicitly chosen gender and sizes for synthetic recommendation fixtures.
 
 These tests use letter-sized synthetic footwear as well as clothing. Tests of
 real footwear/unit contracts pass their own shoe_size/system or construct an
@@ -9,6 +9,9 @@ from app.services.fit_size_profile import submitted_sizes, update_size_profile
 
 
 def confirmed_fit(*, shoe_size=None, shoe_system=None, **fields):
+    # These legacy synthetic catalogs deliberately accept every gender. Tests
+    # for an unset choice pass gender_target=None or construct FitProfile.
+    fields.setdefault('gender_target', 'unisex')
     fit = FitProfile(**fields)
     clothing = fields.get('clothing_size')
     constraints = fields.get('style_constraints') or {}

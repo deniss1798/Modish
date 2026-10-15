@@ -95,6 +95,8 @@ def compute_fit_score(
 ) -> tuple[float, bool, list[str], dict[str, float]]:
   reasons: list[str] = []
   debug: dict[str, float] = {}
+  if fit is None or fit.gender_target not in {"menswear", "womenswear", "unisex"}:
+    return 0.0, True, ["Выберите пол в профиле"], {"fit_gender": 0.0}
   if not product_is_feed_eligible(product):
     return 0.0, True, ["Недостаточно данных о товаре"], {"fit_catalog_eligible": 0.0}
   if not product.affiliate_url and not product.product_url:

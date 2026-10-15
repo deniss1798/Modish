@@ -322,8 +322,12 @@ def diverse_products(products, limit, *, exploration=False, allow_category_fallb
 
 
 def configure(db, user, *, age_group, clothing_size, shoe_size, styles, price_segment,
-              clothing_size_system=None, shoe_size_system=None, height=None, sizes=None):
+              clothing_size_system=None, shoe_size_system=None, height=None, sizes=None, gender_target=None):
     from .onboarding_service import apply_step1, apply_step3
+    if gender_target not in {'menswear', 'womenswear', 'unisex'}:
+        raise HTTPException(status_code=400, detail='Явно выберите гардероб.')
+    if gender_target != 'womenswear':
+        raise HTTPException(status_code=400, detail='Новый подбор пока доступен для женского гардероба.')
     lock_user(db, user)
     profile, fit, taste = _preferences(db, user)
     styles = list(dict.fromkeys(styles))
@@ -346,10 +350,10 @@ def configure(db, user, *, age_group, clothing_size, shoe_size, styles, price_se
     # Changed preferences invalidate the deck; reactions still inform the taste
     # model, but the new configuration needs its own reviewed selection.
     systems={'clothing_size_system':clothing_size_system,'shoe_size_system':shoe_size_system}
-    same = (fit is not None and fit.clothing_size == size and session.shoe_size == shoe
+    same = (fit is not None and fit.gender_target == gender_target and fit.clothing_size == size and session.shoe_size == shoe
             and all((fit.style_constraints or {}).get(k)==v for k,v in systems.items())
             and set(profile.style_preferences or []) == set(styles) and profile.price_segment == price_segment)
-    apply_step1(db, user=user, profile=profile, gender='female', age_group=age_group)
+    apply_step1(db, user=user, profile=profile, gender=gender_target, age_group=age_group)
     apply_step3(db, user=user, profile=profile, style_preferences=styles, price_segment=price_segment)
     fit = db.scalar(select(FitProfile).where(FitProfile.user_id == user.id))
     fit.clothing_size = size
@@ -372,10 +376,16 @@ def configure(db, user, *, age_group, clothing_size, shoe_size, styles, price_se
     return session
 
 
+def _require_activation_gender(fit):
+    if not fit or fit.gender_target != 'womenswear':
+        raise HTTPException(status_code=409, detail='Явно выберите женский гардероб в настройках.')
+
+
 def swipe_deck(db, user, session):
     from ..schemas.api_product import product_to_api
     lock_user(db, user)
     profile, fit, _ = _preferences(db, user)
+    _require_activation_gender(fit)
     ids = list(session.swipe_product_ids or [])
     rated = session.swipes_json or {}
     products = {p.id: p for p in db.scalars(select(Product).where(Product.id.in_(ids)))} if ids else {}
@@ -396,6 +406,8 @@ def swipe_feedback(db, user, session, product_id, reaction):
     from ..schemas.product_event import EventRequest
     from .product_event_service import record_product_event
     lock_user(db, user)
+    fit = db.scalar(select(FitProfile).where(FitProfile.user_id == user.id))
+    _require_activation_gender(fit)
     if session.completed_at:
         raise HTTPException(status_code=409, detail='Настройка вкуса уже завершена.')
     if reaction not in {'like', 'dislike', 'unavailable'} or product_id not in (session.swipe_product_ids or []):
@@ -560,6 +572,7 @@ def complete_wow(db, user, session):
     from .outfit_engine_v2 import generate_outfits_v2
     lock_user(db, user)
     profile, fit, taste = _preferences(db, user)
+    _require_activation_gender(fit)
     if rated_count(session) < MIN_SWIPES:
         raise HTTPException(status_code=409, detail='Оцените хотя бы 15 вещей, чтобы мы поняли ваш вкус.')
     if not can_complete(session):

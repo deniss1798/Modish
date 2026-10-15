@@ -92,6 +92,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     final controller = AppController()
       ..activationStatus = {
+        'gender_target': 'womenswear',
         'age_group': '25-34',
         'clothing_size': 'M',
         'shoe_size': '38',

@@ -65,4 +65,6 @@ def missing_fit_requirements(fit) -> list[str]:
     missing = [slot for slot, size in profile['sizes'].items() if size.get('state') != 'confirmed']
     if not profile['height_confirmed']:
         missing.append('height')
+    if not fit or fit.gender_target not in {'menswear', 'womenswear', 'unisex'}:
+        missing.append('gender')
     return missing
