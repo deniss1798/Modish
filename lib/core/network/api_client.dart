@@ -1,10 +1,9 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:http_parser/http_parser.dart';
 
 import '../config/api_config.dart';
+import 'photo_upload_attempt.dart';
 import 'user_error_message.dart';
 import '../../features/recommendations/models.dart';
 
@@ -138,6 +137,8 @@ class ApiClient {
   String? refreshToken;
   Future<void>? _refreshing;
   int _sessionVersion = 0;
+  bool _disposed = false;
+  final _pendingPhotos = <String, PhotoUploadAttempt>{};
 
   /// Account identity for work which awaits something outside this transport.
   /// Access-token rotation keeps the value; login/logout/disposal advance it.
@@ -155,6 +156,7 @@ class ApiClient {
   void _advanceSession() {
     _sessionVersion++;
     _refreshing = null;
+    _pendingPhotos.clear();
     _stampSessionOptions();
   }
 
@@ -327,6 +329,7 @@ class ApiClient {
 
   /// The client owns its transport; a controller must close only its own client.
   void dispose() {
+    _disposed = true;
     clearToken();
     onUnauthorized = null;
     onSessionChanged = null;
@@ -413,42 +416,74 @@ class ApiClient {
   }
 
   Future<void> analyzeStyleProfile(String photoPath) async {
-    final options = _photoRequestOptions();
-    final lower = photoPath.toLowerCase();
-
-    final subtype = lower.endsWith('.png')
-        ? 'png'
-        : lower.endsWith('.webp')
-        ? 'webp'
-        : 'jpeg';
-
-    final form = FormData.fromMap({
-      'photo': await MultipartFile.fromFile(
-        photoPath,
-        filename: photoPath.split(RegExp(r'[/\\]')).last,
-        contentType: MediaType('image', subtype),
-      ),
-    });
-
-    await _dio.post('/style-profile/analyze', data: form, options: options);
+    await _postPhoto('style_profile', '/style-profile/analyze', photoPath);
   }
 
-  Options _photoRequestOptions() {
-    final random = Random.secure();
-    final key = List.generate(
-      16,
-      (_) => random.nextInt(256),
-    ).map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
-    // Capture the account before reading the file. File preparation can finish
-    // after logout, and must never dispatch that photo under another account.
+  Options _photoRequestOptions(PhotoUploadAttempt attempt, int version) {
     return Options(
-      headers: {'Idempotency-Key': 'photo-$key'},
+      headers: {'Idempotency-Key': attempt.key},
       // The provider has a 180-second server deadline. The usual short read
       // timeout would abandon a valid analysis after its quota was reserved.
       sendTimeout: const Duration(minutes: 2),
       receiveTimeout: const Duration(minutes: 4),
-      extra: {'sessionVersion': _sessionVersion},
+      extra: {'sessionVersion': version},
     );
+  }
+
+  void _clearPhotoAttempt(String kind, PhotoUploadAttempt attempt) {
+    if (identical(_pendingPhotos[kind], attempt)) _pendingPhotos.remove(kind);
+  }
+
+  Future<Response<dynamic>> _postPhoto(
+    String kind,
+    String endpoint,
+    String photoPath,
+  ) async {
+    // Capture the account before any file IO. Even a finished preparation must
+    // not dispatch its photo after logout/login or disposal.
+    final version = _sessionVersion;
+    final request = RequestOptions(path: endpoint);
+    void requireAccount() {
+      if (_disposed) throw _staleSession(request);
+      _requireSession(version, request);
+    }
+
+    final captured = await PhotoUploadAttempt.capture(
+      photoPath,
+      request: request,
+      requireAccount: requireAccount,
+    );
+    requireAccount();
+    var attempt = _pendingPhotos[kind];
+    if (attempt == null || !attempt.matches(captured)) {
+      attempt = captured;
+      _pendingPhotos[kind] = attempt;
+    }
+    try {
+      final response = await _dio.post<dynamic>(
+        endpoint,
+        data: attempt.newForm(),
+        options: _photoRequestOptions(attempt, version),
+      );
+      // A proxy can return HTML/arrays with 200 after the server completed the
+      // job. Keep its key until we receive the expected response container.
+      if (response.data is! Map) {
+        throw DioException(
+          requestOptions: response.requestOptions,
+          response: response,
+          type: DioExceptionType.badResponse,
+        );
+      }
+      _clearPhotoAttempt(kind, attempt);
+      return response;
+    } on DioException catch (error) {
+      // Pending/ambiguous failures can already have spent quota or committed a
+      // result. Only confirmed stopped/refunded jobs permit a fresh request.
+      if (PhotoUploadAttempt.isTerminalFailure(error)) {
+        _clearPhotoAttempt(kind, attempt);
+      }
+      rethrow;
+    }
   }
 
   Future<List<Outfit>> feed() async {
@@ -818,24 +853,10 @@ class ApiClient {
   }
 
   Future<Map<String, dynamic>> onboardingPhoto(String photoPath) async {
-    final options = _photoRequestOptions();
-    final lower = photoPath.toLowerCase();
-    final subtype = lower.endsWith('.png')
-        ? 'png'
-        : lower.endsWith('.webp')
-        ? 'webp'
-        : 'jpeg';
-    final form = FormData.fromMap({
-      'photo': await MultipartFile.fromFile(
-        photoPath,
-        filename: photoPath.split(RegExp(r'[/\\]')).last,
-        contentType: MediaType('image', subtype),
-      ),
-    });
-    final response = await _dio.post(
+    final response = await _postPhoto(
+      'onboarding',
       '/onboarding/photo',
-      data: form,
-      options: options,
+      photoPath,
     );
     return Map<String, dynamic>.from(response.data as Map);
   }

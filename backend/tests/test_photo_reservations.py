@@ -246,7 +246,9 @@ class PhotoReservationTests(unittest.IsolatedAsyncioTestCase):
       return deepcopy(PENDING)
     with patch(ENDPOINTS[0][1], provider):
       async with self.client() as client:
-        self.assertEqual((await self.post(client, ENDPOINTS[0][0], "bad key")).status_code, 400)
+        invalid = await self.post(client, ENDPOINTS[0][0], "bad key")
+        self.assertEqual(invalid.status_code, 400)
+        self.assertEqual(invalid.json()['detail'], 'Запрос анализа недействителен. Выберите фото ещё раз.')
         self.assertEqual(self.usage(), 0)
         self.assertEqual((await self.post(client, ENDPOINTS[0][0], None)).status_code, 200)
 

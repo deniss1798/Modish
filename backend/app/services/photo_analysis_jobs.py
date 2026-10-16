@@ -47,7 +47,7 @@ def photo_request_id(value: str | None) -> str:
   if value is None:
     return str(uuid4())
   if not re.fullmatch(r"[A-Za-z0-9._:-]{1,128}", value):
-    raise HTTPException(status_code=400, detail="Некорректный Idempotency-Key.")
+    raise HTTPException(status_code=400, detail="Запрос анализа недействителен. Выберите фото ещё раз.")
   return value
 
 
