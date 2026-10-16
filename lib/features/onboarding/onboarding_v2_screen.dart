@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../app.dart';
+import '../../core/presentation/outfit_recommendations.dart';
 import '../../core/presentation/price_format.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -570,16 +571,21 @@ class _OnboardingV2ScreenState extends State<OnboardingV2Screen> {
     children: [
       const Text('3 / 3 · Ваши первые образы', style: AppTextStyles.caption),
       const SizedBox(height: 12),
-      const Text('Уже больше похоже на вас', style: AppTextStyles.screenTitle),
+      Text(
+        c.wowOutfits.isEmpty
+            ? 'Подходящие образы пока не найдены'
+            : 'Уже больше похоже на вас',
+        style: AppTextStyles.screenTitle,
+      ),
       const SizedBox(height: 12),
       Text(
         c.wowOutfits.isEmpty
-            ? 'Пока не хватает вещей вашего размера и бюджета для целого образа. В ленте — подходящие вещи по отдельности.'
+            ? '$noOutfitRecommendationsMessage Можно перейти к ленте отдельных вещей.'
             : 'Вещи сочетаются между собой и проходят ваши условия. Нажмите на образ, чтобы рассмотреть его.',
         style: AppTextStyles.bodyMuted,
       ),
       const SizedBox(height: 22),
-      ...c.wowOutfits.map(
+      ...limitOutfitRecommendations(c.wowOutfits).map(
         (outfit) => Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

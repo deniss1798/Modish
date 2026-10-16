@@ -494,7 +494,7 @@ class ApiClient {
 
   Future<List<Outfit>> generateOutfits({
     String type = 'outfit',
-    int count = 10,
+    int count = 3,
     String scenario = 'daily',
   }) async {
     final response = await _dio.post(
@@ -888,7 +888,7 @@ class ApiClient {
     return Map<String, dynamic>.from(response.data as Map);
   }
 
-  Future<Map<String, dynamic>> onboardingComplete({int count = 4}) async {
+  Future<Map<String, dynamic>> onboardingComplete({int count = 3}) async {
     final response = await _dio.post(
       '/onboarding/complete',
       queryParameters: {'count': count},

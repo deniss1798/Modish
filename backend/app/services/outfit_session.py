@@ -118,7 +118,7 @@ def _prepare(sessions, user_id, *, count, scenario, only_if_empty=False):
             tuple(db.info.get('prepared_feed_top_ids', ()))[:100])
 
 
-def _publish(sessions, user_id, proposal, *, replace_existing, only_if_empty=False):
+def _publish(sessions, user_id, proposal, *, replace_existing, only_if_empty=False, publish_transform=None):
     from ..api.outfits import visible_outfits
     with sessions() as db:
         catalogue = lock_catalogue(db, proposal.evidence, excluded_ids=proposal.dependency_ids,
@@ -149,11 +149,16 @@ def _publish(sessions, user_id, proposal, *, replace_existing, only_if_empty=Fal
             response = visible_outfits(db, mutation.owner, rows, rules=catalogue.rules)
             if len(response) != len(rows):
                 raise RecommendationSnapshotChanged()
+            if publish_transform is not None:
+                # Projection owns no independent transaction. Its records/quota
+                # either commit with this outfit batch or all roll back.
+                response = publish_transform(db, mutation.owner, rows, response, catalogue.rules)
         db.commit()
         return response
 
 
-def build_outfits_response(bind, user_id, *, count=3, scenario='daily', replace_existing=True, only_if_empty=False):
+def build_outfits_response(bind, user_id, *, count=3, scenario='daily', replace_existing=True,
+        only_if_empty=False, publish_transform=None):
     sessions = sessionmaker(bind=bind, autoflush=False, expire_on_commit=False)
     try:
         if not _initialize(sessions, user_id, only_if_empty=only_if_empty):
@@ -163,7 +168,10 @@ def build_outfits_response(bind, user_id, *, count=3, scenario='daily', replace_
             try:
                 proposal = _prepare(sessions, user_id, count=count, scenario=scenario, only_if_empty=only_if_empty)
                 preparing = False
-                return _publish(sessions, user_id, proposal, replace_existing=replace_existing, only_if_empty=only_if_empty)
+                publish_options = dict(replace_existing=replace_existing, only_if_empty=only_if_empty)
+                if publish_transform is not None:
+                    publish_options['publish_transform'] = publish_transform
+                return _publish(sessions, user_id, proposal, **publish_options)
             except RecommendationSnapshotChanged:
                 pass
             except DBAPIError as error:

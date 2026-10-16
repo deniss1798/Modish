@@ -132,7 +132,7 @@ class DecimalPricePathTests(unittest.TestCase):
         products['top'].price = Decimal('3334.33')
         self.assertEqual(outfit_problem(products, self.fit, spec), 'outfit_budget')
 
-    def test_visible_wow_uses_exact_full_sum_while_nonactivation_retains_per_item_policy(self):
+    def test_visible_outfits_use_exact_full_sum_with_or_without_activation(self):
         products = self.products(('3333.67', '3333.66', '3333.66'))
         row = self.outfit(products)
         self.assertEqual(visible_outfits(self.db, self.user, [row]), [])
@@ -140,9 +140,11 @@ class DecimalPricePathTests(unittest.TestCase):
         self.assertNotIn('до 10000 ₽', activation._wow_explanation(list(products.values()), profile, self.fit))
         self.db.delete(self.session)
         self.db.flush()
+        self.assertEqual(visible_outfits(self.db, self.user, [row]), [])
+        products['top'].price -= Decimal('0.99')
         payload = self.assert_json_numbers(visible_outfits(self.db, self.user, [row]))
         self.assertEqual(len(payload), 1)
-        self.assertEqual(payload[0]['total_price'], 10000.99)
+        self.assertEqual(payload[0]['total_price'], 10000)
         self.assertEqual(self.assert_json_numbers(outfit_to_api(row))['total_price'], 10000.99)
 
     def test_complete_wow_keeps_decimal_total_and_json_safe_snapshot(self):
@@ -158,29 +160,35 @@ class DecimalPricePathTests(unittest.TestCase):
         self.assert_json_numbers(self.session.wow_json)
         self.db.flush()
 
-    def test_v2_combinations_preserve_exact_sum_and_existing_five_percent_tolerance(self):
+    def test_v2_combinations_preserve_exact_sum_and_strict_total_budget(self):
         products = self.products(('1229.50', '2458.98', '3688.97'))
         buckets = {slot: [v2.SlotCandidate(slot, product, .7, .7, .7, .7)]
             for slot, product in products.items()}
         candidates = v2._build_combinations(buckets, scenario='daily', fit=self.fit, limit=1)
         self.assertTrue(candidates)
         self.assertEqual(candidates[0].total_price, Decimal('7377.45'))
-        self.assertTrue(v2._outfit_budget_ok(Decimal('31500.00'), 3, self.fit))
-        self.assertFalse(v2._outfit_budget_ok(Decimal('31500.01'), 3, self.fit))
+        self.assertTrue(v2._outfit_budget_ok(Decimal('10000.00'), 3, self.fit))
+        self.assertFalse(v2._outfit_budget_ok(Decimal('10000.01'), 3, self.fit))
+        self.assertFalse(v2._outfit_budget_ok(Decimal('30000'), 3, self.fit))
+        self.assertFalse(v2._outfit_budget_ok(Decimal('100'), 3, None))
 
-    def test_v2_generator_keeps_activation_full_cap_and_normal_per_item_policy(self):
-        self.products(('3333.67', '3333.66', '3333.66'))
+    def test_v2_generator_keeps_strict_total_cap_for_activation_and_legacy(self):
+        products = self.products(('3333.67', '3333.66', '3333.66'))
         self.assertEqual(v2.generate_outfits_v2(self.db, self.user, count=1, scenario='daily'), [])
         self.db.delete(self.session)
         self.db.flush()
+        self.assertEqual(v2.generate_outfits_v2(self.db, self.user, count=1, scenario='daily'), [])
+        products['top'].price -= Decimal('0.99')
         rows = v2.generate_outfits_v2(self.db, self.user, count=1, scenario='daily')
         self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0].total_price, Decimal('10000.99'))
+        self.assertEqual(rows[0].total_price, Decimal('10000'))
 
-    def test_legacy_total_keeps_kopecks_without_adding_a_new_full_outfit_cap(self):
+    def test_legacy_total_keeps_kopecks_and_cannot_exceed_confirmed_total_budget(self):
         products = self.products(('4000.33', '4000.33', '4000.33'))
         self.db.delete(self.session)
         self.db.flush()
+        self.assertEqual(outfit_service.generate_outfits(self.db, self.user, count=1, use_v2=False), [])
+        self.fit.budget_max = 12001
         rows = outfit_service.generate_outfits(self.db, self.user, count=1, use_v2=False)
         self.assertEqual(len(rows), 1)
         self.assertEqual(set(rows[0].items_json.values()), {p.id for p in products.values()})

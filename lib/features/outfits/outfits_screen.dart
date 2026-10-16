@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../app.dart';
+import '../../core/presentation/outfit_recommendations.dart';
 import '../../core/presentation/price_format.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -9,17 +10,6 @@ import 'outfit_detail_screen.dart';
 import 'outfit_presentation.dart';
 
 enum _OutfitScenario { all, daily, office, evening }
-
-String _scenarioLabel(String key) {
-  return switch (key.toLowerCase()) {
-    'daily' => 'Каждый день',
-    'office' => 'В офис',
-    'evening' => 'Вечер',
-    'casual' => 'Casual',
-    'minimal' => 'Минимализм',
-    _ => key,
-  };
-}
 
 class OutfitsScreen extends StatefulWidget {
   const OutfitsScreen({super.key, required this.controller});
@@ -76,7 +66,9 @@ class _OutfitsScreenState extends State<OutfitsScreen> {
         content: Text(
           n > 0
               ? 'Подобрано: $n ${_pluralOutfits(n)}'
-              : 'Новых сочетаний пока нет. Текущие образы сохранены.',
+              : widget.controller.outfits.where(_matches).isNotEmpty
+              ? 'Новых сочетаний пока нет. Текущие образы сохранены.'
+              : noOutfitRecommendationsMessage,
         ),
       ),
     );
@@ -93,7 +85,7 @@ class _OutfitsScreenState extends State<OutfitsScreen> {
   @override
   Widget build(BuildContext context) {
     final c = widget.controller;
-    final outfits = c.outfits.where(_matches).toList();
+    final outfits = limitOutfitRecommendations(c.outfits.where(_matches));
     final busy = c.isLoading;
 
     return ListView(
@@ -129,9 +121,7 @@ class _OutfitsScreenState extends State<OutfitsScreen> {
             child: EmptyState(
               icon: Icons.checkroom_outlined,
               title: 'Пока нет образов',
-              message: _apiScenario == null
-                  ? 'Подберём сочетания на каждый день, в офис и на вечер.'
-                  : 'Соберём лук для сценария «${_scenarioLabel(_apiScenario!)}».',
+              message: noOutfitRecommendationsMessage,
               actionLabel: 'Собрать образы',
               busy: busy,
               onAction: _generate,

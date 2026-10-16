@@ -279,7 +279,7 @@ def complete_onboarding_wow(
   *,
   user: User,
   profile: StyleProfile,
-  outfit_count: int = 4,
+  outfit_count: int = 3,
 ) -> dict[str, Any]:
   profile.completed_at = datetime.now(timezone.utc)
   profile.onboarding_step = 4
@@ -290,7 +290,8 @@ def complete_onboarding_wow(
   if prefs:
     scenario = STYLE_PREF_TO_SCENARIO.get(prefs[0], "daily")
 
-  outfits = generate_outfits(db, user, count=min(4, max(1, outfit_count)), scenario=scenario)
+  from .outfit_policy import requested_outfit_count
+  outfits = generate_outfits(db, user, count=requested_outfit_count(outfit_count), scenario=scenario)
   body_shape = profile.body_shape
   color_type = profile.color_type
 

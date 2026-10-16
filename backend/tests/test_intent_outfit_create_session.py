@@ -200,7 +200,7 @@ class IntentOutfitCreateSessionTests(unittest.TestCase):
         result = self.build()
         assert_full_outfits(self, result, nonempty=False)
         self.assertEqual(result['outfits'], [])
-        self.assertIn('полный комплект', result['message'])
+        self.assertIn('Пока нет подходящих образов', result['message'])
         self.assert_once(result)
 
     def test_total_budget_preserves_one_kopeck_boundary_without_relaxation(self):

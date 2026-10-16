@@ -19,6 +19,7 @@ from .recommendation_context import context_for
 from .outfit_quality import pair_compatible, outfit_compatible
 from .product_identity import product_identity_keys
 from .recommendation_budget import check_ranking_budget
+from .outfit_policy import MAX_RECOMMENDED_OUTFITS, requested_outfit_count
 
 SLOT_OPTIONS = (('top', 'bottom', 'shoes'), ('one_piece', 'shoes'))
 
@@ -73,7 +74,8 @@ def serialize_outfit(products, fit, spec, *, intent_id, version):
         'is_saved': False}
 
 
-def build_intent_outfits(db, user, spec, *, intent_id, version, locked=None, excluded_ids=(), limit=5, stats=None):
+def build_intent_outfits(db, user, spec, *, intent_id, version, locked=None, excluded_ids=(), limit=MAX_RECOMMENDED_OUTFITS, stats=None):
+    limit = requested_outfit_count(limit)
     profile, fit, taste = load_preferences(db, user)
     if not fit or fit.gender_target not in {'womenswear', 'menswear', 'unisex'} or not fit.budget_max:
         return []

@@ -19,6 +19,7 @@ from .intent_outfits import build_intent_outfits, outfit_problem, serialize_outf
 from .intent_explanations import product_reasons
 from .intent_metrics import emit
 from .recommendation_budget import check_ranking_budget
+from .outfit_policy import MAX_RECOMMENDED_OUTFITS, EMPTY_OUTFITS_MESSAGE
 
 INTENT_TTL = timedelta(hours=24)
 RESULT_LIMIT = 10
@@ -255,6 +256,8 @@ def intent_response(db, user, intent, *, remember=False):
                         continue
                     previous_keys.append(seen - excluded_keys)
                     outfits.append(serialize_outfit(group, fit, spec, intent_id=intent.id, version=intent.version))
+                    if len(outfits) >= MAX_RECOMMENDED_OUTFITS:
+                        break
         elif spec.intent_type == 'single_item':
             products = item_results(db, user, spec, excluded_ids=excluded, stats=stats)
         else:
@@ -311,7 +314,7 @@ def response_payload(intent, spec, fit, products, outfits):
         'constraints': spec.model_dump(), 'products': products, 'outfits': outfits,
         'effective_budget_max': min(fit.budget_max, spec.budget_max or fit.budget_max) if fit and fit.budget_max else None,
         'message': ('Уточните запрос: ' + '; '.join(spec.unresolved)) if spec.unresolved else
-            'Не удалось собрать полный комплект с подтверждёнными размерами в указанном бюджете.' if spec.intent_type == 'outfit' and not outfits else
+            EMPTY_OUTFITS_MESSAGE if spec.intent_type == 'outfit' and not outfits else
             'В каталоге пока нет вещей с подтверждённым размером и всеми указанными условиями.' if spec.intent_type == 'single_item' and not products else None}
 
 

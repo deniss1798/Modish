@@ -15,6 +15,7 @@ from ..services.outfit_quality import scenario_product_ok, outfit_compatible
 from ..services.product_identity import product_identity_keys
 from ..services.catalog.rule_filters import load_rules_by_source_id
 from ..services.recommendation_revision import owner_mutation
+from ..services.outfit_policy import MAX_RECOMMENDED_OUTFITS, outfit_total_within_budget
 from .deps import auth_scheme, get_db, user_from_token
 from .serializers import outfit_to_api
 from ..schemas.api_product import product_to_api
@@ -59,7 +60,9 @@ def visible_outfits(db: Session, user: User, rows: list[Outfit], *, rules=None) 
       if outfit_problem(slots, fit, IntentSpec.model_validate(row.intent_constraints_json)):
         continue
     total = sum((as_rubles(p.price) for p in slots.values()), as_rubles(0))
-    if activation and (any(not product_ok(p, fit, activation, rules=rules) for p in slots.values()) or total > as_rubles(fit.budget_max)):
+    if not outfit_total_within_budget(total, fit):
+      continue
+    if activation and any(not product_ok(p, fit, activation, rules=rules) for p in slots.values()):
       continue
     keys = set().union(*(product_identity_keys(p) for p in slots.values()))
     if any(sum(bool(product_identity_keys(p) & old) for p in slots.values()) > len(slots) - (2 if old_scenario == scenario else 1) for old_scenario, old in previous_keys):
@@ -111,7 +114,8 @@ def outfits_list(
   if scenario and scenario.strip():
     q = q.where(Outfit.style_direction == scenario.strip().lower())
   rows = db.execute(q.order_by(Outfit.created_at.desc()).limit(50)).scalars().all()
-  return visible_outfits(db, user, rows)
+  response = visible_outfits(db, user, rows)
+  return response if saved_only else response[:MAX_RECOMMENDED_OUTFITS]
 
 
 @router.post("/outfits/save")

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../app.dart';
+import '../../core/presentation/outfit_recommendations.dart';
 import '../../core/presentation/price_format.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -77,11 +78,27 @@ class _ShoppingTaskScreenState extends State<ShoppingTaskScreen> {
       animation: task,
       builder: (context, _) {
         final result = task.result;
-        final rows = (result?['products'] as List? ?? [])
-            .cast<Map<String, dynamic>>();
+        final pending = result?['state'] == 'pending';
+        final rows = pending
+            ? <Map<String, dynamic>>[]
+            : (result?['products'] as List? ?? []).cast<Map<String, dynamic>>();
         final constraints = result?['constraints'] as Map? ?? {};
-        final outfits = (result?['outfits'] as List? ?? [])
-            .cast<Map<String, dynamic>>();
+        final outfits = pending
+            ? <Map<String, dynamic>>[]
+            : limitOutfitRecommendations(
+                (result?['outfits'] as List? ?? [])
+                    .cast<Map<String, dynamic>>(),
+              );
+        final serverMessage = '${result?['message'] ?? ''}'.trim();
+        final message = pending
+            ? 'Подборка ещё готовится. Подождите немного и повторите тот же запрос.'
+            : serverMessage.isNotEmpty
+            ? serverMessage
+            : result?['state'] == 'ready' && rows.isEmpty && outfits.isEmpty
+            ? constraints['intent_type'] == 'outfit'
+                  ? noOutfitRecommendationsMessage
+                  : 'Пока нет вещей, которые проходят условия вашего запроса.'
+            : null;
         return Scaffold(
           appBar: AppBar(
             title: const Text('Ваш запрос', style: AppTextStyles.sectionTitle),
@@ -208,11 +225,8 @@ class _ShoppingTaskScreenState extends State<ShoppingTaskScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  if (result['message'] != null)
-                    Text(
-                      '${result['message']}',
-                      style: AppTextStyles.bodyMuted,
-                    ),
+                  if (message != null)
+                    Text(message, style: AppTextStyles.bodyMuted),
                   if (result['effective_budget_max'] != null &&
                       result['effective_budget_max'] !=
                           constraints['budget_max'])

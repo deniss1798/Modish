@@ -15,10 +15,14 @@ const Map<String, Color> _namedColors = {
   'brown': Color(0xFF6D4C41),
 };
 
-Color _colorFromName(String raw) {
+Color? _colorFromName(String raw) {
   final key = raw.toLowerCase().trim();
-  return _namedColors[key] ?? const Color(0xFFE5E7EB);
+  return _namedColors[key];
 }
+
+List<String> _strings(Object? value) => value is List
+    ? value.whereType<String>().where((item) => item.trim().isNotEmpty).toList()
+    : const [];
 
 class Outfit {
   const Outfit({
@@ -46,57 +50,52 @@ class Outfit {
   final List<IconData> icons;
 
   factory Outfit.fromApi(Map<String, dynamic> json) {
-    final content = (json['content_json'] as Map?) ?? const {};
-    final items = ((content['items'] as Map?) ?? const {}).map(
-      (key, value) => MapEntry(_labelForKey('$key'), '$value'),
-    );
-    final why = List<String>.from(
-      (content['why_it_fits'] as List?) ?? const ['подходит под ваш профиль'],
-    );
-    final alternatives = List<String>.from(
-      (content['alternatives'] as List?) ??
-          const ['можно адаптировать из базового гардероба'],
-    );
-    final tags = (json['tags_json'] as Map?) ?? const {};
-    final rawOccasions = List<String>.from((tags['occasion'] as List?) ?? const []);
-    final colorNames = List<String>.from(
-      (tags['colors'] as List?)?.map((e) => e.toString()).toList() ?? const [],
-    );
-    final palette = colorNames.isNotEmpty
-        ? colorNames.map(_colorFromName).toList()
-        : const [
-            Color(0xFF142238),
-            Colors.white,
-            Color(0xFFCFCBC5),
-          ];
+    final content = json['content_json'] is Map
+        ? json['content_json'] as Map
+        : const {};
+    final items = <String, String>{};
+    final suppliedItems = content['items'];
+    if (suppliedItems is Map) {
+      for (final entry in suppliedItems.entries) {
+        if (entry.key is String &&
+            entry.value is String &&
+            (entry.value as String).trim().isNotEmpty) {
+          items[_labelForKey(entry.key as String)] = entry.value as String;
+        }
+      }
+    }
+    final tags = json['tags_json'] is Map ? json['tags_json'] as Map : const {};
+    final rawOccasions = _strings(tags['occasion']);
     return Outfit(
-      id: json['id'].toString(),
-      title: (json['title'] ?? 'Образ').toString(),
-      description: (json['description'] ?? 'Минималистичный образ.').toString(),
+      id: json['id']?.toString() ?? '',
+      title: json['title'] is String ? json['title'] as String : 'Образ',
+      description: json['description'] is String
+          ? json['description'] as String
+          : '',
       occasion: _occasionRuFromTags(rawOccasions),
-      occasionTags: rawOccasions.map((e) => e.toString().toLowerCase()).toList(),
-      items: items.isEmpty
-          ? const {
-              'Верх': 'базовый верх',
-              'Низ': 'прямой низ',
-              'Слой': 'легкий слой',
-              'Обувь': 'удобная обувь',
-            }
-          : items,
-      colors: palette,
-      why: why,
-      alternatives: alternatives,
-      icons: const [
-        Icons.checkroom_outlined,
-        Icons.view_week_outlined,
-        Icons.dry_cleaning_outlined,
-        Icons.directions_walk_outlined,
+      occasionTags: rawOccasions
+          .map((e) => e.toString().toLowerCase())
+          .toList(),
+      items: items,
+      colors: _strings(
+        tags['colors'],
+      ).map(_colorFromName).whereType<Color>().toList(),
+      why: _strings(content['why_it_fits']),
+      alternatives: _strings(content['alternatives']),
+      icons: [
+        for (final label in items.keys)
+          switch (label) {
+            'Низ' => Icons.view_week_outlined,
+            'Слой' => Icons.dry_cleaning_outlined,
+            'Обувь' => Icons.directions_walk_outlined,
+            _ => Icons.checkroom_outlined,
+          },
       ],
     );
   }
 
   static String _occasionRuFromTags(List<String> occasions) {
-    if (occasions.isEmpty) return 'Каждый день';
+    if (occasions.isEmpty) return 'Не указано';
     switch (occasions.first.toLowerCase()) {
       case 'office':
         return 'Офис';
@@ -105,7 +104,7 @@ class Outfit {
       case 'daily':
         return 'Каждый день';
       default:
-        return 'Каждый день';
+        return occasions.first;
     }
   }
 
@@ -114,6 +113,7 @@ class Outfit {
       'top' => 'Верх',
       'bottom' => 'Низ',
       'layer' => 'Слой',
+      'one_piece' => 'Платье / комплект',
       'shoes' => 'Обувь',
       _ => key,
     };

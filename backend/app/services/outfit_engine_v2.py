@@ -31,6 +31,7 @@ from .garment_roles import product_role
 from .catalog_audience import adult_catalog_conditions
 from .recommendation_revision import owner_mutation, accept_personal_change
 from .recommendation_budget import check_ranking_budget
+from .outfit_policy import requested_outfit_count, outfit_total_within_budget
 
 
 SLOT_CATEGORIES: dict[str, set[str]] = {
@@ -493,9 +494,7 @@ def _novelty_score(items: list[SlotCandidate]) -> float:
 
 
 def _outfit_budget_ok(total: Decimal, item_count: int, fit: FitProfile | None) -> bool:
-  if fit is None or int(fit.budget_max or 0) <= 0:
-    return True
-  return total <= as_rubles(fit.budget_max) * max(1, item_count) * Decimal('1.05')
+  return outfit_total_within_budget(total, fit)
 
 
 def _reason(candidate: OutfitCandidate, *, scenario: str, compatibility_parts: dict[str, float]) -> str:
@@ -619,7 +618,7 @@ def generate_outfits_v2(
 
 def prepare_outfit_batch(db, user, *, count=3, scenario='daily', extra_existing=()) -> OutfitBatch:
   scenario_key = _scenario_key(scenario)
-  need = max(1, min(10, int(count)))
+  need = requested_outfit_count(count)
   history_name = f"outfit_rotation:{scenario_key}"
   fit = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
   if fit is None or fit.gender_target not in {"menswear", "womenswear", "unisex"}:

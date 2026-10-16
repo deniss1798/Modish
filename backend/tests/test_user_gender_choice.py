@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.api import fit_profile as fit_api, onboarding as onboarding_api, recommendations as recommendations_api
 from app.db import Base
-from app.models import ActivationSession, FitProfile, Recommendation, SavedRecommendation, StyleProfile, User
+from app.models import ActivationSession, FitProfile, Product, Recommendation, SavedRecommendation, StyleProfile, User
 from app.services import activation_service as activation, onboarding_service as onboarding
 from app.services.fit_size_profile import missing_fit_requirements
 
@@ -184,7 +184,37 @@ class UserGenderChoiceTests(unittest.TestCase):
                 recommendations_api.recommendation_detail(rec.id, db=self.db, credentials=None)
             self.assertEqual(error.exception.status_code, 404)
             onboarding.apply_step1(self.db, user=self.user, profile=self.profile, gender='unisex', age_group=None)
-            self.assertEqual(len(recommendations_api.recommendations_outfits_legacy(db=self.db, credentials=None)), 1)
-            self.assertEqual(len(recommendations_api.recommendations_saved(db=self.db, credentials=None)), 1)
-            self.assertEqual(recommendations_api.recommendation_detail(rec.id, db=self.db, credentials=None)['id'], rec.id)
+            self.assertEqual(recommendations_api.recommendations_outfits_legacy(db=self.db, credentials=None), [])
+            self.assertEqual(recommendations_api.recommendations_saved(db=self.db, credentials=None), [])
+            with self.assertRaises(HTTPException) as error:
+                recommendations_api.recommendation_detail(rec.id, db=self.db, credentials=None)
+            self.assertEqual(error.exception.status_code, 404)
+            activation.configure(self.db, self.user, gender_target='womenswear', **self.preferences)
+            onboarding.apply_step1(self.db, user=self.user, profile=self.profile, gender='unisex', age_group=None)
+            self.db.delete(self.db.get(ActivationSession, self.user.id))
+            ids = {}
+            for slot, category, title in (('top', 'рубашки', 'Рубашка хлопковая'),
+                    ('bottom', 'брюки', 'Брюки прямые'), ('shoes', 'обувь', 'Лоферы кожаные')):
+                sku = str(uuid4())
+                ids[slot] = sku
+                self.db.add(Product(id=sku, external_id=sku, source='baon', brand='Synthetic control',
+                    title=title, category=category, price=1000, currency='RUB', gender_target='unisex',
+                    available_sizes=['38' if slot == 'shoes' else 'M'],
+                    feed_raw_json={'size_system': 'EU' if slot == 'shoes' else 'LETTER'},
+                    image_url=f'https://baon.ru/images/{sku}.jpg', product_url=f'https://baon.ru/products/{sku}',
+                    colors=['black'], style_tags=['casual'], is_active=1, is_available=1,
+                    availability_status='in_stock', last_seen_in_feed_at=datetime.now(timezone.utc)))
+            positive = Recommendation(id=str(uuid4()), user_id=self.user.id, title='Real control',
+                description='Actual catalogue products', content_json={'product_ids': ids}, tags_json={'occasion': ['daily']})
+            self.db.add(positive)
+            self.db.flush()
+            self.db.add(SavedRecommendation(id=str(uuid4()), user_id=self.user.id, recommendation_id=positive.id))
+            self.db.commit()
+            self.assertEqual({row['id'] for row in recommendations_api.recommendations_outfits_legacy(
+                db=self.db, credentials=None)}, {positive.id})
+            self.assertEqual({row['recommendation_id'] for row in recommendations_api.recommendations_saved(
+                db=self.db, credentials=None)}, {positive.id})
+            self.assertEqual(recommendations_api.recommendation_detail(positive.id,
+                db=self.db, credentials=None)['id'], positive.id)
         self.assertIsNotNone(self.db.get(SavedRecommendation, saved.id))
+        self.assertIsNotNone(self.db.get(Recommendation, rec.id))

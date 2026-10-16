@@ -1,180 +1,116 @@
-from __future__ import annotations
-
-from dataclasses import dataclass
+"""Legacy Recommendation JSON backed only by revalidated catalogue outfits."""
 from datetime import datetime, timezone
-from typing import Any
+from types import SimpleNamespace
 from uuid import uuid4
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
-from ..models import FitProfile, Recommendation, StyleProfile
-from ..schemas.photo_analysis import extract_analysis_section
-
-
-@dataclass(frozen=True)
-class RecommendationItem:
-  name: str
-  type: str
-  color: str
-  reason: str
-  # future_fields: price, url, image_url, brand
-
-  def to_json(self) -> dict[str, Any]:
-    return {
-      "name": self.name,
-      "type": self.type,
-      "color": self.color,
-      "reason": self.reason,
-      "price": None,
-      "url": None,
-      "image_url": None,
-      "brand": None,
-    }
+from ..models import FitProfile, Recommendation, User
+from .catalog.rule_filters import load_rules_by_source_id
+from .outfit_policy import requested_outfit_count
 
 
-def _pick_palette(a: dict[str, Any]) -> list[str]:
-  raw = a.get("color_palette") or []
-  out: list[str] = []
-  for x in raw:
-    s = str(x).strip().lower()
-    if s and s not in out:
-      out.append(s)
-  return out[:5]
+_SLOTS = ({'top', 'bottom', 'shoes'}, {'one_piece', 'shoes'})
+_TITLES = {'daily': 'На каждый день', 'office': 'В офис', 'evening': 'На выход'}
 
 
-def _pick_silhouettes(a: dict[str, Any]) -> list[str]:
-  raw = a.get("recommended_silhouettes") or []
-  out: list[str] = []
-  for x in raw:
-    s = str(x).strip().lower()
-    if s and s not in out:
-      out.append(s)
-  return out[:5]
+def _unique(values):
+    return list(dict.fromkeys(str(value).strip() for value in values if str(value).strip()))[:12]
 
 
-def _pick_styles(a: dict[str, Any]) -> list[str]:
-  raw = a.get("style_directions") or []
-  out: list[str] = []
-  for x in raw:
-    s = str(x).strip().lower()
-    if s and s not in out:
-      out.append(s)
-  return out[:5]
-
-
-def _scenario_ru(scenario: str) -> str:
-  s = (scenario or "").strip().lower()
-  return {"daily": "каждый день", "office": "офис", "evening": "вечер"}.get(s, "каждый день")
-
-
-def _base_outfit_template(scenario: str) -> dict[str, str]:
-  s = (scenario or "").strip().lower()
-  if s == "office":
-    return {"top": "рубашка", "bottom": "чиносы", "layer": "пиджак", "shoes": "лоферы"}
-  if s == "evening":
-    return {"top": "водолазка", "bottom": "брюки", "layer": "пальто", "shoes": "ботинки"}
-  return {"top": "лонгслив", "bottom": "прямые джинсы", "layer": "жакет", "shoes": "кроссовки"}
-
-
-def _item_reason(style: str | None, silhouette: str | None) -> str:
-  parts: list[str] = []
-  if silhouette:
-    parts.append(f"силуэт: {silhouette}")
-  if style:
-    parts.append(f"направление: {style}")
-  return " · ".join(parts) if parts else "соответствует вашему профилю"
-
-
-def generate_recommendations(
-  db: Session,
-  profile: StyleProfile,
-  *,
-  count: int,
-  scenario: str,
-) -> list[Recommendation]:
-  """
-  Генерация рекомендаций, зависящая от style_profile.analysis:
-  - color_palette
-  - recommended_silhouettes
-  - style_directions
-
-  Возвращает созданные Recommendation (db.add + db.flush, без commit).
-  """
-  fit = db.scalar(select(FitProfile).where(FitProfile.user_id == profile.user_id))
-  if fit is None or fit.gender_target not in {"menswear", "womenswear", "unisex"}:
-    return []
-  a = extract_analysis_section(profile.profile_json or {})
-  palette = _pick_palette(a) or ["navy", "white", "graphite"]
-  silhouettes = _pick_silhouettes(a) or ["straight", "structured"]
-  styles = _pick_styles(a) or ["minimal"]
-
-  base = _base_outfit_template(scenario)
-  now = datetime.now(timezone.utc)
-  created: list[Recommendation] = []
-
-  count = max(1, min(10, int(count)))
-  for i in range(count):
-    c1 = palette[i % len(palette)]
-    c2 = palette[(i + 1) % len(palette)]
-    sil = silhouettes[i % len(silhouettes)]
-    style = styles[i % len(styles)]
-
-    # Сохраняем старый формат items (map) для Flutter v1
-    items_map = {
-      "top": f"{c1} {base['top']}",
-      "bottom": f"{c2} {base['bottom']}",
-      "layer": f"{palette[0]} {base['layer']}",
-      "shoes": base["shoes"],
-    }
-
-    items_v2 = [
-      RecommendationItem(name=items_map["top"], type="top", color=c1, reason=_item_reason(style, sil)),
-      RecommendationItem(name=items_map["bottom"], type="bottom", color=c2, reason=_item_reason(style, sil)),
-      RecommendationItem(name=items_map["layer"], type="layer", color=palette[0], reason=_item_reason(style, sil)),
-      RecommendationItem(name=items_map["shoes"], type="shoes", color="", reason=_item_reason(style, sil)),
-    ]
-
-    title = f"Образ под ваш стиль · {_scenario_ru(scenario)}"
-    description = f"Палитра: {', '.join(palette[:3])}. Силуэт: {sil}. Направление: {style}."
-
+def _legacy_fields(outfit):
+    products = outfit['products']
+    scenario = outfit['style_direction']
+    reasons = ['Размеры вещей указаны в наличии.', f"Стоимость комплекта: {outfit['total_price']} ₽."]
+    items = {slot: product['title'] for slot, product in products.items()}
+    product_ids = {slot: product['id'] for slot, product in products.items()}
     content = {
-      "items": items_map,  # legacy
-      "items_v2": [it.to_json() for it in items_v2],  # new model
-      "why_it_fits": [
-        f"собрано из вашей палитры ({', '.join(palette[:3])})",
-        f"учтён силуэт ({sil})",
-        f"поддерживает направление стиля ({style})",
-      ],
-      "alternatives": [
-        "верх можно заменить на однотонную футболку из той же палитры",
-        "обувь можно заменить на более формальную пару без смены силуэта",
-      ],
+        'schema_version': 2, 'outfit_id': outfit['id'], 'product_ids': product_ids,
+        'items': items, 'total_price': outfit['total_price'],
+        'items_v2': [{
+            'product_id': product['id'], 'name': product['title'], 'type': slot,
+            'color': ', '.join(product.get('colors') or []), 'reason': reasons[0],
+            'price': product['price'], 'url': product['product_url'],
+            'image_url': product['image_url'], 'brand': product['brand'],
+        } for slot, product in products.items()],
+        'why_it_fits': reasons, 'alternatives': [],
     }
-
     tags = {
-      "styles": [style],
-      "colors": palette[:4],
-      "silhouettes": [sil],
-      "occasion": [(scenario or "daily").strip().lower() or "daily"],
-      "item_types": ["top", "bottom", "layer", "shoes"],
+        'occasion': [scenario], 'item_types': list(products),
+        'styles': _unique(style for product in products.values() for style in product.get('style_tags', [])),
+        'colors': _unique(color for product in products.values() for color in product.get('colors', [])),
+        'silhouettes': _unique(product.get('silhouette') for product in products.values() if product.get('silhouette')),
     }
+    return {'title': _TITLES.get(scenario, 'Персональный образ'),
+        'description': 'Комплект из товаров каталога по вашим размерам и бюджету.',
+        'content_json': content, 'tags_json': tags}
 
-    rec = Recommendation(
-      id=str(uuid4()),
-      user_id=profile.user_id,
-      type="outfit",
-      title=title,
-      description=description,
-      content_json=content,
-      tags_json=tags,
-      status="active",
-      created_at=now,
-      updated_at=now,
-    )
-    db.add(rec)
-    created.append(rec)
 
-  db.flush()
-  return created
+def persist_legacy_recommendations(db, user_id, outfits):
+    """Project a bounded, already validated batch without committing it."""
+    if len(outfits) > requested_outfit_count(len(outfits)):
+        raise ValueError('Legacy outfit projection exceeds its batch bound')
+    now, rows = datetime.now(timezone.utc), []
+    for outfit in outfits:
+        row = Recommendation(id=str(uuid4()), user_id=user_id, type='outfit', status='active',
+            created_at=now, updated_at=now, **_legacy_fields(outfit))
+        db.add(row)
+        rows.append(row)
+    db.flush()
+    return rows
+
+
+def legacy_recommendations_to_api(db, user, rows):
+    """Revalidate each issued recipe; historical collections keep their size.
+
+    Unsupported textual templates remain stored but cannot make a personal
+    product promise. Validation never rewrites a saved record or its identifiers.
+    """
+    from ..api.outfits import visible_outfits
+    from ..api.serializers import rec_to_dict
+    rules, result = load_rules_by_source_id(db), {}
+    for row in rows:
+        content = row.content_json if isinstance(row.content_json, dict) else {}
+        ids = content.get('product_ids')
+        if (row.type != 'outfit' or not isinstance(ids, dict) or set(ids) not in _SLOTS
+                or any(not isinstance(pid, str) or not pid or len(pid) > 64 for pid in ids.values())):
+            continue
+        tags = {} if row.tags_json is None else row.tags_json if isinstance(row.tags_json, dict) else None
+        if tags is None:
+            continue
+        occasions = tags.get('occasion')
+        if occasions is not None and (not isinstance(occasions, list)
+                or any(not isinstance(value, str) or not value or len(value) > 64 for value in occasions)):
+            continue
+        scenario = occasions[0] if occasions else 'daily'
+        reference = content.get('outfit_id')
+        if not isinstance(reference, str) or not reference or len(reference) > 64 or reference != reference.strip():
+            reference = row.id
+        proxy = SimpleNamespace(id=reference, items_json=ids,
+            total_price=0, style_direction=scenario, intent_constraints_json=None,
+            reason='', score=0, is_saved=0, created_at=row.created_at)
+        visible = visible_outfits(db, user, [proxy], rules=rules)
+        if not visible:
+            continue
+        payload = rec_to_dict(row)
+        payload.update(_legacy_fields(visible[0]))
+        result[row.id] = payload
+    return result
+
+
+def generate_recommendations(db, profile, *, count, scenario):
+    """Commit-free compatibility helper; HTTP uses independent rank phases."""
+    from ..api.outfits import visible_outfits
+    from .outfit_engine_v2 import generate_outfits_v2
+    from .recommendation_revision import RecommendationSnapshotChanged
+    fit = db.scalar(select(FitProfile).where(FitProfile.user_id == profile.user_id))
+    if fit is None or fit.gender_target not in {'menswear', 'womenswear', 'unisex'}:
+        return []
+    user = db.get(User, profile.user_id)
+    rows = generate_outfits_v2(db, user, count=requested_outfit_count(count),
+        scenario=scenario, replace_existing=False)
+    visible = visible_outfits(db, user, rows)
+    if len(visible) != len(rows):
+        raise RecommendationSnapshotChanged()
+    return persist_legacy_recommendations(db, user.id, visible)
 

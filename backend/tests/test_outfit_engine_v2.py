@@ -26,7 +26,8 @@ def _product(
   category: str,
   color: str = "black",
   style: str = "minimalism",
-  price: int = 3990,
+  # Three garments must fit the fixture's confirmed 10,000-ruble total.
+  price: int = 2990,
 ) -> Product:
   now = datetime.now(timezone.utc)
   return Product(
@@ -245,17 +246,18 @@ class OutfitEngineV2Tests(unittest.TestCase):
 
   def test_combination_rejects_conflicting_seasons_and_multiple_accents(self) -> None:
     from app.services.outfit_engine_v2 import _build_combinations
+    fit = self.db.scalar(select(FitProfile).where(FitProfile.user_id == self.user.id))
     products = [_product(title="Shirt",category="рубашки",color="red"),
                 _product(title="Trousers",category="брюки",color="green"),
                 _product(title="Shoes",category="обувь",color="black")]
     buckets = {slot:[SlotCandidate(slot,p,.8,.8,.8,.8)] for slot,p in zip(["top","bottom","shoes"],products)}
-    self.assertEqual(_build_combinations(buckets,scenario="daily",fit=None,limit=3), [])
+    self.assertEqual(_build_combinations(buckets,scenario="daily",fit=fit,limit=3), [])
     products[1].colors = ["cream"]
     products[1].color_family = "cream"
-    self.assertTrue(_build_combinations(buckets,scenario="daily",fit=None,limit=3))
+    self.assertTrue(_build_combinations(buckets,scenario="daily",fit=fit,limit=3))
     products[0].season = "winter"
     products[2].season = "summer"
-    self.assertEqual(_build_combinations(buckets,scenario="daily",fit=None,limit=3), [])
+    self.assertEqual(_build_combinations(buckets,scenario="daily",fit=fit,limit=3), [])
 
   def test_old_invalid_and_duplicate_outfits_hidden_without_deleting_saved(self) -> None:
     from app.api.outfits import visible_outfits

@@ -22,6 +22,8 @@ from ..models import (
 # Re-export these names for existing internal consumers during migration.
 from ..schemas.product_event import EventRequest
 from ..services.product_event_service import record_product_event
+from ..services.recommendation_service import legacy_recommendations_to_api
+from ..services.outfit_policy import MAX_RECOMMENDED_OUTFITS
 from .deps import auth_scheme, get_db, user_from_token
 from .serializers import rec_to_dict
 
@@ -35,7 +37,8 @@ def _has_gender_choice(db, user):
 
 class GenerateRequest(BaseModel):
   type: str = Field(default="outfit", pattern="^(outfit)$")
-  count: int = Field(default=10, ge=1, le=10)
+  # Accept older clients' count=10; shared policy bounds actual output to 3.
+  count: int = Field(default=3, ge=1, le=10)
   scenario: str = Field(default="daily", pattern="^(daily|office|evening)$")
 
 
@@ -62,15 +65,12 @@ def recommendations_generate(
   user = user_from_token(credentials, db)
   if not _has_gender_choice(db, user):
     raise HTTPException(status_code=409, detail='Явно выберите гардероб в профиле.')
-  try:
-    limits = business.assert_can_generate(db, user)
-  except PermissionError as e:
-    raise HTTPException(status_code=403, detail=str(e)) from e
-  items = business.generate_outfit_recommendations(db, user.id, payload.count, payload.scenario)
-  limits.recommendation_batches_used += 1
-  limits.updated_at = datetime.now(timezone.utc)
-  db.commit()
-  return [rec_to_dict(r) for r in items]
+  from ..services.legacy_outfit_session import build_legacy_outfits_response
+  user_id, bind = user.id, db.get_bind()
+  if db.new or db.dirty or db.deleted:
+    raise RuntimeError('Legacy outfit request cannot own uncommitted writes')
+  db.close()
+  return build_legacy_outfits_response(bind, user_id, count=payload.count, scenario=payload.scenario)
 
 
 @router.get("/recommendations/feed")
@@ -104,8 +104,10 @@ def recommendations_outfits_legacy(
       )
     ).scalars()
   )
-  items = db.execute(select(Recommendation).where(Recommendation.user_id == user.id)).scalars().all()
-  return [rec_to_dict(item) for item in items if item.id not in reviewed]
+  items = db.execute(select(Recommendation).where(Recommendation.user_id == user.id)
+    .order_by(Recommendation.created_at.desc(), Recommendation.id)).scalars().all()
+  visible = legacy_recommendations_to_api(db, user, [item for item in items if item.id not in reviewed])
+  return [visible[item.id] for item in items if item.id in visible][:MAX_RECOMMENDED_OUTFITS]
 
 
 @router.get("/recommendations/saved")
@@ -124,14 +126,17 @@ def recommendations_saved(
     .where(SavedRecommendation.user_id == user.id)
     .order_by(SavedRecommendation.created_at.desc())
   ).all()
+  visible = legacy_recommendations_to_api(db, user, [rec for _, rec in rows])
   out: list[dict[str, Any]] = []
   for saved, rec in rows:
+    if rec.id not in visible:
+      continue
     out.append(
       {
         "id": saved.id,
         "recommendation_id": rec.id,
         "saved_at": saved.created_at.isoformat(),
-        "recommendation": rec_to_dict(rec),
+        "recommendation": visible[rec.id],
       }
     )
   return out
@@ -178,7 +183,10 @@ def recommendation_detail(
   ).scalar_one_or_none()
   if rec is None:
     raise HTTPException(status_code=404, detail="Карточка не найдена")
-  return rec_to_dict(rec)
+  visible = legacy_recommendations_to_api(db, user, [rec])
+  if rec.id not in visible:
+    raise HTTPException(status_code=404, detail='Образ больше не подходит вашим параметрам. Обновите подборку.')
+  return visible[rec.id]
 
 
 @router.post("/recommendations/{recommendation_id}/feedback")

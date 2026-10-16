@@ -20,6 +20,8 @@ from .catalog.rule_filters import load_rules_by_source_id, product_gender_compat
 from .recommendation_config import OUTFIT_ENGINE_VERSION
 from .recommendation_engine import ensure_style_profile
 from .recommendation_revision import owner_mutation, accept_personal_change
+from .outfit_policy import requested_outfit_count, outfit_total_within_budget
+from .outfit_quality import outfit_compatible, scenario_product_ok
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +133,7 @@ def _scenario_product_ok(product: Product, scenario: str, budget_max: int | None
     return False
   if price > 500_000:
     return False
-  return True
+  return scenario_product_ok(product, scenario)
 
 
 def _sort_bucket(pool: list[Product], pref: list[str]) -> list[Product]:
@@ -166,6 +168,7 @@ def _bucket_products(
   fit: FitProfile | None = None,
   budget_max: int | None = None,
   skipped_ids: set[str] | None = None,
+  rules_by_source: dict | None = None,
 ) -> dict[str, list[Product]]:
   buckets: dict[str, list[Product]] = {
     "top": [],
@@ -181,6 +184,8 @@ def _bucket_products(
     if not evaluate_eligibility(p, fit).eligible:
       continue
     if not product_is_feed_eligible(p):
+      continue
+    if rules_by_source is not None and not product_passes_source_rules(p, rules_by_source):
       continue
     if not _scenario_product_ok(p, scenario, budget_max):
       continue
@@ -361,25 +366,15 @@ def _generate_outfits_fallback(
 
   budget_max = int(fit.budget_max) if fit and fit.budget_max else None
 
-  if replace_existing:
-    removed = db.execute(
-      delete(Outfit).where(
-        Outfit.user_id == user.id,
-        Outfit.style_direction == scenario_key,
-        Outfit.is_saved == 0,
-      )
-    )
-    if removed.rowcount:
-      accept_personal_change(db, user.id)
-    db.flush()
-
-  need = max(1, min(10, int(count)))
+  need = requested_outfit_count(count)
+  rules = load_rules_by_source_id(db)
   products = _catalog_products_for_outfits(db, user, excluded=excluded, limit=280)
   rng = _scenario_rng(scenario_key)
   if len(products) > 40:
     pivot = rng.randint(0, len(products) - 1)
     products = products[pivot:] + products[:pivot]
-  buckets = _bucket_products(products, scenario_key, fit=fit, budget_max=budget_max, skipped_ids=skipped_ids)
+  buckets = _bucket_products(products, scenario_key, fit=fit, budget_max=budget_max, skipped_ids=skipped_ids,
+    rules_by_source=rules)
   _extend_buckets(
     db,
     buckets,
@@ -400,7 +395,8 @@ def _generate_outfits_fallback(
       ).limit(300)
     ).scalars().all()
     fallback = [p for p in fallback if p.id not in excluded]
-    buckets = _bucket_products(fallback, scenario_key, fit=fit, budget_max=budget_max, skipped_ids=skipped_ids)
+    buckets = _bucket_products(fallback, scenario_key, fit=fit, budget_max=budget_max, skipped_ids=skipped_ids,
+      rules_by_source=rules)
     _extend_buckets(
       db,
       buckets,
@@ -447,7 +443,11 @@ def _generate_outfits_fallback(
       ids.append(prod.id)
       total += as_rubles(prod.price)
 
-    if len(items) < 2:
+    if not {'top', 'bottom', 'shoes'} <= set(items):
+      continue
+    if not outfit_compatible([p for p in (top, bottom, shoes, accessory) if p is not None]):
+      continue
+    if not outfit_total_within_budget(total, fit):
       continue
 
     combo_key = tuple(sorted(ids))
@@ -472,9 +472,12 @@ def _generate_outfits_fallback(
       created_at=now,
       updated_at=now,
     )
-    db.add(out)
     created.append(out)
 
+  if created and replace_existing:
+    db.execute(delete(Outfit).where(Outfit.user_id == user.id,
+      Outfit.style_direction == scenario_key, Outfit.is_saved == 0))
+  db.add_all(created)
   db.flush()
   if created:
     accept_personal_change(db, user.id)

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'core/network/api_client.dart';
 import 'core/network/user_error_message.dart';
+import 'core/presentation/outfit_recommendations.dart';
 import 'core/storage/token_storage.dart';
 import 'core/storage/feed_history.dart';
 import 'core/theme/app_colors.dart';
@@ -671,8 +672,7 @@ class AppController extends ChangeNotifier {
       _activationCompleted = res['completed'] == true;
       final rows = res['outfits'];
       wowOutfits = rows is List
-          ? rows
-                .whereType<Map>()
+          ? limitOutfitRecommendations(rows.whereType<Map>())
                 .map((e) => WowOutfit.fromApi(Map<String, dynamic>.from(e)))
                 .toList()
           : const [];
@@ -1425,13 +1425,18 @@ class AppController extends ChangeNotifier {
     final generation = _sessionGeneration;
     var createdCount = 0;
     await _run(() async {
+      final maximum = count.clamp(1, maxOutfitRecommendations);
       final scenarios = scenario == 'all'
-          ? const ['daily', 'office', 'evening']
+          ? const ['daily', 'office', 'evening'].take(maximum)
           : [scenario];
+      final perScenario = scenario == 'all' ? 1 : maximum;
       for (final key in scenarios) {
-        final created = await api.outfitsGenerate(count: count, scenario: key);
+        final created = await api.outfitsGenerate(
+          count: perScenario,
+          scenario: key,
+        );
         if (!_isCurrentSession(generation)) return;
-        createdCount += created.length;
+        createdCount += created.take(perScenario).length;
       }
       _invalidateSecondaryReads();
       await _reloadOutfitLists(generation);
