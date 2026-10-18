@@ -375,6 +375,7 @@ class _Case {
     this.build, {
     this.prepare,
     this.interact,
+    this.acceptCatalogue = false,
     this.largeText = false,
     this.keyboard = false,
   });
@@ -382,52 +383,72 @@ class _Case {
   final Widget Function(AppController) build;
   final void Function(AppController)? prepare;
   final Future<void> Function(WidgetTester)? interact;
+  final bool acceptCatalogue;
   final bool largeText;
   final bool keyboard;
 }
 
 List<_Case> _cases() => [
   _Case(
+    'catalogue-consent',
+    (c) => DiscoveryScreen(controller: c),
+    largeText: true,
+  ),
+  _Case(
+    'catalogue-consent-bottom',
+    (c) => DiscoveryScreen(controller: c),
+    interact: _scrollBottom,
+    largeText: true,
+  ),
+  _Case(
     'catalogue-full',
     (c) => DiscoveryScreen(controller: c),
+    acceptCatalogue: true,
     largeText: true,
   ),
   _Case(
     'catalogue-shoes',
     (c) => DiscoveryScreen(controller: c, initialCategory: 'shoes'),
+    acceptCatalogue: true,
     largeText: true,
   ),
   _Case(
     'catalogue-outerwear',
     (c) => DiscoveryScreen(controller: c, initialCategory: 'outerwear'),
+    acceptCatalogue: true,
     largeText: true,
   ),
   _Case(
     'catalogue-bottom',
     (c) => DiscoveryScreen(controller: c),
+    acceptCatalogue: true,
     interact: _scrollBottom,
     largeText: true,
   ),
   _Case(
     'catalogue-empty',
     (c) => DiscoveryScreen(controller: c),
+    acceptCatalogue: true,
     prepare: (c) => (c.api as _AuditApi).catalogueState = 'empty',
     largeText: true,
   ),
   _Case(
     'catalogue-error',
     (c) => DiscoveryScreen(controller: c),
+    acceptCatalogue: true,
     prepare: (c) => (c.api as _AuditApi).catalogueState = 'error',
     largeText: true,
   ),
   _Case(
     'catalogue-loading',
     (c) => DiscoveryScreen(controller: c),
+    acceptCatalogue: true,
     prepare: (c) => (c.api as _AuditApi).catalogueGate = Completer(),
   ),
   _Case(
     'catalogue-keyboard',
     (c) => DiscoveryScreen(controller: c),
+    acceptCatalogue: true,
     keyboard: true,
     interact: (t) async {
       await t.tap(find.byKey(const ValueKey('catalogue-query')));
@@ -1073,6 +1094,16 @@ void main() {
                 ),
               );
               await _boundedPump(tester);
+              if (entry.acceptCatalogue) {
+                final consent = find.byKey(
+                  const ValueKey('catalogue-consent-accept'),
+                );
+                await tester.ensureVisible(consent);
+                await _boundedPump(tester);
+                expect(consent.hitTestable(), findsOneWidget);
+                await tester.tap(consent);
+                await _boundedPump(tester);
+              }
               await entry.interact?.call(tester);
               await _boundedPump(tester);
               // Flutter tester's engine uses the square Ahem font for null

@@ -134,6 +134,16 @@ Future<void> tapVisible(WidgetTester tester, Finder finder) async {
   await tester.pump();
 }
 
+Future<void> acceptCatalogue(WidgetTester tester, DiscoveryApi api) async {
+  expect(api.requests, isEmpty);
+  expect(api.discoveryDetails, isEmpty);
+  await tapVisible(
+    tester,
+    find.byKey(const ValueKey('catalogue-consent-accept')),
+  );
+  expect(api.requests, hasLength(1));
+}
+
 void main() {
   test('Merchant metadata is an immutable snapshot and never infers units', () {
     final input = discoveryProduct('p1');
@@ -155,6 +165,7 @@ void main() {
       final api = DiscoveryApi();
       final controller = discoveryController(api);
       await showCatalogue(tester, controller, category: 'shoes');
+      await acceptCatalogue(tester, api);
       await tester.pumpAndSettle();
       expect(api.requests.single.category, 'shoes');
       expect(find.text('Размер нужно уточнить у магазина'), findsOneWidget);
@@ -198,6 +209,7 @@ void main() {
       final api = DiscoveryApi()..deferred = true;
       final controller = discoveryController(api);
       await showCatalogue(tester, controller);
+      await acceptCatalogue(tester, api);
       await tester.tap(find.byKey(const ValueKey('catalogue-category-shoes')));
       await tester.pump();
       expect(api.requests, hasLength(2));
@@ -245,6 +257,7 @@ void main() {
         ..response = discoveryPage(['p1'], cursor: 'opaque-next');
       final controller = discoveryController(api);
       await showCatalogue(tester, controller);
+      await acceptCatalogue(tester, api);
       await tester.pumpAndSettle();
       api.deferred = true;
       final more = find.byKey(const ValueKey('catalogue-more'));
@@ -290,6 +303,7 @@ void main() {
         ..response = discoveryPage(['p1'], cursor: 'expired');
       final controller = discoveryController(api);
       await showCatalogue(tester, controller);
+      await acceptCatalogue(tester, api);
       await tester.pumpAndSettle();
       api.deferred = true;
       await tapVisible(tester, find.byKey(const ValueKey('catalogue-more')));
@@ -334,6 +348,7 @@ void main() {
       final api = DiscoveryApi()..deferred = true;
       final controller = discoveryController(api);
       await showCatalogue(tester, controller);
+      await acceptCatalogue(tester, api);
       api.onUnauthorized!.call();
       api.requests.single.result.complete(discoveryPage(['old-account']));
       await tester.pumpAndSettle();
@@ -358,6 +373,7 @@ void main() {
       final api = DiscoveryApi()..response = discoveryPage([]);
       final controller = discoveryController(api);
       await showCatalogue(tester, controller);
+      await acceptCatalogue(tester, api);
       await tester.pumpAndSettle();
       expect(find.text('Пока ничего не найдено'), findsOneWidget);
       api.response = {
@@ -517,6 +533,7 @@ void main() {
           home: DiscoveryScreen(controller: controller),
         ),
       );
+      await acceptCatalogue(tester, api);
       await tester.pumpAndSettle();
       final card = find.byKey(const ValueKey('catalogue-product-p1'));
       await tester.scrollUntilVisible(
@@ -559,6 +576,7 @@ void main() {
     await tester.tap(find.text('Посмотреть каталог'));
     await tester.pumpAndSettle();
     expect(find.byType(DiscoveryScreen), findsOneWidget);
+    await acceptCatalogue(tester, api);
     expect(api.requests.single.query, 'ботинки');
     expect(api.eventCalls, 0);
     await tester.pumpWidget(const SizedBox());

@@ -65,6 +65,18 @@ Future<void> _phone(WidgetTester tester, Widget screen) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _acceptCatalogue(
+  WidgetTester tester,
+  _CatalogueEntryApi api,
+) async {
+  expect(api.categories, isEmpty);
+  final consent = find.byKey(const ValueKey('catalogue-consent-accept'));
+  await tester.ensureVisible(consent);
+  await tester.tap(consent);
+  await tester.pumpAndSettle();
+  expect(api.categories, hasLength(1));
+}
+
 void main() {
   testWidgets('Legacy API hides catalogue entry in an empty feed', (
     tester,
@@ -99,6 +111,7 @@ void main() {
     await tester.tap(entry);
     await tester.pumpAndSettle();
     expect(find.byType(DiscoveryScreen), findsOneWidget);
+    await _acceptCatalogue(tester, api);
     expect(api.categories, ['outerwear']);
     expect(controller.feedFilterCategories, ['Верхняя одежда']);
     expect(api.eventCalls, 0);
@@ -124,6 +137,8 @@ void main() {
     await tester.tap(entry);
     await tester.pumpAndSettle();
     expect(find.byType(DiscoveryScreen), findsOneWidget);
+    await _acceptCatalogue(tester, api);
+    expect(api.categories, ['']);
     expect(controller.stage, AppStage.onboardingV2);
     expect(controller.onboardingV2SubStep, 1);
     expect(controller.styleSwipeRated, 0);

@@ -37,6 +37,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
   bool _hasMore = false;
   bool _loading = false;
   bool _retryMore = false;
+  bool _consented = false;
   bool _sessionChanged = false;
   bool _cursorExpired = false;
   String? _error;
@@ -55,7 +56,16 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
         : '';
     _sessionEpoch = widget.controller.navigationSessionEpoch;
     widget.controller.addListener(_onControllerChanged);
-    _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant DiscoveryScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.controller, widget.controller)) {
+      oldWidget.controller.removeListener(_onControllerChanged);
+      widget.controller.addListener(_onControllerChanged);
+      _invalidateConsent();
+    }
   }
 
   @override
@@ -71,20 +81,43 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     if (!mounted || _sessionEpoch == widget.controller.navigationSessionEpoch) {
       return;
     }
+    _invalidateConsent();
+  }
+
+  bool get _hasCurrentConsent =>
+      _consented &&
+      !_sessionChanged &&
+      _sessionEpoch == widget.controller.navigationSessionEpoch;
+
+  void _invalidateConsent() {
     _request++;
     _debounce?.cancel();
     setState(() {
       _sessionEpoch = widget.controller.navigationSessionEpoch;
+      _consented = false;
       _sessionChanged = true;
       _products = [];
       _cursor = null;
       _hasMore = false;
       _loading = false;
+      _retryMore = false;
+      _cursorExpired = false;
       _error = 'Вы сменили аккаунт. Откройте каталог заново.';
     });
   }
 
+  void _acceptConsent() {
+    if (!mounted || _sessionChanged || _consented) return;
+    if (_sessionEpoch != widget.controller.navigationSessionEpoch) {
+      _invalidateConsent();
+      return;
+    }
+    setState(() => _consented = true);
+    _load();
+  }
+
   void _reset() {
+    if (!mounted || !_hasCurrentConsent) return;
     _request++;
     setState(() {
       _products = [];
@@ -97,20 +130,22 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
 
   void _queryChanged(String value) {
     _debounce?.cancel();
-    if (_sessionChanged) return;
+    if (!mounted || !_hasCurrentConsent) return;
     _reset();
     _debounce = Timer(const Duration(milliseconds: 450), _load);
   }
 
   void _categoryChanged(String category) {
-    if (_category == category || _sessionChanged) return;
+    if (!mounted || !_hasCurrentConsent || _category == category) return;
     _debounce?.cancel();
     _category = category;
     _load();
   }
 
   Future<void> _load({bool more = false}) async {
-    if (!mounted || _sessionChanged) return;
+    // Consent is local to this route and account. Guard every fetch path,
+    // including refresh, debounce and pagination, rather than just initState.
+    if (!mounted || !_hasCurrentConsent) return;
     if (more && (_loading || !_hasMore || _cursor == null)) return;
     _debounce?.cancel();
     final request = ++_request;
@@ -137,6 +172,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
         cursor: cursor,
       );
       if (!mounted ||
+          !_hasCurrentConsent ||
           request != _request ||
           session != widget.controller.navigationSessionEpoch) {
         return;
@@ -182,6 +218,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
       });
     } catch (error) {
       if (!mounted ||
+          !_hasCurrentConsent ||
           request != _request ||
           session != widget.controller.navigationSessionEpoch) {
         return;
@@ -207,6 +244,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
   }
 
   void _openProduct(Product product) {
+    if (!mounted || !_hasCurrentConsent) return;
     FocusScope.of(context).unfocus();
     // Discovery deliberately does not emit recommendation/Taste events.
     Navigator.push(
@@ -221,6 +259,72 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     );
   }
 
+  Widget _consentNotice() => ListView(
+    padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+    children: [
+      SoftCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(
+              Icons.straighten_outlined,
+              color: AppColors.accent,
+              size: 32,
+            ),
+            const SizedBox(height: 16),
+            const Text('Размер не проверен', style: AppTextStyles.sectionTitle),
+            const SizedBox(height: 12),
+            const Text(
+              'В этом каталоге можно посмотреть товары магазинов. Мы не проверяли, подойдёт ли вам их размер.',
+              style: AppTextStyles.bodyMuted,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Перед покупкой сверьте размер с таблицей на сайте магазина. Персональная лента и образы остаются отдельными подборками с проверкой размера.',
+              style: AppTextStyles.bodyMuted,
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                key: const ValueKey('catalogue-consent-accept'),
+                onPressed: _acceptConsent,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.accent,
+                  foregroundColor: AppColors.onAccent,
+                  minimumSize: const Size(0, 54),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: const Text(
+                  'Понимаю, показать каталог',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SecondaryButton(
+              key: const ValueKey('catalogue-consent-cancel'),
+              label: 'Вернуться',
+              onPressed: () => Navigator.maybePop(context),
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
+
+  Widget _changedSessionNotice() => ListView(
+    padding: const EdgeInsets.all(16),
+    children: [SoftCard(child: Text(_error!, style: AppTextStyles.bodyMuted))],
+  );
+
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: AppColors.bg,
@@ -230,206 +334,226 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 680),
-          child: RefreshIndicator(
-            onRefresh: _load,
-            child: CustomScrollView(
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                  sliver: SliverToBoxAdapter(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const CatalogueSizeNotice(),
-                        const SizedBox(height: 16),
-                        TextField(
-                          key: const ValueKey('catalogue-query'),
-                          controller: _query,
-                          enabled: !_sessionChanged,
-                          maxLength: 160,
-                          textInputAction: TextInputAction.search,
-                          decoration: InputDecoration(
-                            hintText: 'Название, категория или бренд',
-                            counterText: '',
-                            prefixIcon: const Icon(Icons.search),
-                            suffixIcon: _query.text.isEmpty
-                                ? null
-                                : IconButton(
-                                    tooltip: 'Очистить поиск',
-                                    icon: const Icon(Icons.close),
-                                    onPressed: () {
-                                      _query.clear();
-                                      _queryChanged('');
-                                    },
-                                  ),
+          child: _sessionChanged
+              ? _changedSessionNotice()
+              : !_consented
+              ? _consentNotice()
+              : RefreshIndicator(
+                  onRefresh: _load,
+                  child: CustomScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                        sliver: SliverToBoxAdapter(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const CatalogueSizeNotice(),
+                              const SizedBox(height: 16),
+                              TextField(
+                                key: const ValueKey('catalogue-query'),
+                                controller: _query,
+                                enabled: !_sessionChanged,
+                                maxLength: 160,
+                                textInputAction: TextInputAction.search,
+                                decoration: InputDecoration(
+                                  hintText: 'Название, категория или бренд',
+                                  counterText: '',
+                                  prefixIcon: const Icon(Icons.search),
+                                  suffixIcon: _query.text.isEmpty
+                                      ? null
+                                      : IconButton(
+                                          tooltip: 'Очистить поиск',
+                                          icon: const Icon(Icons.close),
+                                          onPressed: () {
+                                            _query.clear();
+                                            _queryChanged('');
+                                          },
+                                        ),
+                                ),
+                                onChanged: _queryChanged,
+                                onSubmitted: (_) {
+                                  FocusScope.of(context).unfocus();
+                                  _load();
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: _categories.entries
+                                    .map(
+                                      (entry) => ChoiceChip(
+                                        key: ValueKey(
+                                          'catalogue-category-${entry.key}',
+                                        ),
+                                        label: Text(entry.value),
+                                        selected: _category == entry.key,
+                                        onSelected: _sessionChanged
+                                            ? null
+                                            : (_) =>
+                                                  _categoryChanged(entry.key),
+                                      ),
+                                    )
+                                    .toList(),
+                              ),
+                            ],
                           ),
-                          onChanged: _queryChanged,
-                          onSubmitted: (_) {
-                            FocusScope.of(context).unfocus();
-                            _load();
+                        ),
+                      ),
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        sliver: SliverLayoutBuilder(
+                          builder: (context, constraints) {
+                            final width =
+                                (constraints.crossAxisExtent - 12) / 2;
+                            final scale = MediaQuery.textScalerOf(
+                              context,
+                            ).scale(1).clamp(1.0, double.infinity);
+                            return SliverGrid.builder(
+                              itemCount: _products.length,
+                              gridDelegate:
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 2,
+                                    crossAxisSpacing: 12,
+                                    mainAxisSpacing: 12,
+                                    mainAxisExtent:
+                                        (width - 24) * 1.25 + 24 + 180 * scale,
+                                  ),
+                              itemBuilder: (context, index) {
+                                final product = _products[index];
+                                return Semantics(
+                                  button: true,
+                                  label:
+                                      'Открыть ${product.title}. Размер нужно уточнить у магазина.',
+                                  child: SoftCard(
+                                    padding: const EdgeInsets.all(12),
+                                    child: InkWell(
+                                      key: ValueKey(
+                                        'catalogue-product-${product.id}',
+                                      ),
+                                      onTap: () => _openProduct(product),
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          AspectRatio(
+                                            aspectRatio: 0.8,
+                                            child: ProductFillImage(
+                                              imageUrl: product.imageUrl,
+                                              showRetry: false,
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 10),
+                                          Text(
+                                            product.brand,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: AppTextStyles.caption,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            product.title,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: AppTextStyles.body.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            '${formatPriceAmount(product.price)} ${product.currency == 'RUB' ? '₽' : product.currency}',
+                                            style: AppTextStyles.price.copyWith(
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          MerchantSizeSummary(product: product),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
                           },
                         ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: _categories.entries
-                              .map(
-                                (entry) => ChoiceChip(
-                                  key: ValueKey(
-                                    'catalogue-category-${entry.key}',
+                      ),
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                        sliver: SliverToBoxAdapter(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (_loading)
+                                const Padding(
+                                  padding: EdgeInsets.all(24),
+                                  child: Center(
+                                    child: CircularProgressIndicator(),
                                   ),
-                                  label: Text(entry.value),
-                                  selected: _category == entry.key,
-                                  onSelected: _sessionChanged
-                                      ? null
-                                      : (_) => _categoryChanged(entry.key),
                                 ),
-                              )
-                              .toList(),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  sliver: SliverLayoutBuilder(
-                    builder: (context, constraints) {
-                      final width = (constraints.crossAxisExtent - 12) / 2;
-                      final scale = MediaQuery.textScalerOf(
-                        context,
-                      ).scale(1).clamp(1.0, double.infinity);
-                      return SliverGrid.builder(
-                        itemCount: _products.length,
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          mainAxisExtent:
-                              (width - 24) * 1.25 + 24 + 180 * scale,
-                        ),
-                        itemBuilder: (context, index) {
-                          final product = _products[index];
-                          return Semantics(
-                            button: true,
-                            label:
-                                'Открыть ${product.title}. Размер нужно уточнить у магазина.',
-                            child: SoftCard(
-                              padding: const EdgeInsets.all(12),
-                              child: InkWell(
-                                key: ValueKey(
-                                  'catalogue-product-${product.id}',
-                                ),
-                                onTap: () => _openProduct(product),
-                                borderRadius: BorderRadius.circular(12),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    AspectRatio(
-                                      aspectRatio: 0.8,
-                                      child: ProductFillImage(
-                                        imageUrl: product.imageUrl,
-                                        showRetry: false,
-                                        borderRadius: BorderRadius.circular(12),
+                              if (_error != null)
+                                SoftCard(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _error!,
+                                        style: AppTextStyles.bodyMuted,
                                       ),
-                                    ),
-                                    const SizedBox(height: 10),
-                                    Text(
-                                      product.brand,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: AppTextStyles.caption,
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      product.title,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: AppTextStyles.body.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      '${formatPriceAmount(product.price)} ${product.currency == 'RUB' ? '₽' : product.currency}',
-                                      style: AppTextStyles.price.copyWith(
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    MerchantSizeSummary(product: product),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                  sliver: SliverToBoxAdapter(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (_loading)
-                          const Padding(
-                            padding: EdgeInsets.all(24),
-                            child: Center(child: CircularProgressIndicator()),
-                          ),
-                        if (_error != null)
-                          SoftCard(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(_error!, style: AppTextStyles.bodyMuted),
-                                if (!_sessionChanged) ...[
-                                  const SizedBox(height: 12),
-                                  SecondaryButton(
-                                    label: _cursorExpired
-                                        ? 'Обновить каталог'
-                                        : 'Повторить',
-                                    onPressed: () => _load(more: _retryMore),
+                                      if (!_sessionChanged) ...[
+                                        const SizedBox(height: 12),
+                                        SecondaryButton(
+                                          label: _cursorExpired
+                                              ? 'Обновить каталог'
+                                              : 'Повторить',
+                                          onPressed: () =>
+                                              _load(more: _retryMore),
+                                        ),
+                                      ],
+                                    ],
                                   ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        if (!_loading && _error == null && _products.isEmpty)
-                          const SoftCard(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Пока ничего не найдено',
-                                  style: AppTextStyles.sectionTitle,
                                 ),
-                                SizedBox(height: 8),
-                                Text(
-                                  'Попробуйте другую категорию или более общий запрос.',
-                                  style: AppTextStyles.bodyMuted,
+                              if (!_loading &&
+                                  _error == null &&
+                                  _products.isEmpty)
+                                const SoftCard(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Пока ничего не найдено',
+                                        style: AppTextStyles.sectionTitle,
+                                      ),
+                                      SizedBox(height: 8),
+                                      Text(
+                                        'Попробуйте другую категорию или более общий запрос.',
+                                        style: AppTextStyles.bodyMuted,
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ],
-                            ),
+                              if (_hasMore && !_loading && _error == null)
+                                SecondaryButton(
+                                  key: const ValueKey('catalogue-more'),
+                                  label: 'Показать ещё',
+                                  onPressed: () => _load(more: true),
+                                ),
+                            ],
                           ),
-                        if (_hasMore && !_loading && _error == null)
-                          SecondaryButton(
-                            key: const ValueKey('catalogue-more'),
-                            label: 'Показать ещё',
-                            onPressed: () => _load(more: true),
-                          ),
-                      ],
-                    ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ),
         ),
       ),
     ),
