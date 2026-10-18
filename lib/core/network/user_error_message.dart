@@ -15,6 +15,8 @@ const _connection =
     'Не удалось подключиться. Проверьте интернет и попробуйте снова.';
 const _service =
     'Сервис временно недоступен. Попробуйте ещё раз немного позже.';
+const _alphaAccess =
+    'Доступ к Modish пока открыт только участникам закрытого тестирования. Свяжитесь с командой, чтобы получить доступ.';
 
 // Exact known business responses are translated to our own UI copy. Arbitrary
 // server text, validation locations, exception messages and HTML never reach UI.
@@ -137,6 +139,10 @@ String userErrorMessage(Object error) {
         : 'Сессия истекла. Войдите снова, чтобы продолжить.';
   }
   if (status == 403) {
+    // A closed-test rejection can come from any protected route, including
+    // refresh and photo analysis. Only this exact response is displayable.
+    final data = error.response?.data;
+    if (data is Map && data['detail'] == _alphaAccess) return _alphaAccess;
     return path == '/onboarding/photo' || path == '/style-profile/analyze'
         ? 'Анализ фото сейчас недоступен. Продолжите подбор без фото или повторите позже.'
         : 'Это действие сейчас недоступно. Вернитесь на предыдущий экран или повторите позже.';

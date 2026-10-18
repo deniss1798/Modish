@@ -17,6 +17,7 @@ from ..models import StyleProfile, User
 from ..services.recommendation_engine import ensure_style_profile, ensure_taste_profile
 from .deps import create_access_token, get_db, hash_password, verify_password, auth_scheme, user_from_token
 from ..services.auth_sessions import issue_session, valid_session, token_hash
+from ..services.alpha_access import require_alpha_access
 from .seed import seed_recommendations
 from .serializers import as_user_payload
 
@@ -36,6 +37,7 @@ class TokenResponse(BaseModel):
 
 
 def session_response(db, user):
+  require_alpha_access(user.email)
   refresh = issue_session(db, user.id)
   db.commit()
   return TokenResponse(access_token=create_access_token(user.id), refresh_token=refresh, user=as_user_payload(user))
@@ -57,6 +59,7 @@ def refresh(payload: RefreshRequest, db: Session = Depends(get_db)):
   user = db.get(User, session.user_id)
   if user is None:
     raise HTTPException(status_code=401, detail='Сессия истекла. Войдите снова.')
+  require_alpha_access(user.email)
   return TokenResponse(access_token=create_access_token(user.id),
       refresh_token=payload.refresh_token, user=as_user_payload(user))
 
@@ -73,6 +76,7 @@ def logout(payload: RefreshRequest, db: Session = Depends(get_db)):
 
 @router.post("/auth/register", response_model=TokenResponse)
 def register(payload: AuthRequest, db: Session = Depends(get_db)) -> TokenResponse:
+  require_alpha_access(str(payload.email))
   existing = db.execute(select(User).where(User.email == payload.email)).scalar_one_or_none()
   if existing:
     raise HTTPException(status_code=409, detail="Email уже зарегистрирован")
@@ -131,6 +135,7 @@ def login(payload: AuthRequest, db: Session = Depends(get_db)) -> TokenResponse:
   user = db.execute(select(User).where(User.email == payload.email)).scalar_one_or_none()
   if user is None or not verify_password(payload.password, user.password_hash):
     raise HTTPException(status_code=401, detail="Неверный email или пароль")
+  require_alpha_access(user.email)
   business.get_or_refresh_limits(db, user.id)
   ensure_style_profile(db, user.id)
   ensure_taste_profile(db, user.id)

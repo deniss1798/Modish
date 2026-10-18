@@ -76,6 +76,12 @@ def get_jwt_expires_hours() -> int:
   return int(raw)
 
 
+def get_closed_alpha_config() -> tuple[str, str]:
+  """Current process policy values; validation never echoes the email list."""
+  return (os.getenv('CLOSED_ALPHA_ENABLED', 'false'),
+      os.getenv('CLOSED_ALPHA_ALLOWED_EMAILS', ''))
+
+
 def allow_dev_analyze_bypass() -> bool:
   """Локальная отладка: не блокировать /analyze из‑за trial/Plus (только если явно включено в .env)."""
   return os.getenv("ALLOW_DEV_ANALYZE", "").strip().lower() in ("1", "true", "yes", "on")

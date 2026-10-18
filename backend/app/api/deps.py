@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from ..config import get_jwt_expires_hours, get_jwt_secret
 from ..db import SessionLocal
 from ..models import User
+from ..services.alpha_access import alpha_access_required, require_alpha_access
 
 auth_scheme = HTTPBearer(auto_error=False)
 JWT_SECRET = get_jwt_secret()
@@ -56,7 +57,17 @@ def user_from_token(
       status_code=status.HTTP_401_UNAUTHORIZED,
       detail="User not found",
     )
+  require_alpha_access(user.email)
   return user
+
+
+def require_alpha_catalogue_access(
+  db: Session = Depends(get_db),
+  credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
+):
+  """Keep public catalogue compatibility only while closed alpha is off."""
+  if alpha_access_required():
+    user_from_token(credentials, db)
 
 
 def hash_password(password: str) -> str:

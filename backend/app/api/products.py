@@ -13,9 +13,9 @@ from ..schemas.api_product import product_to_api
 from ..services.recommendation_engine import generate_feed
 from ..services.catalog_filters import CatalogFilters, CATEGORY_GROUPS
 from ..services.catalog.stock_freshness import fresh_stock_conditions
-from .deps import auth_scheme, get_db, user_from_token
+from .deps import auth_scheme, get_db, user_from_token, require_alpha_catalogue_access
 
-router = APIRouter(tags=["products"])
+router = APIRouter(tags=["products"], dependencies=[Depends(require_alpha_catalogue_access)])
 
 
 def _independent_feed_response(db, user, **options):
