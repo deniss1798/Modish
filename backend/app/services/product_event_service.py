@@ -227,7 +227,8 @@ def _apply_product_event(db: Session, user: User, payload: EventRequest, *, occu
 
   from .activation_service import record_exposure_event
   if meta.get("surface") != "style_swipe" and payload.product_id:
-    record_exposure_event(db, user, payload.product_id, canonical_event_type, surface=meta.get('surface'))
+    record_exposure_event(db, user, payload.product_id, canonical_event_type,
+        surface=meta.get('surface'), occurred_at=ev.created_at)
   db.flush()
   accept_personal_change(db, user.id)
   return {'status': 'ok', 'event_type': canonical_event_type, 'weight': weight}

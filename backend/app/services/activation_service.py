@@ -568,14 +568,14 @@ def personalized_feed(db, user, session, *, limit=20, exclude_ids=(), filters=No
     return rows
 
 
-def record_exposure_event(db, user, product_id, event_type, *, surface=None):
+def record_exposure_event(db, user, product_id, event_type, *, surface=None, occurred_at=None):
     if surface == 'style_swipe':
         return
     with owner_mutation(db, user.id):
-        _apply_exposure_event(db, user, product_id, event_type, surface=surface)
+        _apply_exposure_event(db, user, product_id, event_type, surface=surface, occurred_at=occurred_at)
 
 
-def _apply_exposure_event(db, user, product_id, event_type, *, surface=None):
+def _apply_exposure_event(db, user, product_id, event_type, *, surface=None, occurred_at=None):
     session = db.get(ActivationSession, user.id)
     if not session or not session.completed_at: return
     row = db.scalar(select(ActivationExposure).where(ActivationExposure.user_id == user.id, ActivationExposure.product_id == product_id))
@@ -586,7 +586,8 @@ def _apply_exposure_event(db, user, product_id, event_type, *, surface=None):
         if event_type not in {'view','like','dislike','skip','save','open_product','affiliate_click'}: return
         count = db.scalar(select(func.count()).select_from(ActivationExposure).where(ActivationExposure.user_id == user.id)) or 0
         if count >= 20: return
-        row = ActivationExposure(id=str(uuid4()), user_id=user.id, product_id=product_id, position=count+1)
+        row = ActivationExposure(id=str(uuid4()), user_id=user.id, product_id=product_id,
+            position=count+1, shown_at=occurred_at or datetime.now(timezone.utc))
         db.add(row)
     if event_type in {'like','dislike','skip'}: row.reaction = event_type
     if event_type in {'save','unsave'}: row.saved = int(event_type == 'save')
@@ -598,10 +599,17 @@ def _apply_exposure_event(db, user, product_id, event_type, *, surface=None):
 
 
 def activation_metrics(db, days=7):
-    since = datetime.now(timezone.utc) - timedelta(days=max(1, min(90, days)))
-    cohort = list(db.scalars(select(ActivationSession).where(ActivationSession.completed_at >= since)))
+    days = max(1, min(90, days))
+    now = datetime.now(timezone.utc)
+    since = now - timedelta(days=days)
+    cohort = list(db.scalars(select(ActivationSession).where(
+        ActivationSession.completed_at >= since, ActivationSession.completed_at <= now)))
     ids = [s.user_id for s in cohort]
-    rows = list(db.scalars(select(ActivationExposure).where(ActivationExposure.user_id.in_(ids)))) if ids else []
+    rows = list(db.scalars(select(ActivationExposure).join(ActivationSession,
+        ActivationSession.user_id == ActivationExposure.user_id).where(
+        ActivationExposure.user_id.in_(ids), ActivationExposure.position.between(1, 20),
+        ActivationExposure.shown_at >= ActivationSession.completed_at,
+        ActivationExposure.shown_at <= now))) if ids else []
     n = len(rows)
     counts = Counter(row.user_id for row in rows)
     def rate(value, denominator): return round(100 * value / denominator, 2) if denominator else None
@@ -611,12 +619,15 @@ def activation_metrics(db, days=7):
     clicked = sum(bool(row.clicked) for row in rows)
     reached = sum(count >= 10 for count in counts.values())
     started = len(counts)
+    from .first_session_metrics import first_session_dislike_reasons
+    dislike_reasons = first_session_dislike_reasons(db, exposures=rows, since=since, now=now)
     return {'days': days, 'completed_onboarding_users': len(ids), 'started_feed_users': started, 'unique_first20_views': n,
             'like_or_save': positive, 'dislike': negative, 'open_product': opened, 'affiliate_click': clicked,
             'reached_card10_users': reached, 'like_save_rate': rate(positive,n), 'dislike_rate': rate(negative,n),
             'open_product_rate': rate(opened,n), 'affiliate_click_rate': rate(clicked,n),
             'reached_card10_rate': rate(reached,started),
             'onboarding_to_card10_rate': rate(reached,len(ids)),
+            'dislike_reasons': dislike_reasons,
             'targets_percent': {'like_save_rate_min':25, 'dislike_rate_max':35, 'open_product_rate_min':20,
                                 'affiliate_click_rate_min':3, 'reached_card10_rate_min':60},
             'basis':'Actual unique card views, excluding Style Swipe and server prefetch. Like/Save counted as a union. Card-10 reach is among users who started the feed; onboarding-to-card-10 uses all completed onboarding users in the cohort.'}
