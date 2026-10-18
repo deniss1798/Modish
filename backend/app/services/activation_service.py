@@ -32,6 +32,7 @@ from .personalization_scoring import AffinityScorer, affinity_score as _affinity
 from .recommendation_revision import profile_input_writer, accept_personal_change, owner_mutation
 from .recommendation_budget import check_ranking_budget
 from .outfit_policy import MAX_RECOMMENDED_OUTFITS, EMPTY_OUTFITS_MESSAGE
+from .affordable_candidates import AffordableCandidates
 
 MIN_SWIPES = 15
 SWIPE_TARGET = 20
@@ -129,7 +130,8 @@ def _required_roles_available(db, *, required_roles, conditions, hidden, hidden_
 
 def candidate_pool(db, user, session, *, exclude_ids=(), restrict_categories=False, filters=None,
                    context=None, taste_features=None, scorer=None, preferences=None, source=None,
-                   required_roles=()):
+                   required_roles=(), outfit_scenario=None, outfit_evaluations=None,
+                   outfit_excluded_keys=()):
     """Full-catalog queries per category; no fresh-item cutoff or embeddings."""
     profile, fit, taste = preferences or _preferences(db, user)
     from .mie_scoring import load_user_taste_feature_map
@@ -155,7 +157,7 @@ def candidate_pool(db, user, session, *, exclude_ids=(), restrict_categories=Fal
     rules = load_rules_by_source_id(db)
     hidden = set(map(str, exclude_ids))
     hidden.update(pid for pid, reaction in (session.swipes_json or {}).items() if reaction in {'dislike', 'unavailable'})
-    keys = set()
+    keys = set(outfit_excluded_keys) if outfit_scenario is not None else set()
     if hidden:
         # A mandatory-role probe needs only identity fields of rejected items;
         # do not materialize unrelated clothing merely to exclude its aliases.
@@ -224,6 +226,7 @@ def candidate_pool(db, user, session, *, exclude_ids=(), restrict_categories=Fal
             affinity_order.desc(), func.coalesce(popularity.c.n, 0).desc(), Product.id)
         taken = 0
         best = []
+        affordable = AffordableCandidates(limit=50) if outfit_scenario is not None else None
         # Close the thin cursor even when the nonsemantic category is full.
         with closing(iter_size_candidates(db, query, fit)) as candidates:
             for product in candidates:
@@ -231,22 +234,38 @@ def candidate_pool(db, user, session, *, exclude_ids=(), restrict_categories=Fal
                 if restrict_categories and not (features(product)['category'] & interests): continue
                 if filters and filters.active and not filters.matches(product): continue
                 if context is not None and not context.allows(product): continue
+                if outfit_scenario is not None:
+                    from .outfit_quality import scenario_product_ok
+                    if (product_role(product) not in {'top', 'bottom', 'one_piece', 'shoes'}
+                            or not scenario_product_ok(product, outfit_scenario)):
+                        continue
                 # Rejected garments never reserve an identity. Avoid URL/image
                 # normalization until all admission gates have passed.
                 identity = product_identity_keys(product)
                 if keys & identity: continue
                 keys.update(identity)
-                if semantic_ranking or context is not None:
+                if semantic_ranking or context is not None or affordable is not None:
                     # Score before the category cutoff. A matching fabric/fit beyond
                     # the first 50 IDs must be able to enter the candidate pool.
-                    entry = (scorer.score(product), product.id, product)
-                    if len(best) < 50: heapq.heappush(best, entry)
-                    elif entry[:2] > best[0][:2]: heapq.heapreplace(best, entry)
+                    if affordable is not None:
+                        evaluation = scorer.evaluate(product)
+                        affordable.add((product, evaluation), key=product.id,
+                            score=evaluation.affinity, price=as_rubles(product.price))
+                    else:
+                        entry = (scorer.score(product), product.id, product)
+                        if len(best) < 50: heapq.heappush(best, entry)
+                        elif entry[:2] > best[0][:2]: heapq.heapreplace(best, entry)
                 else:
                     pool.append(product)
                 taken += 1
-                if taken >= 50 and not (semantic_ranking or context is not None): break
-        for score, _, product in best:
+                if taken >= 50 and not (semantic_ranking or context is not None or affordable is not None): break
+        for score, _, value in affordable.ranked() if affordable is not None else best:
+            if affordable is not None:
+                product, evaluation = value
+                if outfit_evaluations is not None:
+                    outfit_evaluations[product] = evaluation
+            else:
+                product = value
             pool.append(product)
             finalist_scores[product] = score
     # At most 50 finalists per category; do not reparse early winners after

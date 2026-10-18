@@ -6,6 +6,7 @@ by personal relevance, item compatibility, budget, and diversity.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from itertools import product as cartesian_product
@@ -32,6 +33,8 @@ from .catalog_audience import adult_catalog_conditions
 from .recommendation_revision import owner_mutation, accept_personal_change
 from .recommendation_budget import check_ranking_budget
 from .outfit_policy import requested_outfit_count, outfit_total_within_budget
+from .affordable_candidates import AffordableCandidates
+from .catalog.candidate_scan import iter_size_candidates
 
 
 SLOT_CATEGORIES: dict[str, set[str]] = {
@@ -206,6 +209,7 @@ def _catalog_slot_candidates(
   limit: int,
   anchor: Product | None = None,
   excluded_keys: set[str] | None = None,
+  affordable_reserve: int = 0,
 ) -> list[Product]:
   fit = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
   rules = load_rules_by_source_id(db)
@@ -221,6 +225,7 @@ def _catalog_slot_candidates(
   per_role = 10
   for slot in sorted(slots):
     found = 0
+    affordable = AffordableCandidates(limit=per_role, reserve=affordable_reserve) if affordable_reserve else None
     query = select(Product).where(
       *fresh_stock_conditions(checked_at=db.info.get('recommendation_as_of')),
       Product.is_active == 1, Product.is_available == 1,
@@ -234,20 +239,34 @@ def _catalog_slot_candidates(
       query = query.where(Product.source.notin_(["sportmaster", "demix"]))
     if slot == "shoes" and scenario in FORMAL_SCENARIOS:
       query = query.where(or_(*(Product.title.ilike(f"%{term}%") for term in FORMAL_SHOE_TERMS)))
-    for product in db.execute(query.limit(6000).execution_options(yield_per=300)).scalars():
-      check_ranking_budget(db)
-      keys = product_identity_keys(product)
-      if keys & seen_keys or product_slot(product) != slot:
-        continue
-      if anchor is not None and not pair_compatible(anchor, product):
-        continue
-      if not _scenario_product_ok(product, scenario) or not _hard_ok(product, fit=fit, rules_by_source=rules):
-        continue
-      out.append(product)
-      seen_keys.update(keys)
-      found += 1
-      if found >= per_role:
-        break
+    # The outfit-only reserve scans the full size-qualified role in bounded
+    # batches. Complements retain their existing recent-candidate behaviour.
+    candidates = (iter_size_candidates(db, query, fit) if affordable is not None
+        else db.scalars(query.limit(6000).execution_options(yield_per=300)))
+    with closing(candidates):
+      for product in candidates:
+        check_ranking_budget(db)
+        if product_slot(product) != slot:
+          continue
+        if anchor is not None and not pair_compatible(anchor, product):
+          continue
+        if not _scenario_product_ok(product, scenario) or not _hard_ok(product, fit=fit, rules_by_source=rules):
+          continue
+        keys = product_identity_keys(product)
+        if keys & seen_keys:
+          continue
+        seen_keys.update(keys)
+        found += 1
+        if affordable is not None:
+          # High-affinity choices come from the scored feed. Preserve the
+          # current recent retrieval order while reserving cheap alternatives.
+          affordable.add(product, key=product.id, score=-found, price=as_rubles(product.price))
+        else:
+          out.append(product)
+          if found >= per_role:
+            break
+    if affordable is not None:
+      out.extend(product for _, _, product in affordable.ranked())
   return out
 
 
@@ -263,7 +282,17 @@ def _build_slot_candidates(
   excluded_keys: set[str] | None = None,
 ) -> dict[str, list[SlotCandidate]]:
   slots = set().union(*[set(option) for option in SCENARIO_SLOT_OPTIONS[scenario]])
-  buckets: dict[str, list[SlotCandidate]] = {slot: [] for slot in slots}
+  # At most ten candidates per role reach the Cartesian composition: seven
+  # strongest plus three cheap admitted alternatives (overlaps are refilled).
+  pools = {slot: AffordableCandidates(limit=min(10, per_slot)) for slot in slots}
+
+  def offer(candidate):
+    pools[candidate.slot].add(candidate, key=candidate.product.id,
+        score=candidate.personal_score, price=as_rubles(candidate.product.price))
+
+  def selected():
+    return {slot: [candidate for _, _, candidate in pool.ranked()]
+        for slot, pool in pools.items()}
   activation = db.get(ActivationSession, user.id)
   if activation is not None:
     from .activation_service import candidate_pool
@@ -276,20 +305,22 @@ def _build_slot_candidates(
     context = context_for(scenario)
     taste_features = load_user_taste_feature_map(db, user_id=user.id)
     scorer = AffinityScorer(profile, taste, taste_features=taste_features, context=context)
+    evaluations = {}
     required_roles = set.intersection(*(set(option) for option in SCENARIO_SLOT_OPTIONS[scenario]))
     rows = candidate_pool(db, user, activation, exclude_ids=excluded, context=context,
         taste_features=taste_features, scorer=scorer, preferences=preferences,
-        required_roles=required_roles)
+        required_roles=required_roles, outfit_scenario=scenario,
+        outfit_evaluations=evaluations, outfit_excluded_keys=excluded_keys or ())
     for product in rows:
       check_ranking_budget(db)
       slot = product_slot(product)
-      if slot not in buckets or len(buckets[slot]) >= per_slot: continue
+      if slot not in pools: continue
       if excluded_keys and product_identity_keys(product) & excluded_keys: continue
       if not _scenario_product_ok(product, scenario): continue
-      evaluation = scorer.evaluate(product)
-      buckets[slot].append(SlotCandidate(slot, product, evaluation.affinity, evaluation.fit_score,
+      evaluation = evaluations[product]
+      offer(SlotCandidate(slot, product, evaluation.affinity, evaluation.fit_score,
           evaluation.taste_score, evaluation.context_score))
-    return buckets
+    return selected()
   seen: set[str] = set()
   seen_keys: set[str] = set(excluded_keys or ())
   rules_by_source = load_rules_by_source_id(db)
@@ -306,7 +337,7 @@ def _build_slot_candidates(
   for scored in scored_feed:
     check_ranking_budget(db)
     slot = product_slot(scored.product)
-    if slot not in buckets or scored.product.id in seen:
+    if slot not in pools or scored.product.id in seen:
       continue
     keys = product_identity_keys(scored.product)
     if keys & seen_keys or not _hard_ok(scored.product, fit=fit, rules_by_source=rules_by_source):
@@ -314,7 +345,7 @@ def _build_slot_candidates(
     if not _scenario_product_ok(scored.product, scenario):
       continue
     penalty = _skip_penalty(scored.product.id, skipped_ids)
-    buckets[slot].append(
+    offer(
       SlotCandidate(
         slot=slot,
         product=scored.product,
@@ -328,17 +359,17 @@ def _build_slot_candidates(
     seen.add(scored.product.id)
     seen_keys.update(keys)
 
-  missing = {slot for slot, values in buckets.items() if len(values) < per_slot}
-  if missing:
+  if slots:
     rows = _catalog_slot_candidates(
       db,
       user,
-      slots=missing,
+      slots=slots,
       scenario=scenario,
       excluded=excluded,
       existing_ids=seen,
-      limit=per_slot * max(1, len(missing)) * 3,
+      limit=per_slot * max(1, len(slots)) * 3,
       excluded_keys=excluded_keys,
+      affordable_reserve=3,
     )
     rows = [product for product in rows if _hard_ok(product, fit=fit, rules_by_source=rules_by_source)]
     ctx = build_feed_context(db, user, product_ids=[product.id for product in rows], scenario=scenario)
@@ -348,13 +379,13 @@ def _build_slot_candidates(
       if keys & seen_keys:
         continue
       slot = product_slot(product)
-      if slot not in buckets or len(buckets[slot]) >= per_slot:
+      if slot not in pools:
         continue
       scored = score_product(db, user, product, ctx)
       if scored.final_score <= 0:
         continue
       penalty = _skip_penalty(product.id, skipped_ids)
-      buckets[slot].append(
+      offer(
         SlotCandidate(
           slot=slot,
           product=product,
@@ -368,10 +399,7 @@ def _build_slot_candidates(
       seen.add(product.id)
       seen_keys.update(keys)
 
-  for slot in buckets:
-    buckets[slot].sort(key=lambda item: item.personal_score, reverse=True)
-    buckets[slot] = buckets[slot][:per_slot]
-  return buckets
+  return selected()
 
 
 def _colors(product: Product) -> set[str]:
