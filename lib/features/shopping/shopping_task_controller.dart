@@ -3,10 +3,14 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../../core/network/api_client.dart';
 
+typedef AcceptedProductReactionCallback =
+    void Function(String eventType, Map<String, dynamic> response);
+
 /// Screen/session state is intentionally separate from learned preferences.
 class ShoppingTaskController extends ChangeNotifier {
-  ShoppingTaskController(this.api);
+  ShoppingTaskController(this.api, {this.onAcceptedProductReaction});
   final ApiClient api;
+  final AcceptedProductReactionCallback? onAcceptedProductReaction;
   Map<String, dynamic>? result;
   bool busy = false;
   String? error;
@@ -156,6 +160,15 @@ class ShoppingTaskController extends ChangeNotifier {
   bool hasReacted(String productId, String event) =>
       _positiveActions.contains('$productId:$event');
 
+  void _acceptedReaction(String event, Map<String, dynamic> response) {
+    if (response['idempotent'] == true) return;
+    try {
+      onAcceptedProductReaction?.call(event, response);
+    } catch (_) {
+      // Optional local refresh work cannot undo an accepted permanent event.
+    }
+  }
+
   Future<void> react(String productId, String event, {String? outfitId}) async {
     if (!{'like', 'save'}.contains(event) || hasReacted(productId, event)) {
       return;
@@ -165,13 +178,17 @@ class ShoppingTaskController extends ChangeNotifier {
     final meta = eventMetaFor(outfitId: outfitId);
     await _action(() async {
       final generation = _generation;
-      await api.recordRecommendationEvent(
+      final session = api.sessionEpoch;
+      final response = await api.recordRecommendationEvent(
         eventType: event,
         productId: productId,
         meta: meta,
       );
-      if (!_disposed && generation == _generation) {
+      if (!_disposed &&
+          generation == _generation &&
+          session == api.sessionEpoch) {
         _positiveActions.add('$productId:$event');
+        _acceptedReaction(event, response);
       }
       return current;
     });
@@ -217,14 +234,23 @@ class ShoppingTaskController extends ChangeNotifier {
   Future<void> feedback(String productId, [String? reason]) async {
     final current = result;
     if (current == null) return;
-    await _action(
-      () => api.giveIntentFeedback(
+    await _action(() async {
+      final generation = _generation;
+      final session = api.sessionEpoch;
+      final response = await api.giveIntentFeedback(
         current['id'] as String,
         productId,
         reason,
         current['version'] as int,
-      ),
-    );
+      );
+      if (!_disposed &&
+          generation == _generation &&
+          session == api.sessionEpoch &&
+          !{'too_expensive', 'not_for_context'}.contains(reason)) {
+        _acceptedReaction('dislike', response);
+      }
+      return response;
+    });
   }
 
   Future<void> replaceItem(String outfitId, String slot) async {

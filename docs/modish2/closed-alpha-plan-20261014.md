@@ -29,7 +29,7 @@
 | 1.2 | Snapshot→rank→короткая публикация | Закрыт локально: [ревизия](closed-alpha-12-owner-revision.md), [HTTP feed](closed-alpha-12-feed-publication.md), [Style Swipe](closed-alpha-12-intent-deck.md), [Intent edits, образы, WOW, поиск и дополнения](closed-alpha-12-intent-outfits.md); настоящие concurrent HTTP/PG проверки |
 | 1.3 | Reservation фото/request id | Закрыт локально: [ручной повтор, квота и PostgreSQL concurrency](closed-alpha-13-photo-reservations.md) |
 | 1.4 | Максимум3 честных WOW/legacy образа | Закрыт локально: [общий бюджет, реальные legacy SKU, cap и честные пустые состояния](closed-alpha-14-honest-outfits.md) |
-| 1.5 | Переранжирование после10 реакций | Проверить save и серверный путь, а не только advancing actions клиента |
+| 1.5 | Переранжирование после10 реакций | Закрыт локально: [подтверждённые реакции, save, Intent и живое ранжирование](closed-alpha-15-reaction-rerank.md) |
 | 2.1 | Явное согласие на каталог непроверенного размера | Добавить отдельное согласие до загрузки; текущей подписи входа недостаточно |
 | 2.2 | Минимальное покрытие полных образов | Не ослаблять размер/наличие ради количества |
 | 2.3 | Обувные сетки основных источников | Только подтверждённые scoped-контракты магазинов |

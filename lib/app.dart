@@ -168,7 +168,10 @@ class AppController extends ChangeNotifier {
 
   int _secondaryGeneration = 0;
   Future<void>? _secondaryRefresh;
-  late final ShoppingTaskController shoppingTask = ShoppingTaskController(api);
+  late final ShoppingTaskController shoppingTask = ShoppingTaskController(
+    api,
+    onAcceptedProductReaction: _acceptedProductReaction,
+  );
   late final FeedHistory _feedHistory;
   String? _historyAccount;
   Future<void>? _historyLoading;
@@ -1279,6 +1282,52 @@ class AppController extends ChangeNotifier {
     }
   }
 
+  /// Called only after an acknowledged permanent event, never to post one.
+  void _acceptedProductReaction(String event, Map<String, dynamic> response) {
+    if (_disposed ||
+        response['idempotent'] == true ||
+        !{'like', 'dislike', 'skip', 'save'}.contains(event)) {
+      return;
+    }
+    _invalidateSecondaryReads();
+    _feedReactions++;
+    if (_feedReactions % 10 == 0) {
+      unawaited(_rerankRemainingFeed());
+    } else if (productFeed.length < 5) {
+      unawaited(_refreshProductFeed());
+    }
+  }
+
+  Future<void> _recordProductMetric(String event, int session) async {
+    if (!_isCurrentSession(session)) return;
+    final name = switch (event) {
+      'like' => 'product_liked',
+      'save' => 'product_saved',
+      'open_product' => 'product_opened',
+      'affiliate_click' => 'product_affiliate_click',
+      _ => null,
+    };
+    if (name == null) return;
+    try {
+      await api.metricsEvent(name);
+    } catch (_) {
+      // Analytics cannot change the outcome of a committed reaction.
+    }
+  }
+
+  Future<void> _refreshSavedAfterReaction(int session, int secondary) async {
+    if (!_isCurrentSession(session)) return;
+    try {
+      final rows = await api.savedProducts();
+      if (_isCurrentSession(session) && secondary == _secondaryGeneration) {
+        savedProductRows = rows;
+        notifyListeners();
+      }
+    } catch (_) {
+      // Preserve the last confirmed collection if this optional read fails.
+    }
+  }
+
   Future<void> sendProductEvent(
     BuildContext context,
     String productId,
@@ -1319,37 +1368,21 @@ class AppController extends ChangeNotifier {
           meta: eventMeta,
         );
         if (!_isCurrentSession(generation)) return;
-        try {
-          final name = switch (eventType) {
-            'like' => 'product_liked',
-            'save' => 'product_saved',
-            'open_product' => 'product_opened',
-            'affiliate_click' => 'product_affiliate_click',
-            _ => null,
-          };
-          if (name != null) {
-            await api.metricsEvent(name);
-          }
-        } catch (_) {}
-        if (!_isCurrentSession(generation)) return;
+        _acceptedProductReaction(eventType, res);
+        if (eventType == 'save' && res['idempotent'] == true) {
+          _invalidateSecondaryReads();
+        }
+        final secondaryGeneration = _secondaryGeneration;
+        unawaited(_recordProductMetric(eventType, generation));
+        if (eventType == 'save') {
+          unawaited(
+            _refreshSavedAfterReaction(generation, secondaryGeneration),
+          );
+        }
         if (res['milestone_reached'] == true && context.mounted) {
           Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => ResultScreen(controller: this)),
           );
-        }
-        if (eventType == 'save') {
-          _invalidateSecondaryReads();
-          final rows = await api.savedProducts();
-          if (!_isCurrentSession(generation)) return;
-          savedProductRows = rows;
-        }
-        if (advances) {
-          _feedReactions++;
-          if (_feedReactions % 10 == 0) {
-            unawaited(_rerankRemainingFeed());
-          } else if (productFeed.length < 5) {
-            await _refreshProductFeed();
-          }
         }
       });
     } finally {
