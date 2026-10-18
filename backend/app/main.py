@@ -4,11 +4,10 @@ from __future__ import annotations
 import logging
 import os
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials
-from sqlalchemy import text
-from sqlalchemy.orm import Session
+from starlette.responses import JSONResponse
 
 from .api.admin_products import router as admin_products_router
 from .api.affiliate import router as affiliate_router
@@ -30,6 +29,7 @@ from .middleware import RateLimitMiddleware, RequestLogMiddleware
 from .log_redaction import install_log_redaction
 from .services.visual_analysis_service import generate_style_visual
 from .services.photo_analysis_jobs import detached_visual_analysis
+from .services.health_probe import database_probe_succeeds
 
 logging.basicConfig(
   level=logging.INFO,
@@ -70,14 +70,31 @@ app.include_router(admin_products_router)
 
 
 @app.get("/health")
-def health(db: Session = Depends(get_db)) -> dict[str, str]:
-  try:
-    db.execute(text("SELECT 1"))
-    db_ok = "ok"
-  except Exception:
-    db_ok = "error"
-  status = "ok" if db_ok == "ok" else "degraded"
-  return {"status": status, "database": db_ok, "version": API_VERSION}
+def health(request: Request, response: Response) -> dict[str, str]:
+  """Legacy HTTP-200 envelope, including a degraded database response."""
+  response.headers['Cache-Control'] = 'no-store'
+  return _database_health(request)
+
+
+def _database_health(request: Request) -> dict[str, str]:
+  provider = request.app.dependency_overrides.get(get_db, get_db)
+  ready = database_probe_succeeds(provider)
+  return {'status': 'ok' if ready else 'degraded',
+      'database': 'ok' if ready else 'error', 'version': API_VERSION}
+
+
+@app.get('/health/live')
+def liveness(response: Response) -> dict[str, str]:
+  """Process responsiveness only: no database dependency or authentication."""
+  response.headers['Cache-Control'] = 'no-store'
+  return {'status': 'ok', 'version': API_VERSION}
+
+
+@app.get('/health/ready')
+def readiness(request: Request):
+  result = _database_health(request)
+  return JSONResponse(status_code=200 if result['status'] == 'ok' else 503,
+      content=result, headers={'Cache-Control': 'no-store'})
 
 
 @app.post("/visual-analysis")

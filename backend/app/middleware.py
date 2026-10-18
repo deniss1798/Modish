@@ -134,6 +134,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
   async def dispatch(self, request: Request, call_next: Callable) -> Response:
     if request.url.path in (
       "/health",
+      "/health/live",
+      "/health/ready",
       "/docs",
       "/openapi.json",
       "/redoc",

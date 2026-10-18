@@ -96,10 +96,18 @@ class RateLimitLifecycleTests(unittest.IsolatedAsyncioTestCase):
   async def test_exempt_endpoints_bypass_capacity_and_do_not_reserve_buckets(self):
     limiter = RateLimitMiddleware(_app, limit=1, max_clients=1, clock=self.clock)
     await self.request("192.0.2.1", limiter=limiter)
-    for path in ("/health", "/docs", "/openapi.json", "/redoc"):
+    for path in ("/health", "/health/live", "/health/ready", "/docs", "/openapi.json", "/redoc"):
       self.assertEqual((await self.request("192.0.2.2", path, limiter=limiter)).status_code, 200)
     self.assertEqual(set(limiter._clients), {"192.0.2.1"})
     self.assertEqual((await self.request("192.0.2.2", limiter=limiter)).status_code, 429)
+
+  async def test_probe_exemptions_are_exact_paths_not_a_health_prefix(self):
+    limiter = RateLimitMiddleware(_app, limit=1, max_clients=1, clock=self.clock)
+    await self.request("192.0.2.1", limiter=limiter)
+    for path in ('/health/private', '/health/live/more', '/health/ready/more',
+                 '/health/liveevil', '/health/ready/', '/health-anything'):
+      self.assertEqual((await self.request("192.0.2.2", path, limiter=limiter)).status_code, 429)
+    self.assertEqual(set(limiter._clients), {"192.0.2.1"})
 
   async def test_forwarded_headers_do_not_change_the_existing_trusted_client_policy(self):
     limiter = RateLimitMiddleware(_app, limit=1, max_clients=3, clock=self.clock)

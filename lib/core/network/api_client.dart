@@ -38,8 +38,12 @@ class ApiClient {
             handler.reject(_staleSession(options));
             return;
           }
-          if (options.extra['publicAuth'] == true) {
+          if (options.extra['publicAuth'] == true ||
+              options.extra['healthProbe'] == true) {
             options.headers.remove('Authorization');
+          }
+          if (options.extra['healthProbe'] == true) {
+            options.connectTimeout = const Duration(seconds: 10);
           }
           handler.next(options);
         },
@@ -61,6 +65,7 @@ class ApiClient {
           }
           if (error.response?.statusCode == 401 &&
               request.extra['publicAuth'] != true &&
+              request.extra['healthProbe'] != true &&
               request.extra['authRetried'] != true) {
             final sessionVersion = _sessionVersion;
             try {
@@ -232,6 +237,7 @@ class ApiClient {
   }
 
   static bool _shouldRetry(DioException e) {
+    if (e.requestOptions.extra['healthProbe'] == true) return false;
     if (!{'GET', 'HEAD'}.contains(e.requestOptions.method.toUpperCase())) {
       return false;
     }
@@ -379,18 +385,35 @@ class ApiClient {
   }
 
   Future<bool> pingHealth() async {
-    try {
-      final response = await _dio.get(
-        '/health',
-        options: Options(
-          sendTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 10),
-        ),
-      );
+    if (_disposed) return false;
+    final version = _sessionVersion;
+    Future<Response<dynamic>> probe(String path) => _dio.get(
+      path,
+      options: Options(
+        extra: {'healthProbe': true, 'sessionVersion': version},
+        sendTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+        validateStatus: (status) => status == 200 || status == 404,
+      ),
+    );
+    bool ready(Response<dynamic> response) {
       final data = response.data;
-      if (data is Map && data['status'] == 'ok') return true;
-      if (data is Map && data['status'] == 'degraded') return true;
-      return false;
+      return response.statusCode == 200 &&
+          data is Map &&
+          data['status'] == 'ok' &&
+          data['database'] == 'ok';
+    }
+
+    try {
+      final response = await probe('/health/ready');
+      if (_disposed || version != _sessionVersion) return false;
+      // Older APIs have only /health. Their explicit positive database result
+      // is sufficient; an unhealthy modern API must never fall back to it.
+      if (response.statusCode == 404) {
+        final legacy = await probe('/health');
+        return !_disposed && version == _sessionVersion && ready(legacy);
+      }
+      return ready(response);
     } catch (_) {
       return false;
     }
