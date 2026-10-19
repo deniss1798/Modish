@@ -37,7 +37,7 @@ logging.basicConfig(
 )
 install_log_redaction()
 
-API_VERSION = "1.0.0-build14"
+API_VERSION = "1.0.1-build15"
 app = FastAPI(title="Modish API", version=API_VERSION)
 
 _cors_raw = (os.getenv("CORS_ORIGINS") or "*").strip()
