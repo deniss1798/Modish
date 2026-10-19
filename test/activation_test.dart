@@ -13,6 +13,7 @@ class ActivationApi extends FakeApi {
   int swipeCalls = 0;
   bool feedbackFails = false;
   bool hasLikes = true;
+  List<String>? completionFeatures;
   Completer<void>? swipeGate;
   final views = <String>[];
   @override
@@ -53,7 +54,12 @@ class ActivationApi extends FakeApi {
   @override
   Future<Map<String, dynamic>> onboardingComplete({int count = 4}) async {
     completeCalls++;
-    return {'completed': true, 'outfits': []};
+    return {
+      'completed': true,
+      'outfits': [],
+      if (completionFeatures != null)
+        'recommendation_features': completionFeatures,
+    };
   }
 
   @override
@@ -72,6 +78,43 @@ class ActivationApi extends FakeApi {
 }
 
 void main() {
+  test(
+    'Preferences preserve capabilities until the server updates them',
+    () async {
+      final api = ActivationApi()
+        ..completionFeatures = ['catalogue_discovery_v1'];
+      final c = AppController(apiClient: api)
+        ..activationStatus = {
+          'recommendation_features': [
+            'shopping_intent_v1',
+            'catalogue_discovery_v1',
+          ],
+          'completed': true,
+          'rated': 20,
+        };
+      await c.startStyleSwipe(
+        genderTarget: 'womenswear',
+        height: 170,
+        ageGroup: '25-34',
+        clothingSize: 'M',
+        shoeSize: '38',
+        styles: ['casual', 'minimalism'],
+        priceSegment: 'mass',
+      );
+      expect(c.supportsShoppingIntent, isTrue);
+      expect(c.supportsCatalogueDiscovery, isTrue);
+      expect(c.activationStatus['completed'], isNull);
+      expect(c.activationStatus['rated'], isNull);
+      for (var i = 0; i < 15; i++) {
+        await c.rateStyleSwipe('like');
+      }
+      await c.onboardingV2CompleteWow();
+      expect(c.supportsCatalogueDiscovery, isTrue);
+      expect(c.supportsShoppingIntent, isFalse);
+      c.dispose();
+    },
+  );
+
   testWidgets('Failed swipe offers a deck refresh without replaying the vote', (
     tester,
   ) async {

@@ -23,6 +23,7 @@ from ..services.onboarding_service import (
 )
 from ..services.photo_analysis import analyze_onboarding_photo
 from ..services.photo_analysis_jobs import run_photo_analysis
+from ..services.recommendation_capabilities import recommendation_features
 from ..services.recommendation_engine import ensure_style_profile
 from .deps import auth_scheme, get_db, user_from_token
 from .upload_utils import read_upload_bytes_limited
@@ -69,7 +70,8 @@ def activation_preferences(payload: ActivationPreferencesRequest, db: Session = 
       clothing_size_system=payload.clothing_size_system, shoe_size_system=payload.shoe_size_system,
       height=payload.height, sizes=payload.sizes.model_dump(exclude_unset=True) if payload.sizes else None)
   db.commit()
-  return {'status': 'ready_for_swipe', 'activation_version': 1}
+  return {'status': 'ready_for_swipe', 'activation_version': 1,
+      'recommendation_features': recommendation_features(activation=True)}
 
 
 @router.get('/style-swipe')
@@ -142,7 +144,7 @@ def get_onboarding_status(
   from ..services.fit_size_profile import missing_fit_requirements, size_profile_to_api
   missing_fit = missing_fit_requirements(fit)
   result.update(activation_version=1, completed=bool(activation.completed_at) if activation else legacy_has_taste(db, user, profile),
-      recommendation_features=['fit_sizes_v1', 'shopping_intent_v1', 'catalogue_discovery_v1'] + (['context_v1', 'dna_ranking_v1', 'personalized_search_v1'] if activation else []),
+      recommendation_features=recommendation_features(activation=activation is not None),
       preferences_ready=activation is not None and not missing_fit, rated=rated_count(activation) if activation else 0,
       minimum=MIN_SWIPES, target=SWIPE_TARGET, clothing_size=fit.clothing_size if fit else None,
       shoe_size=activation.shoe_size if activation else None, gender_target=fit.gender_target if fit else None)

@@ -521,7 +521,11 @@ class AppController extends ChangeNotifier {
       );
       if (!_isCurrentSession(generation)) return;
       styleTarget = genderTarget;
+      final recommendationFeatures =
+          activationStatus['recommendation_features'];
       activationStatus = {
+        if (recommendationFeatures is List)
+          'recommendation_features': List<dynamic>.of(recommendationFeatures),
         'gender_target': genderTarget,
         'age_group': ageGroup,
         'clothing_size': clothingSize,

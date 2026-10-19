@@ -33,6 +33,7 @@ from .recommendation_revision import profile_input_writer, accept_personal_chang
 from .recommendation_budget import check_ranking_budget
 from .outfit_policy import MAX_RECOMMENDED_OUTFITS, EMPTY_OUTFITS_MESSAGE
 from .affordable_candidates import AffordableCandidates
+from .recommendation_capabilities import recommendation_features
 
 MIN_SWIPES = 15
 SWIPE_TARGET = 20
@@ -694,5 +695,5 @@ def wow_response(db, user, session, profile, fit, *, rules=None):
     completed_at = completed_at.replace(tzinfo=timezone.utc) if completed_at.tzinfo is None else completed_at.astimezone(timezone.utc)
     return {'completed': True, 'outfits': result, 'completed_at': completed_at.isoformat(),
             'message': None if result else EMPTY_OUTFITS_MESSAGE,
-            'recommendation_features': ['context_v1', 'dna_ranking_v1', 'personalized_search_v1'],
+            'recommendation_features': recommendation_features(activation=True),
             'activation_version': 1, 'first_session_feed': True}
