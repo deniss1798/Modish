@@ -10,6 +10,7 @@ const _captureNames = {
   'feed',
   'catalogue-consent',
   'catalogue-unknown-size',
+  'profile-parameters',
 };
 const _pngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
 
@@ -25,7 +26,7 @@ Future<void> _saveArtifacts(Map<String, dynamic>? data) async {
   }
   final captures = data['screenshots'];
   if (captures is! List || captures.length != _captureNames.length) {
-    throw StateError('The local journey must provide all four screenshots.');
+    throw StateError('The local journey must provide all five screenshots.');
   }
   final pngs = <String, List<int>>{};
   for (final capture in captures) {

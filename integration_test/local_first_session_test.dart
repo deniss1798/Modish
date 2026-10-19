@@ -22,6 +22,7 @@ import 'package:modish/features/catalog/discovery_screen.dart';
 import 'package:modish/features/catalog/search_screen.dart';
 import 'package:modish/features/onboarding/onboarding_v2_screen.dart';
 import 'package:modish/features/products/product_detail_screen.dart';
+import 'package:modish/features/profile/edit_profile_screen.dart';
 import 'package:modish/features/profile/profile_screen.dart';
 import 'package:modish/features/recommendations/saved_screen.dart';
 
@@ -179,6 +180,8 @@ void main() {
       final catalogueRows = <Map<String, dynamic>>[];
       final refreshedProducts = <String>{};
       final refreshedCatalogueProducts = <String>{};
+      final patchedFitHeights = <Object?>[];
+      final readFitHeights = <Object?>[];
       Map<String, dynamic> catalogueEnvelope = {};
       final timings = <String, int>{};
       final screenshots = <String>[];
@@ -218,6 +221,16 @@ void main() {
             handler.next(options);
           },
           onResponse: (response, handler) {
+            if (response.requestOptions.path == '/fit-profile/me' &&
+                response.statusCode == 200 &&
+                response.data is Map) {
+              final height = (response.data as Map)['height'];
+              if (response.requestOptions.method == 'PATCH') {
+                patchedFitHeights.add(height);
+              } else if (response.requestOptions.method == 'GET') {
+                readFitHeights.add(height);
+              }
+            }
             if (response.requestOptions.path == '/products' &&
                 response.data is List) {
               searchRows
@@ -287,7 +300,7 @@ void main() {
           // A mounted page or completed API call alone is not visual readiness.
           await tester.pump(const Duration(milliseconds: 350));
           await tester.pump(const Duration(milliseconds: 700));
-          if (name != 'catalogue-consent') {
+          if (name != 'catalogue-consent' && name != 'profile-parameters') {
             await _wait(
               tester,
               () {
@@ -591,6 +604,75 @@ void main() {
       expect(controller.error, isNull);
       expect(tester.takeException(), isNull);
       await capture('catalogue-unknown-size');
+
+      await _back(tester);
+      await _back(tester);
+      expect(find.byType(ProfileScreen), findsOneWidget);
+      await _tap(tester, find.text('Параметры подборки'));
+      await _wait(
+        tester,
+        () => find.byType(EditProfileScreen).evaluate().isNotEmpty,
+        'profile parameters opened through the menu',
+      );
+      final heightField = find.byWidgetPredicate(
+        (widget) =>
+            widget is TextField && widget.decoration?.labelText == 'Рост (см)',
+      );
+      expect(heightField, findsOneWidget);
+      expect(tester.widget<TextField>(heightField).controller!.text, '170');
+      await _tap(tester, heightField);
+      await tester.enterText(heightField, '171');
+      await _hideKeyboard(tester);
+      await _wait(
+        tester,
+        () => tester.view.viewInsets.bottom == 0,
+        'keyboard hidden before saving profile parameters',
+      );
+      final saveProfile = find.byKey(const ValueKey('save-profile'));
+      expect(saveProfile.hitTestable(), findsOneWidget);
+      final logicalHeight =
+          tester.view.physicalSize.height / tester.view.devicePixelRatio;
+      final navigationInset =
+          tester.view.viewPadding.bottom / tester.view.devicePixelRatio;
+      expect(navigationInset, greaterThan(0));
+      expect(
+        tester.getRect(saveProfile).bottom,
+        lessThanOrEqualTo(logicalHeight - navigationInset),
+        reason: 'Save must stay above the actual Android navigation inset.',
+      );
+      await capture('profile-parameters');
+      final patchCountBeforeSave = patchedFitHeights.length;
+      final readCountBeforeSave = readFitHeights.length;
+      watch.reset();
+      await _tap(tester, saveProfile);
+      await _wait(
+        tester,
+        () =>
+            patchedFitHeights.length == patchCountBeforeSave + 1 &&
+            patchedFitHeights.last == 171 &&
+            readFitHeights.length > readCountBeforeSave &&
+            readFitHeights.last == 171 &&
+            controller.fitProfile['height'] == 171 &&
+            !controller.isLoading &&
+            find.byType(EditProfileScreen).evaluate().isEmpty,
+        'profile PATCH and subsequent authoritative GET confirm the saved height',
+      );
+      timings['profile_parameters_save'] = watch.elapsedMilliseconds;
+      expect(controller.error, isNull);
+      expect(find.byType(ProfileScreen), findsOneWidget);
+      await _tap(tester, find.text('Параметры подборки'));
+      await _wait(
+        tester,
+        () => find.byType(EditProfileScreen).evaluate().isNotEmpty,
+        'saved profile parameters reopened through the menu',
+      );
+      expect(tester.widget<TextField>(heightField).controller!.text, '171');
+      expect(find.text('171'), findsOneWidget);
+      expect(readFitHeights.last, 171);
+      expect(controller.fitProfile['height'], 171);
+      expect(tester.takeException(), isNull);
+      binding.reportData!['profile_parameters_saved_and_reopened'] = true;
+      binding.reportData!['profile_save_navigation_inset'] = navigationInset;
       binding.reportData!['request_counts'] = {
         for (final path in requests.map((row) => row['path']!).toSet())
           path: requests.where((row) => row['path'] == path).length,
