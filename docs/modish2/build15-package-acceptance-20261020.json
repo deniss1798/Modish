@@ -1,0 +1,52 @@
+{
+  "release": "build15",
+  "source_commit": "945435a7d8ae49e2e0b6adbe19b0b02d15bf6905",
+  "source_archive_sha256": "e02bc06019701d10b5a54390ac980b8641415acda982f26c9c1362f7c99ebbdc",
+  "source_files": 297,
+  "api_version": "1.0.1-build15",
+  "migration": "20261015_0028",
+  "package_verification": {
+    "status": "verified",
+    "environment": "local_isolated_sqlite_not_server_acceptance",
+    "discovered": 936,
+    "executed_successfully": 881,
+    "postgres_skipped": 55,
+    "skip_reason": "Opt-in disposable PostgreSQL fixture",
+    "errors": 0,
+    "failures": 0,
+    "seconds": 129.188,
+    "external_python_network": "blocked_loopback_only",
+    "dotenv": "disabled_before_application_imports"
+  },
+  "additional_release_checks": {
+    "package_regressions_passed": 16,
+    "migration_isolation_guards_passed": 9,
+    "real_disposable_postgres_migration_scenarios_passed": 7,
+    "gradle_signing_guards_passed": 4,
+    "flutter_analyze": "no_issues"
+  },
+  "android_artifact": {
+    "name": "Modish-1.0.1-build15-alpha-debug.apk",
+    "sha256": "48f9cdde3774d7e19335bab2dfd98de3afebeac2a22445b4474f0107109b9440",
+    "bytes": 164417483,
+    "application_id": "com.example.modish",
+    "version_code": 15,
+    "version_name": "1.0.1",
+    "mode": "debug_private_QA_not_public_release",
+    "entrypoint": "lib/main.dart",
+    "api_base_url": "https://modish.org.ru",
+    "certificate_sha256": "56aa2a86188fb19e48f6dfbbb67bd59c4bd7aa67783b97edc8217a0bb6cc4f0d",
+    "signature_verified": true,
+    "installed_upgrade_verified": false,
+    "published": false
+  },
+  "production": {
+    "changed": false,
+    "public_health_version_observed": "1.0.0-build14",
+    "observed_at_utc": "2026-10-19T21:45:58.970136+00:00",
+    "actual_image_or_schema_checked_over_ssh": false,
+    "fresh_production_clone_rehearsal_passed": false,
+    "activation_passed": false,
+    "ssh_status": "authentication_failed_waiting_for_current_access"
+  }
+}
