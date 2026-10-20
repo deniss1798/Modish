@@ -1,0 +1,50 @@
+{
+  "release_channel": "public",
+  "release": "build15",
+  "status": "local_package_verified_not_released",
+  "source_commit": "9bd0326c6c4205f2c6eaa4a24e7ad4828aaafb35",
+  "source_archive_sha256": "bea94ef90ab69449d99ed493057eeefaeb3f42b5ac1108781f40e2a0a2b6cb88",
+  "source_files": 298,
+  "api_version": "1.0.1-build15",
+  "migration": "20261015_0028",
+  "backend_package_check": {
+    "status": "verified",
+    "environment": "local_isolated_sqlite_not_server_acceptance",
+    "discovered": 944,
+    "executed_successfully": 889,
+    "postgres_skipped": 55,
+    "skip_reason": "Opt-in disposable PostgreSQL fixture",
+    "errors": 0,
+    "failures": 0,
+    "seconds": 128.123,
+    "external_python_network": "blocked_loopback_only",
+    "dotenv": "disabled_before_application_imports"
+  },
+  "flutter": {
+    "full_suite_passed": 473,
+    "full_suite_elapsed": "1:07",
+    "analyze": "no_issues",
+    "analyze_seconds": 7.5
+  },
+  "additional_checks": {
+    "package_regressions_passed": 16,
+    "android_debug_manifest_merge": "passed",
+    "android_debug_aapt2_link": "passed",
+    "credential_guard_findings": 0
+  },
+  "public_apk": {
+    "built": false,
+    "published": false,
+    "signing_decision": "waiting_for_existing_or_new_permanent_key",
+    "debug_artifact_is_public_release": false
+  },
+  "production": {
+    "changed": false,
+    "public_health_version_observed": "1.0.0-build14",
+    "observed_at_utc": "2026-10-20T06:19:16.542540+00:00",
+    "actual_image_or_schema_checked_over_ssh": false,
+    "fresh_production_clone_rehearsal_passed": false,
+    "activation_passed": false,
+    "ssh_status": "authentication_failed_waiting_for_current_access"
+  }
+}
