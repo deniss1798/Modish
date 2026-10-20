@@ -41,7 +41,8 @@
     "fresh_production_clone_checked": false,
     "sources_imported": false,
     "source_observation_timestamps_renewed": false,
-    "ssh_access": "waiting_for_current_access"
+    "ssh_access": "provided_credentials_rejected_waiting_for_repaired_access",
+    "ssh_database_queries_executed": false
   },
   "public_apk": {
     "built_with_this_source": false,
