@@ -24,6 +24,10 @@ void main() {
     expect(sizeChoice('48'), {'value': '48', 'system': 'RU'});
     expect(sizeChoice('EU 48'), {'value': '48', 'system': 'EU'});
     expect(sizeChoice('38', footwear: true), {'value': '38', 'system': 'EU'});
+    expect(sizeChoice('EU 38', footwear: true), {
+      'value': '38',
+      'system': 'EU',
+    });
     expect(sizeChoice('M'), {'value': 'M', 'system': 'LETTER'});
     expect(sizeChoice('W28L32'), {'value': 'W28L32', 'system': 'WAIST'});
     expect(sizeChoice('M/L'), isNull);

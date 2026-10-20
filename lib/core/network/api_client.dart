@@ -839,6 +839,11 @@ class ApiClient {
     return list;
   }
 
+  Future<Map<String, dynamic>> catalogStatus() async {
+    final response = await _dio.get('/catalog/status');
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
   Future<Map<String, dynamic>> catalogueDiscovery({
     int limit = 20,
     String? category,

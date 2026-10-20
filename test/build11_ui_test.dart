@@ -158,6 +158,8 @@ void main() {
           ),
         ),
       );
+      await tester.tap(find.byKey(const ValueKey('profile-preferences')));
+      await tester.pumpAndSettle();
       expect(find.text('Синий'), findsOneWidget);
       expect(find.text('Романтичный'), findsOneWidget);
       expect(find.byType(Chip), findsNothing);

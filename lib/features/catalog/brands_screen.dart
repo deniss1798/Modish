@@ -15,6 +15,8 @@ class BrandsScreen extends StatefulWidget {
 class _BrandsScreenState extends State<BrandsScreen> {
   Map<String, int> _brands = {};
   bool _loading = true;
+  bool _fetching = false;
+  bool _fromFeed = false;
   String? _error;
 
   @override
@@ -34,11 +36,19 @@ class _BrandsScreenState extends State<BrandsScreen> {
   }
 
   Future<void> _load() async {
+    if (_fetching) return;
+    _fetching = true;
     final feedBrands = _brandsFromFeed();
     if (feedBrands.isNotEmpty && mounted) {
       setState(() {
         _brands = feedBrands;
         _loading = false;
+        _error = null;
+        _fromFeed = true;
+      });
+    } else if (mounted) {
+      setState(() {
+        _loading = _brands.isEmpty;
         _error = null;
       });
     }
@@ -53,20 +63,29 @@ class _BrandsScreenState extends State<BrandsScreen> {
         if (b.isEmpty) continue;
         counts[b] = (r['count'] as num?)?.toInt() ?? 1;
       }
+      if (counts.isEmpty && mounted) {
+        await widget.controller.refreshCatalogAvailability();
+      } else if (counts.isNotEmpty && mounted) {
+        widget.controller.invalidateCatalogAvailability();
+      }
       if (!mounted) return;
       setState(() {
-        if (counts.isNotEmpty) _brands = counts;
+        _brands = counts;
+        _fromFeed = false;
         _loading = false;
-        _error = _brands.isEmpty ? 'Бренды не найдены в каталоге' : null;
+        _error = null;
       });
     } catch (e) {
       if (!mounted) return;
       final fallback = feedBrands.isNotEmpty ? feedBrands : _brandsFromFeed();
       setState(() {
         _brands = fallback;
+        _fromFeed = fallback.isNotEmpty;
         _loading = false;
         _error = fallback.isEmpty ? ApiClient.formatError(e) : null;
       });
+    } finally {
+      _fetching = false;
     }
   }
 
@@ -97,10 +116,21 @@ class _BrandsScreenState extends State<BrandsScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        _error ?? 'Список брендов пуст',
+                        _error ??
+                            widget.controller.catalogAvailability.title ??
+                            'Сейчас нет доступных брендов',
                         textAlign: TextAlign.center,
-                        style: AppTextStyles.bodyMuted,
+                        style: AppTextStyles.sectionTitle,
                       ),
+                      if (_error == null) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          widget.controller.catalogAvailability.message ??
+                              'Список появится, когда в каталоге будут доступные вещи.',
+                          textAlign: TextAlign.center,
+                          style: AppTextStyles.bodyMuted,
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       TextButton(
                         onPressed: _load,
@@ -130,7 +160,7 @@ class _BrandsScreenState extends State<BrandsScreen> {
                         ),
                       ),
                       trailing: Text(
-                        '${e.value} товаров',
+                        _fromFeed ? 'Из вашей ленты' : '${e.value} товаров',
                         style: AppTextStyles.bodyMuted,
                       ),
                       onTap: () => Navigator.pop(context, e.key),

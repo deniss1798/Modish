@@ -68,7 +68,8 @@ class _OutfitsScreenState extends State<OutfitsScreen> {
               ? 'Подобрано: $n ${_pluralOutfits(n)}'
               : widget.controller.outfits.where(_matches).isNotEmpty
               ? 'Новых сочетаний пока нет. Текущие образы сохранены.'
-              : noOutfitRecommendationsMessage,
+              : widget.controller.catalogAvailability.message ??
+                    noOutfitRecommendationsMessage,
         ),
       ),
     );
@@ -120,8 +121,10 @@ class _OutfitsScreenState extends State<OutfitsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: EmptyState(
               icon: Icons.checkroom_outlined,
-              title: 'Пока нет образов',
-              message: noOutfitRecommendationsMessage,
+              title: c.catalogAvailability.title ?? 'Пока нет образов',
+              message:
+                  c.catalogAvailability.message ??
+                  noOutfitRecommendationsMessage,
               actionLabel: 'Собрать образы',
               busy: busy,
               onAction: _generate,

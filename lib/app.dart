@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'core/network/api_client.dart';
 import 'core/network/user_error_message.dart';
 import 'core/presentation/outfit_recommendations.dart';
+import 'core/presentation/catalog_availability.dart';
 import 'core/storage/token_storage.dart';
 import 'core/storage/feed_history.dart';
 import 'core/theme/app_colors.dart';
@@ -285,6 +286,15 @@ class AppController extends ChangeNotifier {
   bool get supportsStyleVisual =>
       (activationStatus['recommendation_features'] as List? ?? const [])
           .contains('style_visual_v1');
+  bool get supportsCatalogStatus =>
+      (activationStatus['recommendation_features'] as List? ?? const [])
+          .contains('catalog_status_v1');
+  CatalogAvailability _catalogAvailability = CatalogAvailability.unknown;
+  CatalogAvailability get catalogAvailability => supportsCatalogStatus
+      ? _catalogAvailability
+      : CatalogAvailability.unknown;
+  Future<void>? _catalogStatusLoad;
+  int _catalogStatusRevision = 0;
   int? get feedMinPrice => _feedQuery.minPrice;
   int? get feedMaxPrice => _feedQuery.maxPrice;
   List<String> get feedFilterSizes => _feedQuery.sizes;
@@ -975,7 +985,8 @@ class AppController extends ChangeNotifier {
       return productFeedError;
     }
     if (productFeed.isEmpty) {
-      return 'Подходящих вещей пока нет. Попробуйте изменить или сбросить фильтры.';
+      return catalogAvailability.message ??
+          'Сейчас нет подходящих вещей. Параметры подборки сохранены.';
     }
     return null;
   }
@@ -1015,10 +1026,63 @@ class AppController extends ChangeNotifier {
         ...rows,
       ], dismissedKeys: _dismissedProductKeys);
       productFeedError = null;
+      if (rows.isNotEmpty) {
+        _rememberCatalogAvailability(CatalogAvailability.ready);
+      }
+      if (productFeed.isEmpty) {
+        await refreshCatalogAvailability();
+      }
     } catch (e) {
       if (generation != _feedRequestGeneration) return;
       productFeedError = ApiClient.formatError(e);
     }
+  }
+
+  /// Optional diagnostics never turn a successful empty feed into an error.
+  /// The capability keeps old API versions and account boundaries isolated.
+  Future<void> refreshCatalogAvailability() {
+    if (_disposed || !supportsCatalogStatus) return Future.value();
+    if (_catalogStatusLoad != null) return _catalogStatusLoad!;
+    final session = _sessionGeneration;
+    final revision = _catalogStatusRevision;
+    return _catalogStatusLoad = _readCatalogAvailability(session, revision)
+        .whenComplete(() {
+          if (_isCurrentSession(session) &&
+              revision == _catalogStatusRevision) {
+            _catalogStatusLoad = null;
+          }
+        });
+  }
+
+  /// An authoritative nonempty response invalidates older negative diagnostics.
+  /// Brand listings alone do not prove a personalized match or full admission.
+  void invalidateCatalogAvailability() {
+    if (_disposed) return;
+    _rememberCatalogAvailability(CatalogAvailability.unknown);
+    notifyListeners();
+  }
+
+  void _rememberCatalogAvailability(CatalogAvailability value) {
+    _catalogStatusRevision++;
+    _catalogStatusLoad = null;
+    _catalogAvailability = value;
+  }
+
+  Future<void> _readCatalogAvailability(int session, int revision) async {
+    var result = CatalogAvailability.unknown;
+    try {
+      final response = await api.catalogStatus().timeout(
+        const Duration(seconds: 5),
+      );
+      result = CatalogAvailability.fromApi(response);
+    } catch (_) {
+      // Missing/degraded diagnostics are not proof of a catalogue outage.
+    }
+    if (!_isCurrentSession(session) || revision != _catalogStatusRevision) {
+      return;
+    }
+    _catalogAvailability = result;
+    notifyListeners();
   }
 
   Future<void> _rerankRemainingFeed() {
@@ -1296,6 +1360,9 @@ class AppController extends ChangeNotifier {
     _pendingProductActions.clear();
     _activationCompleted = false;
     activationStatus = {};
+    _catalogAvailability = CatalogAvailability.unknown;
+    _catalogStatusLoad = null;
+    _catalogStatusRevision++;
     styleSwipeCards = [];
     styleSwipeRated = 0;
     styleSwipeMinimum = 15;
@@ -1526,6 +1593,10 @@ class AppController extends ChangeNotifier {
       _invalidateSecondaryReads();
       await _reloadOutfitLists(generation);
       if (!_isCurrentSession(generation)) return;
+      if (createdCount == 0) {
+        await refreshCatalogAvailability();
+        if (!_isCurrentSession(generation)) return;
+      }
       try {
         await api.metricsEvent(
           'outfit_generated',

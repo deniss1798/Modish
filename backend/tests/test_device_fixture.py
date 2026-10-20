@@ -103,7 +103,7 @@ with TestClient(app) as client:
             'email': fixture.FIXTURE_EMAIL, 'password': 'SYNTHETIC_DEVICE_PASSWORD'})
         assert registered.status_code == 200, 'Real local registration failed'
         headers = {'Authorization': 'Bearer ' + registered.json()['access_token']}
-        base = ['fit_sizes_v1', 'shopping_intent_v1', 'catalogue_discovery_v1']
+        base = ['fit_sizes_v1', 'shopping_intent_v1', 'catalogue_discovery_v1', 'catalog_status_v1']
         active = base + ['context_v1', 'dna_ranking_v1', 'personalized_search_v1']
         cold = client.get('/onboarding/status', headers=headers)
         assert cold.status_code == 200 and cold.json()['recommendation_features'] == base

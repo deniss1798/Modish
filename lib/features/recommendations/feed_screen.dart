@@ -300,7 +300,13 @@ class _EmptyFeed extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final err = controller.productFeedError?.trim();
+    final hasError = err != null && err.isNotEmpty;
     final busy = controller.feedRefreshing;
+    final availability = controller.catalogAvailability;
+    final canReset =
+        !hasError &&
+        !availability.blocksSelection &&
+        _hasActiveFilters(controller);
     if (busy) {
       return const Center(
         child: Column(
@@ -326,28 +332,28 @@ class _EmptyFeed extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           EmptyState(
-            icon: err != null && err.isNotEmpty
-                ? Icons.cloud_off_outlined
-                : Icons.style_outlined,
-            title: err != null && err.isNotEmpty
+            icon: hasError ? Icons.cloud_off_outlined : Icons.style_outlined,
+            title: hasError
                 ? 'Не удалось загрузить'
-                : 'Подходящих вещей пока нет',
-            message: err != null && err.isNotEmpty
+                : availability.title ?? 'Подходящих вещей пока нет',
+            message: hasError
                 ? err
-                : (_hasActiveFilters(controller)
-                      ? 'Попробуйте убрать часть условий или сбросить фильтры.'
-                      : 'Вы просмотрели доступные вещи. Попробуйте обновить ленту позже.'),
-            actionLabel: _hasActiveFilters(controller)
+                : availability.message ??
+                      (canReset
+                          ? 'Попробуйте убрать часть условий или сбросить фильтры.'
+                          : 'Сейчас нет вариантов под ваши параметры. Проверьте подборку позже.'),
+            actionLabel: canReset
                 ? 'Сбросить фильтры'
+                : hasError
+                ? 'Повторить'
                 : 'Обновить',
             busy: busy,
             onAction: busy
                 ? null
-                : (_hasActiveFilters(controller)
-                      ? () => controller.applyFeedFilters()
-                      : onRefresh),
+                : (canReset ? () => controller.applyFeedFilters() : onRefresh),
           ),
           if (controller.supportsCatalogueDiscovery &&
+              !availability.blocksSelection &&
               controller.token?.isNotEmpty == true) ...[
             const SizedBox(height: 12),
             TextButton.icon(

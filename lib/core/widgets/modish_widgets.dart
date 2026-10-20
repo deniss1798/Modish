@@ -699,7 +699,9 @@ class _FeedActionState extends State<_FeedAction> {
 }
 
 class HeroFashionBackdrop extends StatelessWidget {
-  const HeroFashionBackdrop({super.key});
+  const HeroFashionBackdrop({super.key, this.alignment = Alignment.center});
+
+  final Alignment alignment;
 
   static const _imagePath = 'assets/images/back.png';
 
@@ -711,7 +713,7 @@ class HeroFashionBackdrop extends StatelessWidget {
         Image.asset(
           _imagePath,
           fit: BoxFit.cover,
-          alignment: Alignment.center,
+          alignment: alignment,
           errorBuilder: (context, error, stackTrace) => const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(

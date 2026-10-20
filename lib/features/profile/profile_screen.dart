@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../app.dart';
+import '../../core/presentation/price_format.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/presentation/catalog_labels.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/modish_widgets.dart';
 import '../catalog/brands_screen.dart';
@@ -9,321 +9,319 @@ import '../catalog/discovery_screen.dart';
 import '../catalog/search_screen.dart';
 import '../settings/settings_screen.dart';
 import 'edit_profile_screen.dart';
+import 'fit_sizes.dart';
+import 'profile_preferences_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key, required this.controller});
   final AppController controller;
 
   @override
-  Widget build(BuildContext context) {
-    final fit = controller.fitProfile;
-    final taste = controller.tasteProfile;
-    final weights = taste['weights'] as Map? ?? const {};
-    final colors = _values(
-      _positiveWeights(weights['colors']),
-      catalogColorLabels,
-    );
-    final learnedStyles = _values(
-      _positiveWeights(weights['styles']),
-      _styleLabels,
-    );
-    final chosenStyles = _values(
-      controller.activationStatus['style_preferences'],
-      _styleLabels,
-    );
-    final scenarios = _values(fit['style_scenarios'], _styleLabels);
-    final size = (fit['clothing_size'] ?? 'Не указан').toString();
-    final budgetMax = fit['budget_max'];
-    final budgetLabel = budgetMax != null ? 'до $budgetMax ₽' : 'Не указан';
-    final name = controller.email.split('@').first;
-
-    final feedCount = controller.productFeed.length;
-    final savedCount =
-        controller.savedProductRows.length + controller.savedOutfits.length;
-
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-      children: [
-        const EditorialHeading('Профиль'),
-        const SizedBox(height: 12),
-        SoftCard(
-          child: Row(
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: controller,
+    builder: (context, _) {
+      final email = controller.email.trim();
+      final name = email.split('@').first;
+      final preferences = ProfilePreferencesData.fromController(controller);
+      final viewport = MediaQuery.sizeOf(context);
+      final compactHeader = viewport.height < 500 && viewport.width >= 600;
+      final settings = IconButton(
+        tooltip: 'Настройки',
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => SettingsScreen(controller: controller),
+          ),
+        ),
+        icon: const Icon(Icons.settings_outlined),
+      );
+      return Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: ListView(
+            key: const ValueKey('profile-scroll'),
+            padding: EdgeInsets.fromLTRB(20, compactHeader ? 8 : 16, 20, 24),
             children: [
-              CircleAvatar(
-                radius: 32,
-                backgroundColor: AppColors.chipBg,
-                child: Text(
-                  name.isNotEmpty ? name[0].toUpperCase() : '?',
-                  style: AppTextStyles.displaySm,
+              if (compactHeader)
+                Row(
+                  children: [
+                    const Expanded(child: EditorialHeading('Профиль')),
+                    const SizedBox(width: 24),
+                    Expanded(
+                      child: _AccountSummary(
+                        name: name,
+                        email: email,
+                        compact: true,
+                      ),
+                    ),
+                    settings,
+                  ],
+                )
+              else ...[
+                EditorialHeading('Профиль', trailing: settings),
+                const SizedBox(height: 20),
+                _AccountSummary(name: name, email: email),
+              ],
+              SizedBox(height: compactHeader ? 16 : 24),
+              _SelectionCard(controller: controller),
+              const SizedBox(height: 12),
+              SoftCard(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 6,
+                ),
+                child: MenuTile(
+                  key: const ValueKey('profile-preferences'),
+                  icon: Icons.favorite_border,
+                  title: 'Ваши предпочтения',
+                  subtitle: preferences.hasLearned
+                      ? 'Стили и цвета по вашим оценкам'
+                      : preferences.hasAny
+                      ? 'Ваш выбор и оценки вещей'
+                      : 'Пока мало данных',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          ProfilePreferencesScreen(controller: controller),
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(width: 14),
-              Expanded(
+              const SizedBox(height: 24),
+              const Padding(
+                padding: EdgeInsets.only(left: 4, bottom: 8),
+                child: Text('Магазины', style: AppTextStyles.caption),
+              ),
+              SoftCard(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 6,
+                ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.displaySm.copyWith(
-                              fontSize: 22,
-                            ),
+                    if (controller.supportsCatalogueDiscovery) ...[
+                      MenuTile(
+                        icon: Icons.grid_view_outlined,
+                        title: 'Каталог магазинов',
+                        subtitle: 'Размер уточняйте у магазина',
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                DiscoveryScreen(controller: controller),
                           ),
                         ),
-                      ],
-                    ),
-                    Text(
-                      controller.email,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.bodyMuted,
+                      ),
+                      const Divider(color: AppColors.line, height: 1),
+                    ],
+                    MenuTile(
+                      icon: Icons.storefront_outlined,
+                      title: 'Бренды',
+                      onTap: () async {
+                        final session = controller.navigationSessionEpoch;
+                        final brand = await Navigator.push<String>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                BrandsScreen(controller: controller),
+                          ),
+                        );
+                        if (!context.mounted ||
+                            session != controller.navigationSessionEpoch ||
+                            brand == null ||
+                            brand.trim().isEmpty) {
+                          return;
+                        }
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => SearchScreen(
+                              controller: controller,
+                              initialQuery: brand,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-        SoftCard(
-          child: Row(
-            children: [
-              StatTile(value: '$feedCount', label: 'В ленте'),
-              StatTile(value: '$savedCount', label: 'Сохранено'),
-              StatTile(value: '${controller.outfits.length}', label: 'Образов'),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-        SoftCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Ваши предпочтения',
-                style: AppTextStyles.sectionTitle,
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Эта сводка помогает объяснить подбор. Она уточняется по вашим оценкам вещей.',
-                style: AppTextStyles.bodyMuted,
-              ),
-              if (chosenStyles.isNotEmpty)
-                _PreferenceLine(
-                  label: 'Вы выбрали при знакомстве',
-                  values: chosenStyles,
-                ),
-              if (learnedStyles.isNotEmpty)
-                _PreferenceLine(
-                  label: 'Стили по вашим оценкам',
-                  values: learnedStyles,
-                ),
-              if (colors.isNotEmpty)
-                _PreferenceLine(
-                  label: 'Цвета по вашим оценкам',
-                  values: colors,
-                ),
-              if (scenarios.isNotEmpty)
-                _PreferenceLine(
-                  label: 'В параметрах подборки',
-                  values: scenarios,
-                ),
-              if (learnedStyles.isEmpty && colors.isEmpty) ...[
-                const SizedBox(height: 14),
-                const Text(
-                  'Пока мало данных. Отмечайте понравившиеся вещи — здесь появятся ваши предпочтения.',
-                  style: AppTextStyles.bodyMuted,
-                ),
-              ],
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  Expanded(
-                    child: _InfoBox(label: 'Размер', value: size),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _InfoBox(label: 'Бюджет', value: budgetLabel),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-        SoftCard(
-          child: Column(
-            children: [
+              const SizedBox(height: 12),
               MenuTile(
-                icon: Icons.tune,
-                title: 'Параметры подборки',
-                subtitle: 'Рост, вес, пол, размер, бюджет',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => EditProfileScreen(controller: controller),
-                  ),
-                ),
-              ),
-              const Divider(color: AppColors.line),
-              MenuTile(
-                icon: Icons.style_outlined,
-                title: 'Мои образы',
-                onTap: () => controller.setTab(1),
-              ),
-              const Divider(color: AppColors.line),
-              MenuTile(
-                icon: Icons.bookmark_border,
-                title: 'Сохранённое',
-                onTap: () => controller.setTab(2),
-              ),
-              const Divider(color: AppColors.line),
-              if (controller.supportsCatalogueDiscovery) ...[
-                MenuTile(
-                  icon: Icons.grid_view_outlined,
-                  title: 'Каталог магазинов',
-                  subtitle: 'Посмотреть товары и уточнить размер у магазина',
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => DiscoveryScreen(controller: controller),
-                    ),
-                  ),
-                ),
-                const Divider(color: AppColors.line),
-              ],
-              MenuTile(
-                icon: Icons.storefront_outlined,
-                title: 'Бренды',
-                onTap: () async {
-                  final brand = await Navigator.push<String>(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => BrandsScreen(controller: controller),
-                    ),
-                  );
-                  if (!context.mounted ||
-                      brand == null ||
-                      brand.trim().isEmpty) {
-                    return;
-                  }
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => SearchScreen(
-                        controller: controller,
-                        initialQuery: brand,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const Divider(color: AppColors.line),
-              MenuTile(
-                icon: Icons.settings_outlined,
-                title: 'Настройки',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => SettingsScreen(controller: controller),
-                  ),
-                ),
-              ),
-              const Divider(color: AppColors.line),
-              MenuTile(
-                icon: Icons.auto_awesome_outlined,
-                title: 'Анализ по фото (дополнительно)',
-                subtitle: 'Улучшит цвета и стиль',
+                key: const ValueKey('profile-photo-analysis'),
+                icon: Icons.add_a_photo_outlined,
+                title: 'Анализ по фото',
+                subtitle: 'По желанию',
                 onTap: controller.isLoading ? null : controller.goToReanalyze,
               ),
             ],
           ),
         ),
-      ],
+      );
+    },
+  );
+}
+
+class _AccountSummary extends StatelessWidget {
+  const _AccountSummary({
+    required this.name,
+    required this.email,
+    this.compact = false,
+  });
+  final String name;
+  final String email;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      CircleAvatar(
+        radius: compact ? 18 : 24,
+        backgroundColor: AppColors.chipBg,
+        child: name.isEmpty
+            ? const Icon(Icons.person_outline, color: AppColors.accent)
+            : Text(
+                name[0].toUpperCase(),
+                style: AppTextStyles.displaySm.copyWith(
+                  fontSize: compact ? 20 : 26,
+                ),
+              ),
+      ),
+      const SizedBox(width: 12),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              name.isEmpty ? 'Ваш аккаунт' : name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.sectionTitle,
+            ),
+            if (email.isNotEmpty) ...[
+              const SizedBox(height: 3),
+              Text(
+                email,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.caption,
+              ),
+            ],
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
+class _SelectionCard extends StatelessWidget {
+  const _SelectionCard({required this.controller});
+  final AppController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final fit = controller.fitProfile;
+    final sizes = <(String, String)>[
+      ('Верх', sizeFieldValue(fit, 'top')),
+      ('Низ', sizeFieldValue(fit, 'bottom')),
+      (
+        fit['gender_target'] == 'menswear' ? 'Комплект' : 'Платье',
+        sizeFieldValue(fit, 'one_piece'),
+      ),
+      ('Обувь', sizeFieldValue(fit, 'shoes')),
+    ].where((entry) => entry.$2.isNotEmpty).toList();
+    // Legacy values describe only their own category, never every clothing slot.
+    if (fit['size_profile'] == null) {
+      final clothing = fit['clothing_size']?.toString().trim() ?? '';
+      final shoe = fit['shoe_size']?.toString().trim() ?? '';
+      if (clothing.isNotEmpty) sizes.add(('Одежда', clothing));
+      if (shoe.isNotEmpty) sizes.add(('Обувь', shoe));
+    }
+    final budget = num.tryParse('${fit['budget_max']}');
+    final budgetLabel = budget != null && budget.isFinite && budget > 0
+        ? 'до ${formatPriceAmount(budget)} ₽'
+        : 'Не указан';
+    final wide = MediaQuery.sizeOf(context).width >= 600;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        key: const ValueKey('profile-edit-parameters'),
+        borderRadius: BorderRadius.circular(22),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => EditProfileScreen(controller: controller),
+          ),
+        ),
+        child: SoftCard(
+          padding: wide ? const EdgeInsets.all(16) : null,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.tune, color: AppColors.accent, size: 22),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'Параметры подборки',
+                      style: AppTextStyles.sectionTitle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(
+                    Icons.edit_outlined,
+                    color: AppColors.accent,
+                    size: 20,
+                  ),
+                ],
+              ),
+              SizedBox(height: wide ? 12 : 18),
+              if (sizes.isEmpty)
+                const Text('Размеры не указаны', style: AppTextStyles.bodyMuted)
+              else
+                Wrap(
+                  spacing: 24,
+                  runSpacing: 12,
+                  children: [
+                    for (final size in sizes)
+                      _ParameterValue(label: size.$1, value: size.$2),
+                    if (wide)
+                      _ParameterValue(label: 'Бюджет', value: budgetLabel),
+                  ],
+                ),
+              if (!wide || sizes.isEmpty) ...[
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 14),
+                  child: Divider(color: AppColors.line, height: 1),
+                ),
+                _ParameterValue(label: 'Бюджет', value: budgetLabel),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
 
-const _styleLabels = {
-  'daily': 'Каждый день',
-  'office': 'В офис',
-  'evening': 'Вечер',
-  'casual': 'Повседневный',
-  'smart_casual': 'Smart casual',
-  'minimal': 'Минимализм',
-  'minimalism': 'Минимализм',
-  'romantic': 'Романтичный',
-  'elegant': 'Элегантный',
-  'streetwear': 'Городской',
-  'classic': 'Классический',
-  'sport': 'Спортивный',
-  'sporty': 'Спортивный',
-  'boho': 'Бохо',
-};
-List<String> _values(dynamic raw, Map<String, String> labels) =>
-    (raw is List ? raw : const [])
-        .map((v) => labels['$v'.toLowerCase()] ?? '$v')
-        .where((v) => v.trim().isNotEmpty)
-        .toSet()
-        .take(5)
-        .toList();
-
-List<String> _positiveWeights(dynamic raw) {
-  if (raw is! Map) return const [];
-  final entries =
-      raw.entries.where((e) => (num.tryParse('${e.value}') ?? 0) > 0).toList()
-        ..sort(
-          (a, b) => (num.tryParse('${b.value}') ?? 0).compareTo(
-            num.tryParse('${a.value}') ?? 0,
-          ),
-        );
-  return entries.map((e) => '${e.key}').toList();
-}
-
-class _PreferenceLine extends StatelessWidget {
-  const _PreferenceLine({required this.label, required this.values});
-  final String label;
-  final List<String> values;
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(top: 14),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: AppTextStyles.caption),
-        const SizedBox(height: 5),
-        Text(values.join(' · '), style: AppTextStyles.body),
-      ],
-    ),
-  );
-}
-
-class _InfoBox extends StatelessWidget {
-  const _InfoBox({required this.label, required this.value});
+class _ParameterValue extends StatelessWidget {
+  const _ParameterValue({required this.label, required this.value});
   final String label;
   final String value;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.bg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.line),
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label, style: AppTextStyles.caption),
+      const SizedBox(height: 4),
+      Text(
+        value,
+        style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: AppTextStyles.caption),
-          const SizedBox(height: 4),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
+    ],
+  );
 }

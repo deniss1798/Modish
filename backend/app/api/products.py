@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, Response
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -16,6 +16,13 @@ from ..services.catalog.stock_freshness import fresh_stock_conditions
 from .deps import auth_scheme, get_db, user_from_token, require_alpha_catalogue_access
 
 router = APIRouter(tags=["products"], dependencies=[Depends(require_alpha_catalogue_access)])
+
+
+@router.get('/catalog/status')
+def catalog_status(response: Response, db: Session = Depends(get_db)) -> dict[str, Any]:
+  from ..services.catalog_status import catalogue_status
+  response.headers['Cache-Control'] = 'no-store'
+  return catalogue_status(db)
 
 
 def _independent_feed_response(db, user, **options):
