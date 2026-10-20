@@ -247,7 +247,7 @@ def committed_payload(workspace: Path, commit: str):
     return files, modes, sorted(excluded), tree, epoch
 
 
-def build_package(workspace: Path, commit: str, output: Path, *, expected_tests: int = 936) -> dict:
+def build_package(workspace: Path, commit: str, output: Path, *, expected_tests: int) -> dict:
     require(type(expected_tests) is int and 0 < expected_tests <= 100000, 'test_count_bound')
     files, modes, excluded, tree, epoch = committed_payload(workspace, commit)
     pg_methods = validate_payload(files)
@@ -289,7 +289,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--commit', required=True, help='Complete lowercase40hex commit ID')
     parser.add_argument('--output', required=True, type=Path)
-    parser.add_argument('--expected-tests', type=int, default=936)
+    parser.add_argument('--expected-tests', type=int, required=True)
     args = parser.parse_args()
     temporary = (WORKSPACE / '.tmp').resolve()
     output = args.output.resolve()

@@ -31,30 +31,75 @@ import 'features/outfits/outfits_screen.dart';
 import 'features/onboarding/result_screen.dart';
 
 class ModishBootstrap extends StatefulWidget {
-  const ModishBootstrap({super.key});
+  const ModishBootstrap({super.key, this.controllerFactory});
+
+  @visibleForTesting
+  final AppController Function()? controllerFactory;
 
   @override
   State<ModishBootstrap> createState() => _ModishBootstrapState();
 }
 
 class _ModishBootstrapState extends State<ModishBootstrap> {
-  late final AppController _controller = AppController();
+  AppController? _controller;
+  bool _configurationInvalid = false;
 
   @override
   void initState() {
     super.initState();
-    unawaited(_controller.boot());
+    try {
+      final controller = widget.controllerFactory?.call() ?? AppController();
+      _controller = controller;
+      unawaited(controller.boot());
+    } on ApiConfigurationException {
+      _configurationInvalid = true;
+    }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return AppScope(notifier: _controller, child: const ModishApp());
+    if (_configurationInvalid) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.dark,
+        home: const Scaffold(
+          body: SafeArea(
+            child: Center(
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.system_update_alt, size: 40),
+                    SizedBox(height: 20),
+                    Text(
+                      'Не удалось запустить приложение',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'Установите актуальную версию Modish из официального источника.',
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    return AppScope(notifier: _controller!, child: const ModishApp());
   }
 }
 
@@ -237,6 +282,9 @@ class AppController extends ChangeNotifier {
   bool get supportsCatalogueDiscovery =>
       (activationStatus['recommendation_features'] as List? ?? const [])
           .contains('catalogue_discovery_v1');
+  bool get supportsStyleVisual =>
+      (activationStatus['recommendation_features'] as List? ?? const [])
+          .contains('style_visual_v1');
   int? get feedMinPrice => _feedQuery.minPrice;
   int? get feedMaxPrice => _feedQuery.maxPrice;
   List<String> get feedFilterSizes => _feedQuery.sizes;
@@ -1557,6 +1605,10 @@ class AppController extends ChangeNotifier {
   Future<void> openVisualAnalysis(BuildContext context) async {
     final generation = _sessionGeneration;
     await _run(() async {
+      if (!supportsStyleVisual) {
+        error = 'Визуализация стиля пока недоступна. Продолжите подбор вещей.';
+        return;
+      }
       final res = await api.visualAnalysis();
       if (!_isCurrentSession(generation)) return;
       final url = res['image_url'];

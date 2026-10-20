@@ -30,6 +30,7 @@ from .log_redaction import install_log_redaction
 from .services.visual_analysis_service import generate_style_visual
 from .services.photo_analysis_jobs import detached_visual_analysis
 from .services.health_probe import database_probe_succeeds
+from .config import style_visual_enabled
 
 logging.basicConfig(
   level=logging.INFO,
@@ -38,6 +39,9 @@ logging.basicConfig(
 install_log_redaction()
 
 API_VERSION = "1.0.1-build15"
+STYLE_VISUAL_DISABLED_MESSAGE = (
+  'Визуализация стиля пока недоступна. Продолжите подбор вещей.'
+)
 app = FastAPI(title="Modish API", version=API_VERSION)
 
 _cors_raw = (os.getenv("CORS_ORIGINS") or "*").strip()
@@ -101,6 +105,11 @@ def readiness(request: Request):
 async def visual_analysis(
   credentials: HTTPAuthorizationCredentials | None = Depends(auth_scheme),
 ) -> dict[str, str]:
+  # This optional provider has no durable per-user cost reservation yet. Keep
+  # it off unless deployment explicitly accepts that budget exposure.
+  if not style_visual_enabled():
+    raise HTTPException(status_code=503, detail=STYLE_VISUAL_DISABLED_MESSAGE,
+                        headers={'Cache-Control': 'no-store'})
   analysis = await detached_visual_analysis(credentials)
   try:
     image_url = await generate_style_visual(analysis)

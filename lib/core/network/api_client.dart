@@ -7,6 +7,14 @@ import 'photo_upload_attempt.dart';
 import 'user_error_message.dart';
 import '../../features/recommendations/models.dart';
 
+/// A build configuration failure, never a server response or a raw URL.
+final class ApiConfigurationException implements Exception {
+  const ApiConfigurationException();
+
+  @override
+  String toString() => 'MODISH_RELEASE_API_CONFIGURATION_INVALID';
+}
+
 /// Базовый URL API.
 ///
 /// Production (HTTPS):
@@ -14,21 +22,11 @@ import '../../features/recommendations/models.dart';
 ///
 /// Локально / эмулятор: по умолчанию `10.0.2.2:8000` (Android) или `127.0.0.1:8000`.
 class ApiClient {
-  ApiClient({this.onUnauthorized, Dio? dio})
-    : _dio =
-          dio ??
-          Dio(
-            BaseOptions(
-              baseUrl: resolvedBaseUrl(),
-              connectTimeout: const Duration(seconds: 45),
-              sendTimeout: const Duration(seconds: 45),
-              receiveTimeout: const Duration(seconds: 45),
-              headers: const {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-              },
-            ),
-          ) {
+  ApiClient({
+    this.onUnauthorized,
+    Dio? dio,
+    bool enforceReleaseConfiguration = false,
+  }) : _dio = _configuredTransport(dio, enforceReleaseConfiguration) {
     _stampSessionOptions();
     _dio.interceptors.add(
       InterceptorsWrapper(
@@ -132,6 +130,30 @@ class ApiClient {
     if (kDebugMode) {
       debugPrint('Modish API baseUrl: ${_dio.options.baseUrl}');
     }
+  }
+
+  static Dio _configuredTransport(Dio? supplied, bool enforceRelease) {
+    final release = kReleaseMode || enforceRelease;
+    if (supplied != null) {
+      if (release) {
+        supplied.options.baseUrl = validateReleaseBaseUrl(
+          supplied.options.baseUrl,
+        );
+      }
+      return supplied;
+    }
+    return Dio(
+      BaseOptions(
+        baseUrl: resolvedBaseUrl(enforceReleaseConfiguration: release),
+        connectTimeout: const Duration(seconds: 45),
+        sendTimeout: const Duration(seconds: 45),
+        receiveTimeout: const Duration(seconds: 45),
+        headers: const {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      ),
+    );
   }
 
   final Dio _dio;
@@ -252,20 +274,21 @@ class ApiClient {
   }
 
   /// Базовый URL API без завершающего `/`.
-  static String resolvedBaseUrl() {
+  static String resolvedBaseUrl({bool enforceReleaseConfiguration = false}) {
     const fromEnv = String.fromEnvironment(
       'MODISH_API_BASE_URL',
       defaultValue: '',
     );
 
+    if (kReleaseMode || enforceReleaseConfiguration) {
+      return validateReleaseBaseUrl(
+        fromEnv.trim().isNotEmpty ? fromEnv : productionApiBaseUrl,
+      );
+    }
+
     if (fromEnv.trim().isNotEmpty) {
       return _normalizeBaseUrl(fromEnv);
     }
-
-    if (kReleaseMode && productionApiBaseUrl.trim().isNotEmpty) {
-      return _normalizeBaseUrl(productionApiBaseUrl);
-    }
-
     // 10.0.2.2 — только Android-эмулятор на том же ПК, где крутится uvicorn.
     // На реальном телефоне без dart-define сюда не попасть — нужен LAN IP или HTTPS домен.
     if (kIsWeb) {
@@ -281,6 +304,101 @@ class ApiClient {
     }
 
     return 'http://127.0.0.1:8000';
+  }
+
+  /// Validate before creating a release transport or accepting credentials.
+  /// This is structural validation only; no DNS or network call is made.
+  static String validateReleaseBaseUrl(String raw) {
+    final value = raw.trim();
+    final uri = Uri.tryParse(value);
+    // Uri normalizes an empty userinfo marker away (`https://@host`). Reject
+    // the original authority too, before that normalization can hide it.
+    final authority = RegExp(
+      r'^https://([^/?#]*)',
+      caseSensitive: false,
+    ).firstMatch(value)?.group(1);
+    if (uri == null ||
+        !uri.isAbsolute ||
+        uri.scheme != 'https' ||
+        !uri.hasAuthority ||
+        uri.host.isEmpty ||
+        uri.userInfo.isNotEmpty ||
+        authority?.contains('@') == true ||
+        uri.hasQuery ||
+        uri.hasFragment ||
+        RegExp(r'[\s\x00-\x1f\x7f\\]').hasMatch(value) ||
+        !_isReleaseHost(uri.host)) {
+      throw const ApiConfigurationException();
+    }
+    // Uri.port also validates malformed or out-of-range authority ports.
+    try {
+      if (uri.port < 1 || uri.port > 65535) {
+        throw const ApiConfigurationException();
+      }
+    } on FormatException {
+      throw const ApiConfigurationException();
+    }
+    var normalized = uri.toString();
+    while (normalized.endsWith('/')) {
+      normalized = normalized.substring(0, normalized.length - 1);
+    }
+    return normalized;
+  }
+
+  static bool _isReleaseHost(String raw) {
+    final host = raw.toLowerCase();
+    if (host == 'localhost' ||
+        host.endsWith('.localhost') ||
+        host.endsWith('.local') ||
+        host.endsWith('.internal') ||
+        host.endsWith('.') ||
+        host.contains('%')) {
+      return false;
+    }
+    if (host.contains(':')) {
+      // Parse bytes so expanded loopback/mapped forms cannot bypass the same
+      // policy. Uri's core parser is also available on web builds.
+      final List<int> bytes;
+      try {
+        bytes = Uri.parseIPv6Address(host);
+      } on FormatException {
+        return false;
+      }
+      return !bytes.take(12).every((value) => value == 0) &&
+          !((bytes[0] & 0xfe) == 0xfc) &&
+          !(bytes[0] == 0xfe && (bytes[1] & 0xc0) == 0x80) &&
+          bytes[0] != 0xff &&
+          !(bytes.take(10).every((value) => value == 0) &&
+              bytes[10] == 0xff &&
+              bytes[11] == 0xff);
+    }
+    final labels = host.split('.');
+    if (labels.length == 4 &&
+        labels.every((label) => RegExp(r'^\d+$').hasMatch(label))) {
+      final octets = labels.map(int.tryParse).toList();
+      if (octets.any((value) => value == null || value < 0 || value > 255) ||
+          labels.any((label) => label.length > 1 && label.startsWith('0'))) {
+        return false;
+      }
+      final a = octets[0]!, b = octets[1]!;
+      return a != 0 &&
+          a != 10 &&
+          a != 127 &&
+          a < 224 &&
+          !(a == 100 && b >= 64 && b <= 127) &&
+          !(a == 169 && b == 254) &&
+          !(a == 172 && b >= 16 && b <= 31) &&
+          !(a == 192 && b == 168) &&
+          !(a == 198 && (b == 18 || b == 19));
+    }
+    return host.length <= 253 &&
+        labels.length >= 2 &&
+        labels.every(
+          (label) =>
+              label.length <= 63 &&
+              RegExp(r'^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$').hasMatch(label),
+        ) &&
+        !RegExp(r'^\d+$').hasMatch(labels.last);
   }
 
   /// Подсказка, если на телефоне остался адрес эмулятора.

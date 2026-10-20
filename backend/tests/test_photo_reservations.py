@@ -5,6 +5,7 @@ import asyncio
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+import os
 import tempfile
 import threading
 import unittest
@@ -308,7 +309,8 @@ class PhotoReservationTests(unittest.IsolatedAsyncioTestCase):
       with self.sessions() as db:
         self.assertEqual(db.scalar(text("SELECT 1")), 1)
       return "https://example.com/generated.jpg"
-    with patch("app.main.generate_style_visual", provider):
+    with patch.dict(os.environ, {'STYLE_VISUAL_ENABLED': 'true'}), \
+        patch("app.main.generate_style_visual", provider):
       async with self.client() as client:
         response = await client.post("/visual-analysis", headers={"Authorization": f"Bearer {self.token}"})
     self.assertEqual(response.status_code, 200)
@@ -320,7 +322,8 @@ class PhotoReservationTests(unittest.IsolatedAsyncioTestCase):
     async def provider(analysis):
       self.assertEqual(self.engine.pool.checkedout(), 0)
       raise RuntimeError("private-provider-url-and-payload")
-    with patch("app.main.generate_style_visual", provider):
+    with patch.dict(os.environ, {'STYLE_VISUAL_ENABLED': 'true'}), \
+        patch("app.main.generate_style_visual", provider):
       async with self.client() as client:
         response = await client.post("/visual-analysis", headers={"Authorization": f"Bearer {self.token}"})
     self.assertEqual(response.status_code, 502)

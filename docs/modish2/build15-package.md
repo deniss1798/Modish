@@ -47,12 +47,14 @@ AST-проверки требуют `API_VERSION = '1.0.1-build15'`, единс�
 Сначала коммит должен уже содержать согласованную версию приложения. Здесь
 `COMMIT_40_HEX` и `ARCHIVE_SHA256` — обозначения, которые нужно заменить реальными
 идентификаторами; сокращённый SHA или `HEAD` сборщик не принимает.
+`--expected-tests` обязателен: число фиксируется для выбранного исходного
+среза, а устаревшее значение по умолчанию не применяется.
 
 ```powershell
 & backend/.venv/Scripts/python.exe scripts/package_release15.py `
   --commit COMMIT_40_HEX `
   --output .tmp/modish-build15-COMMIT_40_HEX.tar `
-  --expected-tests 936
+  --expected-tests 944
 
 & backend/.venv/Scripts/python.exe scripts/check_release15_package.py `
   --archive .tmp/modish-build15-COMMIT_40_HEX.tar `
@@ -82,13 +84,14 @@ guard, разрешающий только loopback. Runner `check_backend.py` �
 
 ## Как читать результат
 
-Для текущего набора ожидаются 936 обнаруженных тестов: 881 выполняется на SQLite,
+Для текущего набора после публичного audit ожидаются 944 обнаруженных теста:
+889 выполняются на SQLite,
 55 PG-сценариев пропускается. `postgres_test_methods` определяется AST из
 зафиксированного источника; checker дополнительно требует фактического совпадения
 чисел и точной причины каждого пропуска `Opt-in disposable PostgreSQL fixture`
 в PG-модуле. Другие пропуски, потеря тестов или зелёный неполный набор не проходят.
 Пропущенные PG-сценарии не записываются как выполненные. Новые тесты самих
-release scripts запускаются отдельно, в 936 backend tests не входят.
+release scripts запускаются отдельно, в 944 backend tests не входят.
 
 ```powershell
 & backend/.venv/Scripts/python.exe -m unittest discover `

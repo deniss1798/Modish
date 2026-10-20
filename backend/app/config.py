@@ -82,6 +82,11 @@ def get_closed_alpha_config() -> tuple[str, str]:
       os.getenv('CLOSED_ALPHA_ALLOWED_EMAILS', ''))
 
 
+def style_visual_enabled() -> bool:
+  """Paid optional image generation needs an explicit deployment opt-in."""
+  return os.getenv('STYLE_VISUAL_ENABLED', 'false').strip().lower() in {'true', '1'}
+
+
 def allow_dev_analyze_bypass() -> bool:
   """Локальная отладка: не блокировать /analyze из‑за trial/Plus (только если явно включено в .env)."""
   return os.getenv("ALLOW_DEV_ANALYZE", "").strip().lower() in ("1", "true", "yes", "on")
