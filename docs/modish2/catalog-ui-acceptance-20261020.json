@@ -1,0 +1,51 @@
+{
+  "source_commit": "a9b00e78018bfdff3ee6a8e2d458902b7e3a0971",
+  "source_archive_sha256": "5184f378245db0073154369f1b6e083c8d584cb9006788993cd4727866e26c24",
+  "source_files": 301,
+  "api_version": "1.0.1-build15",
+  "migration": "20261015_0028",
+  "status": "locally_verified_not_deployed",
+  "flutter": {
+    "passed": 503,
+    "elapsed": "1:18",
+    "analyze": "no_issues",
+    "analyze_seconds": 6.0
+  },
+  "backend_package": {
+    "status": "verified",
+    "environment": "local_isolated_sqlite_not_server_acceptance",
+    "discovered": 952,
+    "executed_successfully": 897,
+    "postgres_skipped": 55,
+    "skip_reason": "Opt-in disposable PostgreSQL fixture",
+    "errors": 0,
+    "failures": 0,
+    "seconds": 195.515,
+    "external_python_network": "blocked_loopback_only",
+    "dotenv": "disabled_before_application_imports"
+  },
+  "visual_checks": {
+    "welcome_pngs": 12,
+    "profile_pngs": 6,
+    "source": "local_synthetic_flutter_rendering",
+    "physical_android_checked": false
+  },
+  "credential_guard_findings": 0,
+  "production": {
+    "changed": false,
+    "version_observed": "1.0.0-build14",
+    "general_products_response": "200_empty_list",
+    "general_brands_response": "200_empty_list",
+    "personal_account_used": false,
+    "whole_catalogue_freshness_cause_verified": false,
+    "fresh_production_clone_checked": false,
+    "sources_imported": false,
+    "source_observation_timestamps_renewed": false,
+    "ssh_access": "waiting_for_current_access"
+  },
+  "public_apk": {
+    "built_with_this_source": false,
+    "published": false,
+    "signing_decision": "waiting_for_existing_or_new_permanent_key"
+  }
+}
