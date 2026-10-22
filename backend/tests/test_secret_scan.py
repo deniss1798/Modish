@@ -14,6 +14,17 @@ SPEC.loader.exec_module(scanner)
 
 
 class SecretScanTests(unittest.TestCase):
+    def test_comparison_to_a_variable_is_not_a_literal_assignment(self):
+        for operator in ("==", "==="):
+            statement = "require(approval_token " + operator + " APPROVAL, 'explicit_approval_required')"
+            self.assertEqual(scanner.findings(statement), [])
+
+    def test_literal_secret_in_comparison_is_still_detected(self):
+        value = "opaque" + "42" * 12
+        for operator in ("=", "==", "==="):
+            statement = "JWT_SECRET " + operator + " " + repr(value)
+            self.assertIn("credential_assignment", scanner.findings(statement))
+
     def test_provider_keys_are_rejected_even_with_placeholder_substrings(self):
         for prefix in ("sk-", "sk-proj-"):
             for marker in ("example", "synthetic", "redacted", "your_"):

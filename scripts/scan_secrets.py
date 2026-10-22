@@ -37,7 +37,7 @@ SECRET_NAME = (
 )
 NAMED_SECRET = re.compile(
     r"(?<![\w?&])(?P<name>" + SECRET_NAME + r")(?P<key_quote>[\"']?)\s*"
-    r"(?P<separator>(?:(?::\s*(?:str(?:\s*\|\s*None)?|Optional\[str\]))?\s*=|:))\s*"
+    r"(?P<separator>(?:(?::\s*(?:str(?:\s*\|\s*None)?|Optional\[str\]))?\s*={1,3}(?!=)|:))\s*"
     r"(?P<value>\"[^\"\r\n]*\"|'[^'\r\n]*'|\$\{[^}\r\n]*\}|[^\s,;#\]\)\}\"'\x60\\]+)", re.I,
 )
 PLACEHOLDER = re.compile(
