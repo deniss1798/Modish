@@ -5,6 +5,16 @@ deployment. They are **not** a general refresh scheduler. Their exact target,
 image, archive, snapshots and database identities are intentional safety guards.
 Do not remove those guards to deploy another version or run a test on production.
 
+The approved deployment is now complete. See
+[the activation result](../../docs/modish2/build15-activation-result-20261023.md).
+The frozen original continuation's smoke incorrectly expected `/profile` to be
+an authenticated route. It stopped under maintenance after a verified import.
+`build15_postimport_resume_remote.py` consumes that exact failure and commit,
+checks `/users/me`, and performs only the original API create/start/open tail.
+It never replays migration/import. Its durable open marker also makes the old
+recovery reject restoration after opening. All executors are historical one-shot
+artifacts; do not rerun them or edit their guards for another operation.
+
 The application image is built from source commit
 `a9b00e78018bfdff3ee6a8e2d458902b7e3a0971`. These host tools and the separate
 production importer are mounted from reviewed files; they do not silently modify
@@ -61,7 +71,8 @@ Run the offline host guards with:
 backend/.venv/Scripts/python.exe -m unittest discover -s scripts/release15 -p 'test_*.py' -v
 ```
 
-All74 host guards passed on22 October. The separate import/download helpers also
+All89 host guards passed on23 October MSK, including15 forward-resume guards.
+The separate import/download helpers also
 passed35 tests in the pinned Linux image with no skips and no network. A real
 isolated production-importer rehearsal committed70,163 input rows from four
 shops, preserving existing IDs and all unaffected rows. The original copy also

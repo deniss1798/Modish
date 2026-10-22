@@ -2,7 +2,7 @@
   "scope": "reviewed_build15_host_tools_no_credentials",
   "application_source_commit": "a9b00e78018bfdff3ee6a8e2d458902b7e3a0971",
   "application_image_id": "sha256:633bce227d3ce3277137c77f32f2c6e83bb338d91784803df424d7592a464aec",
-  "production_activation_executed": false,
+  "production_activation_executed": true,
   "sha256": {
     "scripts/release15/build15_activation_continue_remote.py": "b97d6417019e2c59909c304efb23554d97be3910f472997749b93a3dd87c571e",
     "scripts/release15/build15_activation_final_backup_remote.py": "8b54caa30bf96036b8c9e28108794dc5ead29ce654b0491d0653fb2ee22acfba",
@@ -15,6 +15,9 @@
     "scripts/release15/test_build15_activation_contracts.py": "3beb0a48f6eac34bc36d5458760349c6cd6349a4ce3a7a4a5cf6b460d19162c0",
     "scripts/release15/test_build15_final_backup_guards.py": "a60832a69316c086085b4058cfa577479fdebef630f82acd38e6d5314d0a06a4",
     "scripts/release15/test_build15_prewrite_restore_guards.py": "f55a1231d7196a6c9c3960c4acb27838bf242b1d41eb04875739836815120902",
-    "scripts/release15/test_catalog_refresh15_production_rehearsal_guards.py": "d6150f626839124d822058bc15fb4824bfbd24cc0323d4b571c466ddb69a3b4b"
-  }
+    "scripts/release15/test_catalog_refresh15_production_rehearsal_guards.py": "d6150f626839124d822058bc15fb4824bfbd24cc0323d4b571c466ddb69a3b4b",
+    "scripts/release15/build15_postimport_resume_remote.py": "83cd96b59f46835f974c3bceaf8d7dec314f6b74a16b72d64b6b713bc41aa769",
+    "scripts/release15/test_build15_postimport_resume_guards.py": "7a56510c240a4fce6ac7fa1b98c81ecb9bbda1948eb47c6479d63dfbbcf97aba"
+  },
+  "production_activation_report_sha256": "4d13f5b95c6c5db98933565fed41c198b56b96c4938449e94ee28c21e46e4921"
 }

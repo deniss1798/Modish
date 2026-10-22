@@ -1,5 +1,9 @@
 # Build15: проверка установленного APK на Android — 22 октября 2026
 
+Этот документ описывает прежний debug QA. Постоянно подписанный release APK
+также прошёл отдельную установку и offline smoke; его точные хеши и границы
+проверки приведены в [итоговом отчёте](build15-activation-result-20261023.md).
+
 Проверен APK из исходного среза `a9b00e78018bfdff3ee6a8e2d458902b7e3a0971`.
 Сборка debug завершилась успешно за 60,4 секунды. Application ID:
 `com.example.modish`; versionName `1.0.1`, versionCode `15`, min SDK24,
