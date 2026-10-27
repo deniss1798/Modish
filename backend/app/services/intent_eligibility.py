@@ -5,12 +5,14 @@ from .catalog.product_dna import reliable_taste_features
 from .garment_roles import product_role
 from .product_eligibility import evaluate_eligibility
 from .recommendation_context import context_for
+from .shopping_footwear import product_footwear_types
 
 
 def intent_facts(product):
     facts = reliable_taste_features(product)
     if product_role(product) != 'shoes':
         return facts
+    facts['footwear_type'] = product_footwear_types(product)
     # Only explicit heel evidence. A photo, shoe name or absent attribute cannot
     # prove that footwear has no heel. Conflicting observations remain unknown.
     heel = set()
@@ -45,6 +47,8 @@ def constraint_problem(product, spec, facts):
     for constraints, required in ((spec.required_features, True), (spec.excluded_features, False)):
         for dimension, wanted in constraints.items():
             if dimension == 'heel' and slot != 'shoes':
+                continue
+            if dimension == 'footwear_type' and slot != 'shoes' and spec.intent_type == 'outfit':
                 continue
             if dimension == 'silhouette' and slot not in {'top', 'bottom', 'one_piece', 'outerwear'}:
                 continue

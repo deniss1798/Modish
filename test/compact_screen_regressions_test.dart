@@ -70,7 +70,7 @@ void main() {
   );
 
   testWidgets(
-    'Clarification exposes an input and refines the existing request',
+    'Clarification opens a full edit and starts a replacement request',
     (tester) async {
       final api = TaskApi();
       final controller = AppController(apiClient: api);
@@ -87,15 +87,19 @@ void main() {
         ShoppingTaskScreen(controller: controller),
         scale: 1.3,
       );
-      final input = find.byKey(const ValueKey('refine-shopping-request'));
+      final edit = find.text('Изменить запрос');
+      await tester.ensureVisible(edit);
+      await tester.tap(edit);
+      await tester.pump();
+      final input = find.byKey(const ValueKey('shopping-request'));
       expect(input.hitTestable(), findsOneWidget);
       await tester.enterText(input, 'Платье до 8000');
-      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.testTextInput.receiveAction(TextInputAction.search);
       await tester.pumpAndSettle();
-      expect(api.refinements, ['Платье до 8000']);
-      expect(api.keys, isEmpty);
+      expect(api.refinements, isEmpty);
+      expect(api.keys, hasLength(1));
       expect(controller.shoppingTask.result!['id'], 'task-id');
-      expect(controller.shoppingTask.result!['version'], 2);
+      expect(controller.shoppingTask.result!['version'], 1);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       controller.dispose();
@@ -274,7 +278,7 @@ void main() {
       final controller = AppController(apiClient: api);
       await controller.shoppingTask.submit('Брюки в офис до 7000');
       await _phone(tester, ShoppingTaskScreen(controller: controller));
-      await tester.tap(find.text('Готово'));
+      await tester.tap(find.byTooltip('Завершить запрос'));
       await tester.pump();
       await tester.pumpWidget(const SizedBox());
       api.closeGate.complete();

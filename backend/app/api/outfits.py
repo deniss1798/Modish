@@ -15,7 +15,7 @@ from ..services.outfit_quality import scenario_product_ok, outfit_compatible
 from ..services.product_identity import product_identity_keys
 from ..services.catalog.rule_filters import load_rules_by_source_id
 from ..services.recommendation_revision import owner_mutation
-from ..services.outfit_policy import MAX_RECOMMENDED_OUTFITS, outfit_total_within_budget
+from ..services.outfit_policy import MAX_RECOMMENDED_OUTFITS, outfit_total_within_budget, is_clothing_base, outfit_completeness
 from .deps import auth_scheme, get_db, user_from_token
 from .serializers import outfit_to_api
 from ..schemas.api_product import product_to_api
@@ -48,7 +48,7 @@ def visible_outfits(db: Session, user: User, rows: list[Outfit], *, rules=None) 
   for row in rows:
     scenario = _scenario_key(row.style_direction)
     slots = {s: products.get(str(pid)) for s, pid in (row.items_json or {}).items() if s in {"one_piece", "top", "bottom", "shoes"}}
-    if not any(set(slots) == set(option) for option in SCENARIO_SLOT_OPTIONS[scenario]):
+    if not (any(set(slots) == set(option) for option in SCENARIO_SLOT_OPTIONS[scenario]) or is_clothing_base(slots)):
       continue
     if any(p is None or product_slot(p) != s or not scenario_product_ok(p, scenario) or not _hard_ok(p, fit=fit, rules_by_source=rules) for s, p in slots.items()):
       continue
@@ -65,11 +65,12 @@ def visible_outfits(db: Session, user: User, rows: list[Outfit], *, rules=None) 
     if activation and any(not product_ok(p, fit, activation, rules=rules) for p in slots.values()):
       continue
     keys = set().union(*(product_identity_keys(p) for p in slots.values()))
-    if any(sum(bool(product_identity_keys(p) & old) for p in slots.values()) > len(slots) - (2 if old_scenario == scenario else 1) for old_scenario, old in previous_keys):
+    if any(sum(bool(product_identity_keys(p) & old) for p in slots.values()) > len(slots) - min(len(slots), 2 if old_scenario == scenario else 1) for old_scenario, old in previous_keys):
       continue
     previous_keys.append((scenario, keys))
     item = outfit_to_api(row, {s: product_to_api(p) for s, p in slots.items()})
     item["items"] = {s: p.id for s, p in slots.items()}
+    item.update(outfit_completeness(slots))
     item["total_price"] = json_rubles(total)
     result.append(item)
   return result

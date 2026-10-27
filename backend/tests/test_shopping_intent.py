@@ -54,6 +54,40 @@ class IntentParserTests(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertTrue(parse_intent(text).unresolved)
 
+    def test_concrete_footwear_nouns_and_declensions_are_hard_conditions(self):
+        for noun, kind in (('туфли', 'pumps'), ('туфель', 'pumps'), ('лодочки', 'pumps'),
+                ('лоферы', 'loafers'), ('мокасины', 'moccasins'), ('кроссовки', 'sneakers'),
+                ('кед', 'canvas_shoes'), ('ботильоны', 'ankle_boots'), ('ботинки', 'boots'),
+                ('сапоги', 'tall_boots'), ('сандалии', 'sandals'), ('босоножки', 'dress_sandals'),
+                ('балетки', 'ballet_flats'), ('мюли', 'mules'), ('сабо', 'clogs'),
+                ('слипоны', 'slip_ons'), ('эспадрильи', 'espadrilles'), ('ankle boots', 'ankle_boots')):
+            with self.subTest(noun=noun):
+                spec = parse_intent('Синие ' + noun + ' до 9 000 рублей')
+                self.assertEqual(spec.unresolved, [])
+                self.assertEqual(spec.requested_categories, ['обувь'])
+                self.assertEqual(spec.colors, ['blue'])
+                self.assertEqual(spec.required_features, {'footwear_type': [kind]})
+                self.assertEqual(spec.budget_max, 9000)
+
+    def test_footwear_exclusion_does_not_exclude_all_footwear(self):
+        spec = parse_intent('Обувь, но не сандалии и не босоножки')
+        self.assertEqual(spec.unresolved, [])
+        self.assertEqual(spec.requested_categories, ['обувь'])
+        self.assertEqual(spec.excluded_categories, [])
+        self.assertEqual(spec.excluded_features, {'footwear_type': ['sandals', 'dress_sandals']})
+
+    def test_short_refinement_cannot_drop_unknown_conditions_but_new_request_can_fix_them(self):
+        original = parse_intent('Туфли с волшебной подошвой')
+        refined = parse_intent('Дешевле', previous=original, default_budget=10000)
+        self.assertTrue(refined.unresolved)
+        self.assertTrue(set(original.unresolved) <= set(refined.unresolved))
+        self.assertEqual(parse_intent('Синие туфли до 8000').unresolved, [])
+
+    def test_conflicting_footwear_and_unknown_nouns_need_clarification(self):
+        for text in ('Туфли и кроссовки', 'Синие туфляндии', 'Туфли, но не туфли'):
+            with self.subTest(text=text):
+                self.assertTrue(parse_intent(text).unresolved)
+
 
 class ShoppingIntentTests(unittest.TestCase):
     def setUp(self):
@@ -157,6 +191,42 @@ class ShoppingIntentTests(unittest.TestCase):
         self.assertIsNone(intent_product_problem(shoes, self.fit, spec))
         shoes.feed_raw_json = {'size_system': 'EU', 'heel_height_cm': '5'}
         self.assertEqual(intent_product_problem(shoes, self.fit, spec), 'excluded_feature_or_unknown')
+
+    def test_blue_pumps_query_returns_only_confirmed_matching_type_color_size_and_price(self):
+        def shoe(title, **changes):
+            values = dict(title=title, category='обувь', available_sizes=['38'], price=6000,
+                feed_raw_json={'size_system': 'EU', 'color': 'blue'})
+            values.update(changes)
+            return self.product(**values)
+        good = shoe('Синие туфли')
+        shoe('Синие сандалии')
+        shoe('Синие лоферы')
+        shoe('Синие кроссовки')
+        shoe('Обувь', description='Синие туфли, которые дополнят ваш образ')
+        shoe('Туфли', category_name='Сандалии')
+        shoe('Туфли', feed_raw_json={'size_system': 'EU', 'color': 'red'})
+        shoe('Туфли', feed_raw_json={'size_system': 'EU'})
+        shoe('Туфли', feed_raw_json={'color': 'blue'})
+        shoe('Туфли', available_sizes=['39'])
+        shoe('Туфли', price=7001)
+        intent = self.create('Синие туфли до 7000')
+        result = intents.intent_response(self.db, self.user, intent, remember=True)
+        self.assertEqual(result['state'], 'ready')
+        self.assertEqual([row['product']['id'] for row in result['products']], [good.id])
+        # The issued snapshot must be revalidated against the concrete noun too.
+        good.title = 'Синие сандалии'
+        self.assertEqual(intents.intent_response(self.db, self.user, intent)['products'], [])
+
+    def test_explicit_merchant_subtype_can_identify_shoes_with_a_generic_title(self):
+        product = self.product(title='Обувь синяя', category='обувь', subcategory='Туфли',
+            available_sizes=['38'], feed_raw_json={'size_system': 'EU', 'color': 'blue'})
+        spec = parse_intent('Синие туфли')
+        self.assertIsNone(intent_product_problem(product, self.fit, spec))
+        product.subcategory = None
+        product.feed_raw_json = {'size_system': 'EU', 'color': 'blue', 'param_тип_обуви': 'Туфли'}
+        self.assertIsNone(intent_product_problem(product, self.fit, spec))
+        product.title = 'Юбка к туфлям'
+        self.assertIsNotNone(intent_product_problem(product, self.fit, spec))
 
     def seed_outfit(self):
         self.product(title='Рубашка', category='рубашки', price=5000)

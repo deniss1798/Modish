@@ -88,7 +88,7 @@ def _initialize(sessions, user_id, *, only_if_empty=False):
         return True
 
 
-def _prepare(sessions, user_id, *, count, scenario, only_if_empty=False):
+def _prepare(sessions, user_id, *, count, scenario, only_if_empty=False, allow_clothing_base=True):
     with sessions() as db:
         if db.get_bind().dialect.name == 'postgresql':
             db.connection(execution_options={'isolation_level': 'REPEATABLE READ'})
@@ -102,7 +102,10 @@ def _prepare(sessions, user_id, *, count, scenario, only_if_empty=False):
             scenario_key = engine._scenario_key(scenario)
             batch = engine.OutfitBatch(scenario_key, (), f'outfit_rotation:{scenario_key}', (), ())
         else:
-            batch = engine.prepare_outfit_batch(db, user, count=count, scenario=scenario)
+            options = dict(count=count, scenario=scenario)
+            if not allow_clothing_base:
+                options['allow_clothing_base'] = False
+            batch = engine.prepare_outfit_batch(db, user, **options)
         products = {item.product.id: item.product for choice in batch.selected for item in choice.items.values()}
         evidence = tuple(ProductEvidence(p.id, p.source_id, product_evidence(p)) for p in products.values())
         choices = tuple(freeze_choice(choice) for choice in batch.selected)
@@ -158,7 +161,7 @@ def _publish(sessions, user_id, proposal, *, replace_existing, only_if_empty=Fal
 
 
 def build_outfits_response(bind, user_id, *, count=3, scenario='daily', replace_existing=True,
-        only_if_empty=False, publish_transform=None):
+        only_if_empty=False, publish_transform=None, allow_clothing_base=True):
     sessions = sessionmaker(bind=bind, autoflush=False, expire_on_commit=False)
     try:
         if not _initialize(sessions, user_id, only_if_empty=only_if_empty):
@@ -166,7 +169,10 @@ def build_outfits_response(bind, user_id, *, count=3, scenario='daily', replace_
         for attempt in range(2):
             preparing = True
             try:
-                proposal = _prepare(sessions, user_id, count=count, scenario=scenario, only_if_empty=only_if_empty)
+                options = dict(count=count, scenario=scenario, only_if_empty=only_if_empty)
+                if not allow_clothing_base:
+                    options['allow_clothing_base'] = False
+                proposal = _prepare(sessions, user_id, **options)
                 preparing = False
                 publish_options = dict(replace_existing=replace_existing, only_if_empty=only_if_empty)
                 if publish_transform is not None:

@@ -8,6 +8,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/modish_widgets.dart';
 import '../../core/widgets/product_image.dart';
+import '../../core/widgets/related_product_tile.dart';
 import '../catalog/catalogue_widgets.dart';
 import 'models.dart' as prod;
 
@@ -394,7 +395,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               ),
                               const SizedBox(height: 10),
                               SizedBox(
-                                height: 110,
+                                height: RelatedProductTile.heightFor(context),
                                 child: ListView.separated(
                                   scrollDirection: Axis.horizontal,
                                   itemCount: related.length,
@@ -402,40 +403,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                       const SizedBox(width: 10),
                                   itemBuilder: (context, i) {
                                     final rp = related[i].product;
-                                    return Semantics(
-                                      button: true,
-                                      label: 'Открыть ${rp.title}',
-                                      child: InkWell(
-                                        key: ValueKey(
-                                          'related-product-${rp.id}',
-                                        ),
-                                        onTap: () =>
-                                            _openRelatedProduct(related[i]),
-                                        borderRadius: BorderRadius.circular(10),
-                                        child: SizedBox(
-                                          width: 80,
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Expanded(
-                                                child: ProductFillImage(
-                                                  imageUrl: rp.imageUrl,
-                                                  showRetry: false,
-                                                  borderRadius:
-                                                      BorderRadius.circular(10),
-                                                ),
-                                              ),
-                                              Text(
-                                                rp.brand,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: AppTextStyles.caption,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
+                                    return RelatedProductTile(
+                                      key: ValueKey('related-product-${rp.id}'),
+                                      title: rp.title,
+                                      imageUrl: rp.imageUrl,
+                                      price: rp.price,
+                                      currency: rp.currency,
+                                      onTap: () =>
+                                          _openRelatedProduct(related[i]),
                                     );
                                   },
                                 ),

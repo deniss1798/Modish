@@ -416,46 +416,88 @@ class _ProductFillImageState extends State<ProductFillImage> {
     return ClipRRect(borderRadius: widget.borderRadius, child: child);
   }
 
+  void _retryImage() {
+    setState(() {
+      _index = 0;
+      _bytes = null;
+      _decodeAdvanceScheduled = false;
+    });
+    _kickLoad();
+  }
+
   Widget _placeholder(IconData icon) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.line.withValues(alpha: 0.4),
-        borderRadius: widget.borderRadius,
-      ),
-      child: Stack(
-        children: [
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 32, color: AppColors.muted),
-                const SizedBox(height: 6),
-                const Text(
-                  'Фото недоступно',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 10, color: AppColors.muted),
-                ),
-              ],
-            ),
-          ),
-          if (widget.showRetry)
-            Positioned(
-              bottom: 0,
-              right: 0,
-              child: TextButton(
-                onPressed: () {
-                  setState(() {
-                    _index = 0;
-                    _bytes = null;
-                    _decodeAdvanceScheduled = false;
-                  });
-                  _kickLoad();
-                },
-                child: const Text('Повторить', style: TextStyle(fontSize: 10)),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final scale = MediaQuery.textScalerOf(context).scale(10) / 10;
+        final roomy =
+            constraints.hasBoundedWidth &&
+            constraints.hasBoundedHeight &&
+            constraints.maxWidth >= 160 * scale &&
+            constraints.maxHeight >= 160 * scale;
+        final canRetry = widget.showRetry && _candidates.isNotEmpty;
+        Widget content;
+        if (roomy) {
+          content = Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 32, color: AppColors.muted),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Фото недоступно',
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    style: TextStyle(fontSize: 10, color: AppColors.muted),
+                  ),
+                  if (canRetry) ...[
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: _retryImage,
+                      child: const Text('Повторить'),
+                    ),
+                  ],
+                ],
               ),
             ),
-        ],
-      ),
+          );
+        } else {
+          // A thumbnail has no room for scaled copy or a second action row.
+          // Keep the missing-photo state accessible without overflowing or
+          // placing a retry label over the surrounding product information.
+          final iconSize = (constraints.biggest.shortestSide * 0.5)
+              .clamp(0.0, 28.0)
+              .toDouble();
+          final symbol = Center(
+            child: Icon(icon, size: iconSize, color: AppColors.muted),
+          );
+          content = Semantics(
+            image: !canRetry,
+            button: canRetry,
+            label: canRetry
+                ? 'Фото недоступно. Повторить загрузку фото'
+                : 'Фото недоступно',
+            onTap: canRetry ? _retryImage : null,
+            child: ExcludeSemantics(
+              child: canRetry
+                  ? Tooltip(
+                      message: 'Повторить загрузку фото',
+                      excludeFromSemantics: true,
+                      child: InkWell(onTap: _retryImage, child: symbol),
+                    )
+                  : symbol,
+            ),
+          );
+        }
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            color: AppColors.line.withValues(alpha: 0.4),
+            borderRadius: widget.borderRadius,
+          ),
+          child: content,
+        );
+      },
     );
   }
 }

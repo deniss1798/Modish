@@ -52,12 +52,17 @@ def row_values(row):
     return deepcopy({column.key: getattr(row, column.key) for column in row.__table__.columns})
 
 
-def assert_honest_wow(case, response, *, nonempty=True, forbidden=()):
+def assert_honest_wow(case, response, *, nonempty=True, forbidden=(), clothing_base=False):
     case.assertTrue(response['completed'])
     case.assertTrue(response['completed_at'])
     case.assertLessEqual(len(response['outfits']), 3)
     if nonempty:
-        outfit_fixtures.assert_complete_batch(case, response['outfits'], forbidden=forbidden)
+        slots = ('top', 'bottom') if clothing_base else ('top', 'bottom', 'shoes')
+        outfit_fixtures.assert_complete_batch(case, response['outfits'], forbidden=forbidden, slots=slots)
+        if clothing_base:
+            for outfit in response['outfits']:
+                case.assertEqual(outfit['completeness'], 'clothing_base')
+                case.assertEqual(outfit['missing_slots'], ['shoes'])
     else:
         case.assertEqual(response['outfits'], [])
     for outfit in response['outfits']:
@@ -135,7 +140,7 @@ class WowSessionTests(unittest.TestCase):
         self.assertEqual([row['id'] for row in retry['outfits']], [row['id'] for row in first['outfits']])
         self.assertEqual(self.state(), before)
 
-    def test_missing_footwear_completes_honestly_without_partial_outfits(self):
+    def test_missing_footwear_completes_with_labelled_clothing_base(self):
         with Session(self.engine) as db:
             # Keep the durable merchant rows and likes; only availability changes.
             for row in db.scalars(select(Product).where(Product.category == 'обувь')):
@@ -143,12 +148,12 @@ class WowSessionTests(unittest.TestCase):
             db.commit()
         before = self.state()
         result = self.build()
-        assert_honest_wow(self, result, nonempty=False)
+        assert_honest_wow(self, result, clothing_base=True)
         after = self.state()
         self.assertIsNotNone(after['ActivationSession'][0]['completed_at'])
         self.assertEqual(after['StyleProfile'][0]['onboarding_step'], 4)
-        self.assertEqual(after['Outfit'], [])
-        self.assertEqual(after['MetricEvent'], before['MetricEvent'])
+        self.assertEqual(len(after['Outfit']), len(result['outfits']))
+        self.assertEqual(len(after['MetricEvent']), len(before['MetricEvent']) + len(result['outfits']))
         self.assertEqual(after['TasteProfile'], before['TasteProfile'])
 
     def _late_change(self, kind):
@@ -174,7 +179,9 @@ class WowSessionTests(unittest.TestCase):
         with patch.object(wow, '_publish', side_effect=publish) as publishing:
             result = self.build()
         self.assertEqual(publishing.call_count, 2)
-        assert_honest_wow(self, result, nonempty=kind != 'fit', forbidden=changed)
+        assert_honest_wow(self, result, forbidden=changed, clothing_base=kind == 'fit')
+        if kind == 'fit':
+            self.assertTrue(all(Decimal(str(row['total_price'])) <= Decimal('5000') for row in result['outfits']))
         with Session(self.engine) as db:
             session = db.get(ActivationSession, self.user_id)
             self.assertEqual([row['id'] for row in session.wow_json], [row['id'] for row in result['outfits']])
@@ -186,7 +193,7 @@ class WowSessionTests(unittest.TestCase):
     def test_stock_after_prepare_reranks_and_never_publishes_unavailable_sku(self):
         self._late_change('stock')
 
-    def test_fit_budget_after_prepare_reranks_to_honest_empty_without_old_expensive_outfits(self):
+    def test_fit_budget_after_prepare_reranks_to_labelled_base_within_new_budget(self):
         self._late_change('fit')
 
     def test_two_late_conflicts_roll_back_all_completion_outfits_rotation_profile_and_cache(self):

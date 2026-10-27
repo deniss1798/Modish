@@ -25,7 +25,7 @@ from .catalog.stock_freshness import availability_snapshot, available_product_co
 from .garment_roles import product_role
 from .outfit_quality import is_sports_item
 from .product_identity import product_identity_keys
-from .product_search import search_conditions
+from .product_search import search_conditions, matches_search_product
 
 DISCOVERY_FEATURE = 'catalogue_discovery_v1'
 SIZE_NOTICE = 'Размер нужно уточнить у магазина'
@@ -212,6 +212,8 @@ def catalogue_page(db, user, *, category=None, q=None, source=None,
   # Identity strings are O(admitted prefix), and late pages rescan that prefix.
   with db.scalars(query.order_by(Product.id).execution_options(yield_per=BATCH_SIZE)) as rows:
     for product in rows:
+      if not matches_search_product(product, q):
+        continue
       if product.id in hidden or not _allowed(product, scope, rules, now,
           category=category, minimum=minimum, maximum=maximum):
         continue

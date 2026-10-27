@@ -14,12 +14,22 @@ String outfitScenarioLabel(String key) => switch (key.toLowerCase()) {
   _ => 'Персональный образ',
 };
 
-List<(String, IconData, String)> outfitSlots(Map<String, dynamic> products) => [
+bool isClothingBaseOutfit(Map<String, dynamic> outfit) =>
+    outfit['completeness'] == 'clothing_base';
+
+const clothingBaseMessage =
+    'Обувь не подобрана. Показана основа образа из одежды.';
+
+List<(String, IconData, String)> outfitSlots(
+  Map<String, dynamic> products, {
+  bool includeMissingShoes = true,
+}) => [
   if (products['one_piece'] is Map)
     ('one_piece', Icons.checkroom_outlined, 'Платье / комплект')
   else ...[
     ('top', Icons.checkroom_outlined, 'Верх'),
     ('bottom', Icons.view_week_outlined, 'Низ'),
   ],
-  ('shoes', Icons.ice_skating_outlined, 'Обувь'),
+  if (includeMissingShoes || products['shoes'] is Map)
+    ('shoes', Icons.ice_skating_outlined, 'Обувь'),
 ];

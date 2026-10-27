@@ -13,7 +13,7 @@ from sqlalchemy import select
 from app.api import admin_products
 from app.api.outfits import visible_outfits
 from app.api.serializers import outfit_to_api
-from app.models import Outfit, Product, RecommendationEventV2
+from app.models import MetricEvent, Outfit, Product, RecommendationEventV2
 from app.schemas.api_product import product_to_api
 from app.schemas.product_event import EventRequest
 from app.schemas.shopping_intent import IntentSpec
@@ -174,10 +174,20 @@ class DecimalPricePathTests(unittest.TestCase):
 
     def test_v2_generator_keeps_strict_total_cap_for_activation_and_legacy(self):
         products = self.products(('3333.67', '3333.66', '3333.66'))
-        self.assertEqual(v2.generate_outfits_v2(self.db, self.user, count=1, scenario='daily'), [])
-        self.db.delete(self.session)
-        self.db.flush()
-        self.assertEqual(v2.generate_outfits_v2(self.db, self.user, count=1, scenario='daily'), [])
+        for activated in (True, False):
+            if not activated:
+                self.db.delete(self.session)
+                self.db.flush()
+            rows = v2.generate_outfits_v2(self.db, self.user, count=1, scenario='daily')
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(set(rows[0].items_json), {'top', 'bottom'})
+            self.assertEqual(rows[0].total_price, Decimal('6667.33'))
+            self.assertEqual(outfit_to_api(rows[0])['completeness'], 'clothing_base')
+            for row in rows:
+                self.db.delete(row)
+            for event in self.db.scalars(select(MetricEvent).where(MetricEvent.user_id == self.user.id)):
+                self.db.delete(event)
+            self.db.flush()
         products['top'].price -= Decimal('0.99')
         rows = v2.generate_outfits_v2(self.db, self.user, count=1, scenario='daily')
         self.assertEqual(len(rows), 1)

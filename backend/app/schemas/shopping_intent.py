@@ -2,10 +2,12 @@
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
+PARSER_VERSION = 'ru_rules_v2'
+
 
 class IntentSpec(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    parser_version: str = 'ru_rules_v1'
+    parser_version: str = PARSER_VERSION
     intent_type: Literal['single_item', 'outfit'] = 'single_item'
     requested_categories: list[str] = Field(default_factory=list)
     excluded_categories: list[str] = Field(default_factory=list)

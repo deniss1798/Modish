@@ -61,6 +61,9 @@ class _OutfitsScreenState extends State<OutfitsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
       return;
     }
+    // The empty card already explains the result; repeating it over the
+    // bottom navigation obscures actions without adding any information.
+    if (n == 0 && widget.controller.outfits.where(_matches).isEmpty) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -166,7 +169,8 @@ class OutfitCard extends StatelessWidget {
     final pmap = outfit['products'] is Map
         ? Map<String, dynamic>.from(outfit['products'] as Map)
         : <String, dynamic>{};
-    final slots = outfitSlots(pmap);
+    final clothingBase = isClothingBaseOutfit(outfit);
+    final slots = outfitSlots(pmap, includeMissingShoes: !clothingBase);
     final filled = slots.where((s) => pmap[s.$1] is Map).length;
 
     return Padding(
@@ -199,6 +203,10 @@ class OutfitCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text('$filled вещи · $total ₽', style: AppTextStyles.caption),
+              if (clothingBase) ...[
+                const SizedBox(height: 8),
+                const Text(clothingBaseMessage, style: AppTextStyles.bodyMuted),
+              ],
               const SizedBox(height: 12),
               SizedBox(
                 height: 168,

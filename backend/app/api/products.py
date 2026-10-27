@@ -122,7 +122,7 @@ def products_list(
   if credentials:
     user = user_from_token(credentials, db)
     fit = db.execute(select(FitProfile).where(FitProfile.user_id == user.id)).scalar_one_or_none()
-  from ..services.product_search import search_conditions
+  from ..services.product_search import search_conditions, matches_search_product
   search_query = q
   query = select(Product).where(Product.is_active == 1, *fresh_stock_conditions())
   gender_condition = _fit_gender_condition(fit)
@@ -153,6 +153,8 @@ def products_list(
   skipped = 0
   offset = offset if isinstance(offset, int) else 0
   for p in db.execute(query.execution_options(yield_per=200)).scalars():
+    if not matches_search_product(p, search_query if isinstance(search_query, str) else None):
+      continue
     if user and not evaluate_eligibility(p, fit).eligible:
       continue
     if not product_is_feed_eligible(p) or not product_gender_compatible(p, fit.gender_target if fit else None):

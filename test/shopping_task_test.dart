@@ -6,6 +6,8 @@ import 'package:modish/app.dart';
 import 'package:modish/features/shopping/shopping_task_controller.dart';
 import 'package:modish/features/shopping/shopping_task_screen.dart';
 import 'package:modish/features/recommendations/feed_screen.dart';
+import 'package:modish/features/catalog/discovery_screen.dart';
+import 'package:modish/core/theme/app_theme.dart';
 import 'app_regressions_test.dart' show FakeApi;
 
 Map<String, dynamic> response({int version = 1, int maximum = 7000}) => {
@@ -191,7 +193,228 @@ class OutfitTaskApi extends TaskApi {
   }
 }
 
+class ClarificationTaskApi extends TaskApi {
+  final texts = <String>[];
+  static const unsupported = 'Уточните неподдержанные условия: туфли';
+  static const missingItem = 'Укажите вещь: например, брюки, платье или куртка';
+
+  @override
+  Future<Map<String, dynamic>> createShoppingIntent(
+    String text,
+    String requestId,
+  ) async {
+    texts.add(text);
+    if (texts.length > 1) return response();
+    return {
+      'id': 'task-id',
+      'version': 1,
+      'text': text,
+      'state': 'needs_clarification',
+      'constraints': {
+        'colors': ['blue'],
+        'unresolved': [unsupported, missingItem, unsupported],
+      },
+      'effective_budget_max': 25000,
+      'message': 'Уточните запрос: $unsupported; $missingItem',
+      'products': <Map<String, dynamic>>[],
+      'outfits': <Map<String, dynamic>>[],
+    };
+  }
+}
+
 void main() {
+  test('Concrete footwear constraints use human-readable labels', () {
+    expect(
+      constraintLabels({
+        'requested_categories': ['обувь'],
+        'required_features': {
+          'footwear_type': ['pumps'],
+        },
+        'excluded_features': {
+          'footwear_type': ['sandals'],
+        },
+      }),
+      ['обувь', 'Нужно: туфли', 'Без: сандалии'],
+    );
+  });
+
+  testWidgets(
+    'Empty verified results offer a separate catalogue without silently changing size rules',
+    (tester) async {
+      final controller = AppController(apiClient: TaskApi())
+        ..activationStatus = {
+          'recommendation_features': ['catalogue_discovery_v1'],
+        };
+      await controller.shoppingTask.submit('синие туфли');
+      controller.shoppingTask.result = {
+        ...response(),
+        'text': 'синие туфли',
+        'products': <Map<String, dynamic>>[],
+        'constraints': {
+          'requested_categories': ['обувь'],
+          'colors': ['blue'],
+          'required_features': {
+            'footwear_type': ['pumps'],
+          },
+        },
+        'message': 'Нет вещей с подтверждённым размером и всеми условиями.',
+      };
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: ShoppingTaskScreen(controller: controller),
+        ),
+      );
+      expect(find.text('Нужно: туфли'), findsOneWidget);
+      expect(
+        find.text('Нет вещей с подтверждённым размером и всеми условиями.'),
+        findsOneWidget,
+      );
+      final browse = find.byKey(
+        const ValueKey('shopping-request-open-catalogue'),
+      );
+      await tester.ensureVisible(browse);
+      await tester.tap(browse);
+      await tester.pumpAndSettle();
+      final catalogue = tester.widget<DiscoveryScreen>(
+        find.byType(DiscoveryScreen),
+      );
+      expect(catalogue.initialQuery, 'синие туфли');
+      expect(
+        find.byKey(const ValueKey('catalogue-consent-accept')),
+        findsOneWidget,
+      );
+      expect(controller.shoppingTask.result!['products'], isEmpty);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      controller.dispose();
+    },
+  );
+
+  testWidgets(
+    'Unrecognized requests separate conditions from the problem and edit the full request',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      tester.view.padding = const FakeViewPadding(top: 24, bottom: 48);
+      tester.view.viewPadding = const FakeViewPadding(top: 24, bottom: 48);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPadding);
+      addTearDown(tester.view.resetViewPadding);
+      final api = ClarificationTaskApi();
+      final controller = AppController(apiClient: api);
+      await controller.shoppingTask.submit('синие туфли');
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark,
+          home: ShoppingTaskScreen(controller: controller),
+        ),
+      );
+      expect(find.text(ClarificationTaskApi.unsupported), findsOneWidget);
+      expect(find.text(ClarificationTaskApi.missingItem), findsOneWidget);
+      expect(find.textContaining('Уточните запрос:'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('refine-shopping-request')),
+        findsNothing,
+      );
+      final budget = find.text('Бюджет профиля: до 25000 ₽');
+      final status = find.byKey(const ValueKey('shopping-request-status'));
+      expect(
+        tester.getRect(budget).bottom,
+        lessThan(tester.getRect(status).top),
+      );
+
+      final edit = find.text('Изменить запрос');
+      await tester.ensureVisible(edit);
+      await tester.tap(edit);
+      await tester.pumpAndSettle();
+      expect(find.text('Нужно уточнение'), findsNothing);
+      final request = find.byKey(const ValueKey('shopping-request'));
+      expect(tester.widget<TextField>(request).controller!.text, 'синие туфли');
+      await tester.enterText(request, 'Брюки в офис до 7000');
+      await tester.ensureVisible(find.text('Найти подходящее'));
+      await tester.tap(find.text('Найти подходящее'));
+      await tester.pumpAndSettle();
+      expect(api.texts, ['синие туфли', 'Брюки в офис до 7000']);
+      expect(api.refinements, isEmpty);
+      expect(find.text('Нужно уточнение'), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      controller.dispose();
+    },
+  );
+
+  for (final size in [const Size(390, 844), const Size(720, 400)]) {
+    testWidgets(
+      'Request correction remains reachable at $size with 200 percent text and keyboard',
+      (tester) async {
+        final landscape = size.width > size.height;
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        tester.view.padding = FakeViewPadding(
+          top: 24,
+          right: landscape ? 48 : 0,
+          bottom: landscape ? 0 : 48,
+        );
+        tester.view.viewPadding = tester.view.padding;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        addTearDown(tester.view.resetPadding);
+        addTearDown(tester.view.resetViewPadding);
+        addTearDown(tester.view.resetViewInsets);
+        final controller = AppController(apiClient: ClarificationTaskApi());
+        await controller.shoppingTask.submit('синие туфли');
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.dark,
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: TextScaler.linear(2)),
+              child: child!,
+            ),
+            home: ShoppingTaskScreen(controller: controller),
+          ),
+        );
+        final edit = find.text('Изменить запрос');
+        await tester.scrollUntilVisible(
+          edit,
+          180,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.ensureVisible(edit);
+        await tester.pumpAndSettle();
+        expect(tester.getRect(edit).bottom, lessThanOrEqualTo(size.height));
+        expect(
+          tester.getRect(edit).right,
+          lessThanOrEqualTo(size.width - (landscape ? 48 : 0)),
+        );
+        await tester.tap(edit);
+        await tester.pumpAndSettle();
+        final request = find.byKey(const ValueKey('shopping-request'));
+        await tester.enterText(request, 'синие туфли до 8000');
+        tester.view.viewInsets = const FakeViewPadding(bottom: 160);
+        await tester.pumpAndSettle();
+        final submit = find.text('Найти подходящее');
+        await tester.scrollUntilVisible(
+          submit,
+          120,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.ensureVisible(submit);
+        await tester.pumpAndSettle();
+        expect(
+          tester.getRect(submit).bottom,
+          lessThanOrEqualTo(size.height - 160),
+        );
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+        controller.dispose();
+      },
+    );
+  }
+
   test(
     'outfit views and actions retain the selected outfit without attributing every look',
     () async {

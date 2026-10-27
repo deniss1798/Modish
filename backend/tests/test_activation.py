@@ -194,12 +194,18 @@ class ActivationTests(unittest.TestCase):
         again=a.complete_wow(self.db,self.user,self.session)
         self.assertEqual([o['id'] for o in result['outfits']],[o['id'] for o in again['outfits']])
 
-    def test_sparse_wow_does_not_make_incomplete_or_expensive_looks(self):
+    def test_sparse_wow_labels_clothing_base_without_claiming_footwear(self):
         self.seed(); self.learn()
         for p in self.db.scalars(select(Product).where(Product.category=='обувь')): p.available_sizes=[]
         self.db.flush()
         result=a.complete_wow(self.db,self.user,self.session)
-        self.assertTrue(result['completed']); self.assertEqual(result['outfits'],[])
+        self.assertTrue(result['completed'])
+        self.assertTrue(result['outfits'])
+        for outfit in result['outfits']:
+            self.assertEqual(outfit['completeness'], 'clothing_base')
+            self.assertEqual(outfit['missing_slots'], ['shoes'])
+            self.assertNotIn('shoes', outfit['products'])
+            self.assertLessEqual(outfit['total_price'], 10000)
 
     def test_prefetch_not_impression_metrics_union_and_limit(self):
         self.seed(12); self.learn(); self.session.completed_at=datetime.now(timezone.utc); self.db.flush()

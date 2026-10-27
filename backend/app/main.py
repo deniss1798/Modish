@@ -38,7 +38,7 @@ logging.basicConfig(
 )
 install_log_redaction()
 
-API_VERSION = "1.0.1-build15"
+API_VERSION = "1.0.2-build16"
 STYLE_VISUAL_DISABLED_MESSAGE = (
   'Визуализация стиля пока недоступна. Продолжите подбор вещей.'
 )

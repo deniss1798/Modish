@@ -51,7 +51,7 @@ class WowAdmissionPerformanceTests(unittest.TestCase):
         return activation.candidate_pool(self.db, self.user, self.session,
             required_roles={'shoes'}, context=ShoppingContext(), **kwargs)
 
-    def test_missing_exact_shoe_size_completes_wow_without_clothing_loads_or_dna_scoring(self):
+    def test_strict_footwear_probe_avoids_clothing_loads_and_dna_scoring(self):
         clothing = [self.fields(f'clothing-{index:05d}',
             category='брюки' if index % 2 else 'рубашки',
             title='Брюки прямые' if index % 2 else 'Рубашка') for index in range(1200)]
@@ -75,10 +75,9 @@ class WowAdmissionPerformanceTests(unittest.TestCase):
         try:
             with (patch.object(AffinityScorer, 'score', side_effect=AssertionError('Incomplete Wow cannot rank')),
                     patch.object(AffinityScorer, 'evaluate', side_effect=AssertionError('Incomplete Wow cannot parse DNA'))):
-                result = activation.complete_wow(self.db, user, session)
-            self.assertTrue(result['completed'])
-            self.assertEqual(result['outfits'], [])
-            self.assertIsNotNone(session.completed_at)
+                result = activation.candidate_pool(self.db, user, session,
+                    required_roles={'shoes'}, context=ShoppingContext())
+            self.assertEqual(result, [])
             self.assertTrue(set(loaded) <= {'unknown-system', 'unknown-size-stock'})
             self.assertTrue(loaded, 'The exact footwear admission gate must examine the available shoe rows.')
         finally:

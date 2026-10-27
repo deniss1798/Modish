@@ -32,7 +32,8 @@ from .garment_roles import product_role
 from .catalog_audience import adult_catalog_conditions
 from .recommendation_revision import owner_mutation, accept_personal_change
 from .recommendation_budget import check_ranking_budget
-from .outfit_policy import requested_outfit_count, outfit_total_within_budget
+from .outfit_policy import (requested_outfit_count, outfit_total_within_budget,
+    CLOTHING_BASE_SLOTS, CLOTHING_BASE_MESSAGE)
 from .affordable_candidates import AffordableCandidates
 from .catalog.candidate_scan import iter_size_candidates
 
@@ -280,6 +281,7 @@ def _build_slot_candidates(
   skipped_ids: set[str],
   per_slot: int,
   excluded_keys: set[str] | None = None,
+  allow_clothing_base: bool = False,
 ) -> dict[str, list[SlotCandidate]]:
   slots = set().union(*[set(option) for option in SCENARIO_SLOT_OPTIONS[scenario]])
   # At most ten candidates per role reach the Cartesian composition: seven
@@ -306,7 +308,8 @@ def _build_slot_candidates(
     taste_features = load_user_taste_feature_map(db, user_id=user.id)
     scorer = AffinityScorer(profile, taste, taste_features=taste_features, context=context)
     evaluations = {}
-    required_roles = set.intersection(*(set(option) for option in SCENARIO_SLOT_OPTIONS[scenario]))
+    required_roles = (set() if allow_clothing_base else
+        set.intersection(*(set(option) for option in SCENARIO_SLOT_OPTIONS[scenario])))
     rows = candidate_pool(db, user, activation, exclude_ids=excluded, context=context,
         taste_features=taste_features, scorer=scorer, preferences=preferences,
         required_roles=required_roles, outfit_scenario=scenario,
@@ -527,7 +530,8 @@ def _outfit_budget_ok(total: Decimal, item_count: int, fit: FitProfile | None) -
 
 def _reason(candidate: OutfitCandidate, *, scenario: str, compatibility_parts: dict[str, float]) -> str:
   label = SCENARIO_LABELS.get(scenario, "Образ")
-  reasons = [f"{label}: одежда и обувь в одном образе"]
+  reasons = ([f"{label}: одежда и обувь в одном образе"] if 'shoes' in candidate.items
+      else [f"{label}: основа образа", CLOTHING_BASE_MESSAGE.rstrip('.')])
   if compatibility_parts.get("color_harmony", 0.0) >= 0.75:
     reasons.append("цвета сочетаются")
   if compatibility_parts.get("style_consistency", 0.0) >= 0.70:
@@ -545,9 +549,11 @@ def _build_combinations(
   fit: FitProfile | None,
   limit: int,
   db: Session | None = None,
+  clothing_base_only: bool = False,
 ) -> list[OutfitCandidate]:
   candidates: list[OutfitCandidate] = []
-  for required_slots in SCENARIO_SLOT_OPTIONS[scenario]:
+  options = CLOTHING_BASE_SLOTS if clothing_base_only else SCENARIO_SLOT_OPTIONS[scenario]
+  for required_slots in options:
     if any(not buckets.get(slot) for slot in required_slots):
       continue
     slot_options = [buckets[slot][:10] for slot in required_slots]
@@ -644,7 +650,7 @@ def generate_outfits_v2(
     return persist_outfit_batch(db, user, batch, replace_existing=replace_existing)
 
 
-def prepare_outfit_batch(db, user, *, count=3, scenario='daily', extra_existing=()) -> OutfitBatch:
+def prepare_outfit_batch(db, user, *, count=3, scenario='daily', extra_existing=(), allow_clothing_base=True) -> OutfitBatch:
   scenario_key = _scenario_key(scenario)
   need = requested_outfit_count(count)
   history_name = f"outfit_rotation:{scenario_key}"
@@ -674,21 +680,28 @@ def prepare_outfit_batch(db, user, *, count=3, scenario='daily', extra_existing=
   used_keys = set().union(*recent_keys)
   used_ids = {key[3:] for key in used_keys if key.startswith("id:")}
   selected: list[OutfitCandidate] = []
+  buckets_by_rotation = {}
   # Prefer unused garments. With scarce footwear, allow a shared item only
   # when at least two parts differ from every recent look in this scenario.
-  for fresh_only in ([True, False] if recent_keys else [False]):
+  rotation_options = [True, False] if recent_keys else [False]
+  stages = (False, True) if allow_clothing_base else (False,)
+  for fresh_only, clothing_base_only in [(fresh, base) for base in stages for fresh in rotation_options]:
     check_ranking_budget(db)
-    buckets = _build_slot_candidates(
-      db, user, scenario=scenario_key, fit=fit,
-      excluded=excluded | used_ids if fresh_only else excluded,
-      skipped_ids=skipped_ids, per_slot=10,
-      excluded_keys=used_keys if fresh_only else None,
-    )
-    combinations = _build_combinations(buckets, scenario=scenario_key, fit=fit, limit=need, db=db)
+    if fresh_only not in buckets_by_rotation:
+      buckets_by_rotation[fresh_only] = _build_slot_candidates(
+        db, user, scenario=scenario_key, fit=fit,
+        excluded=excluded | used_ids if fresh_only else excluded,
+        skipped_ids=skipped_ids, per_slot=10,
+        excluded_keys=used_keys if fresh_only else None,
+        allow_clothing_base=allow_clothing_base,
+      )
+    buckets = buckets_by_rotation[fresh_only]
+    combinations = _build_combinations(buckets, scenario=scenario_key, fit=fit, limit=need, db=db,
+        clothing_base_only=clothing_base_only)
     if activation is not None:
       combinations = [candidate for candidate in combinations if candidate.total_price <= as_rubles(fit.budget_max)]
     combinations = [candidate for candidate in combinations if all(
-      sum(not bool(product_identity_keys(item.product) & keys) for item in candidate.items.values()) >= 2
+      sum(not bool(product_identity_keys(item.product) & keys) for item in candidate.items.values()) >= min(2, len(candidate.items))
       for keys in recent_keys
     ) and all(
       (all(not (product_identity_keys(item.product) & keys) for item in candidate.items.values()) if activation is not None

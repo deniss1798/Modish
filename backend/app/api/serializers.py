@@ -8,6 +8,7 @@ from ..catalog_normalize import normalize_interest_category, normalize_style_sce
 from ..models import FitProfile, Outfit, Recommendation, TasteProfile
 from ..money import json_rubles
 from ..services.fit_size_profile import size_profile_to_api, missing_fit_requirements
+from ..services.outfit_policy import outfit_completeness
 
 
 def as_user_payload(user: Any) -> dict[str, Any]:
@@ -119,6 +120,7 @@ def outfit_to_api(o: Outfit, products: dict[str, Any] | None = None) -> dict[str
     "score": o.score,
     "is_saved": bool(o.is_saved),
     "created_at": created_at.isoformat(),
+    **outfit_completeness(items),
   }
 
 

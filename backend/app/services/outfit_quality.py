@@ -47,7 +47,9 @@ _LIGHT_SHOES = re.compile(r"туфл|балетк|лофер|мокасин|эс
 
 
 def _weather_text(product: Product) -> str:
-  attributes = ' '.join(str(value) for key, value in (product.raw_params_json or {}).items()
+  attributes = ' '.join(str(value)
+    for raw in (product.raw_params_json, product.feed_raw_json) if isinstance(raw, dict)
+    for key, value in raw.items()
     if any(term in str(key).lower() for term in ('сезон', 'утепл', 'наполн', 'season', 'insulation', 'filling')))
   return f'{garment_text(product)} {product.season or ""} {attributes}'.lower().replace('ё', 'е')
 

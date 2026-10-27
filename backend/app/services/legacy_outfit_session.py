@@ -41,4 +41,5 @@ def build_legacy_outfits_response(bind, user_id, *, count=3, scenario='daily'):
         _quota(db, user)
         db.commit()
     return build_outfits_response(bind, user_id, count=requested_outfit_count(count),
-        scenario=scenario, replace_existing=False, publish_transform=_project_and_charge)
+        scenario=scenario, replace_existing=False, publish_transform=_project_and_charge,
+        allow_clothing_base=False)

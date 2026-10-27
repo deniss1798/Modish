@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/modish_widgets.dart';
 import '../../core/widgets/product_image.dart';
+import '../../core/widgets/related_product_tile.dart';
 import '../catalog/filters_screen.dart';
 import '../catalog/search_screen.dart';
 import '../catalog/discovery_screen.dart';
@@ -83,6 +84,8 @@ class _FeedScreenState extends State<FeedScreen> {
         : controller.relatedProducts(id);
     final viewport = MediaQuery.sizeOf(context);
     final compact = viewport.height < 700 && viewport.width < 600;
+    final relatedMinHeight =
+        700 + (MediaQuery.textScalerOf(context).scale(100) - 100);
 
     return Column(
       children: [
@@ -213,7 +216,7 @@ class _FeedScreenState extends State<FeedScreen> {
         ),
         if (card != null &&
             related.isNotEmpty &&
-            MediaQuery.sizeOf(context).height >= 700) ...[
+            viewport.height >= relatedMinHeight) ...[
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 4),
             child: Align(
@@ -222,7 +225,7 @@ class _FeedScreenState extends State<FeedScreen> {
             ),
           ),
           SizedBox(
-            height: 86,
+            height: RelatedProductTile.heightFor(context),
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               scrollDirection: Axis.horizontal,
@@ -230,36 +233,13 @@ class _FeedScreenState extends State<FeedScreen> {
               separatorBuilder: (context, index) => const SizedBox(width: 10),
               itemBuilder: (context, i) {
                 final r = related[i].product;
-                return GestureDetector(
+                return RelatedProductTile(
+                  key: ValueKey('related-product-${r.id}'),
+                  title: r.title,
+                  imageUrl: r.imageUrl,
+                  price: r.price,
+                  currency: r.currency,
                   onTap: () => _openProduct(context, related[i], controller),
-                  child: SizedBox(
-                    width: 90,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: ProductFillImage(
-                            imageUrl: r.imageUrl,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          r.brand,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.caption,
-                        ),
-                        Text(
-                          '${formatPriceAmount(r.price)} ₽',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 );
               },
             ),

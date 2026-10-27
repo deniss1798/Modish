@@ -6,8 +6,9 @@ parsed hard constraints so a user can correct them before following a link.
 import re
 from decimal import Decimal
 from ..money import as_rubles
-from ..schemas.shopping_intent import IntentSpec
+from ..schemas.shopping_intent import IntentSpec, PARSER_VERSION
 from .catalog.fashion_taxonomy import PATTERNS
+from .shopping_footwear import FOOTWEAR_PATTERNS
 
 CATEGORIES = {
     'брюки': r'брюк\w*|штан\w*', 'джинсы': r'джинс\w*',
@@ -51,6 +52,7 @@ def parse_intent(text: str, *, previous: IntentSpec | None = None,
                  reference_price: Decimal | int | float | None = None, reference_colors=(), default_budget=None) -> IntentSpec:
     text = ' '.join(text.lower().replace('ё', 'е').split())
     result = previous.model_copy(deep=True) if previous else IntentSpec()
+    result.parser_version = PARSER_VERSION
     result.unresolved = []
     consumed = [False] * len(text)
 
@@ -76,6 +78,20 @@ def parse_intent(text: str, *, previous: IntentSpec | None = None,
         else:
             setattr(result, 'budget_max' if raw.startswith('до') else 'budget_min', int(amount))
     requested = []
+    # Keep the concrete shoe noun as a hard condition. Mapping every noun only
+    # to the broad category would silently replace pumps with any footwear.
+    for kind, pattern in FOOTWEAR_PATTERNS.items():
+        for match in _matches(pattern, text):
+            if all(consumed[match.start():match.end()]):
+                continue
+            consume(match)
+            modifier = _modifier(text, match.start())
+            target = result.excluded_features if modifier == 'exclude' else result.required_features
+            target.setdefault('footwear_type', [])
+            if kind not in target['footwear_type']:
+                target['footwear_type'].append(kind)
+            if modifier != 'exclude':
+                requested.append('обувь')
     for category, pattern in CATEGORIES.items():
         for match in _matches(pattern, text):
             consume(match)
@@ -146,6 +162,8 @@ def parse_intent(text: str, *, previous: IntentSpec | None = None,
     for dim, values in result.required_features.items():
         if set(values) & set(result.excluded_features.get(dim, [])):
             result.unresolved.append('Один признак одновременно запрошен и исключён')
+    if len(result.required_features.get('footwear_type', [])) > 1:
+        result.unresolved.append('Укажите один вид обуви для этой подборки')
     # Refinements cannot silently approve an unresolved original request.
     if previous and previous.unresolved:
         result.unresolved.extend(previous.unresolved)

@@ -187,13 +187,19 @@ class OutfitCoverageTests(unittest.TestCase):
         self.assertTrue(product['image_url'].startswith('https://baon.ru/images/'))
         self.assertTrue(product['product_url'].startswith('https://baon.ru/products/'))
 
-    def assert_outfits(self, outfits, *, intent=False):
+    def assert_outfits(self, outfits, *, intent=False, clothing_base=False):
         self.assertGreaterEqual(len(outfits), 1, 'A positive catalogue must produce a complete outfit')
         self.assertLessEqual(len(outfits), 3)
         used = set()
         previous = []
         expected_slots = {'one_piece', 'shoes'} if self.profile.template == 'dress' else {'top', 'bottom', 'shoes'}
+        if clothing_base:
+            expected_slots.discard('shoes')
         for outfit in outfits:
+            if clothing_base:
+                self.assertEqual(outfit['completeness'], 'clothing_base')
+                self.assertEqual(outfit['missing_slots'], ['shoes'])
+                self.assertIn('Обувь не подобрана', outfit['completion_message'])
             self.assertEqual(set(outfit['items']), expected_slots)
             self.assertEqual(set(outfit['products']), expected_slots)
             ids = set(outfit['items'].values())
@@ -261,15 +267,20 @@ class OutfitCoverageTests(unittest.TestCase):
                             product.feed_raw_json = {'size': '42', 'size_system': 'EU'}
                 db.commit()
             wow, generated, intent = self.results()
-            self.assertEqual(wow['outfits'], [])
-            self.assertEqual(wow['message'], 'Пока нет подходящих образов. Попробуйте изменить предпочтения или посмотреть каталог.')
-            self.assertEqual(generated, [])
+            if defect in ('unknown_shoe_units', 'wrong_shoe_size'):
+                self.assert_outfits(wow['outfits'], clothing_base=True)
+                self.assert_outfits(generated, clothing_base=True)
+                self.assertIsNone(wow['message'])
+            else:
+                self.assertEqual(wow['outfits'], [])
+                self.assertEqual(generated, [])
+                self.assertEqual(wow['message'], 'Пока нет подходящих образов. Попробуйте изменить предпочтения или посмотреть каталог.')
             self.assertEqual(intent['outfits'], [])
             self.assertEqual(intent['products'], [])
             # "ready" describes the parsed task, not catalogue availability.
             # The existing API conveys empty outfits through its explicit copy.
             self.assertEqual(intent['state'], 'ready')
-            self.assertEqual(intent['message'], wow['message'])
+            self.assertEqual(intent['message'], 'Пока нет подходящих образов. Попробуйте изменить предпочтения или посмотреть каталог.')
 
 
 def positive_case(profile):

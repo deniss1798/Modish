@@ -117,6 +117,7 @@ class _OutfitDetailScreenState extends State<OutfitDetailScreen> {
     final reason = (outfit['reason'] ?? '')
         .toString()
         .replaceAll(RegExp(r'engine:.*'), '')
+        .replaceAll(clothingBaseMessage, '')
         .trim();
     final total = formatPriceAmount((outfit['total_price'] as num?) ?? 0);
     final saved = _saved;
@@ -149,6 +150,10 @@ class _OutfitDetailScreenState extends State<OutfitDetailScreen> {
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
           children: [
             Text(outfitScenarioLabel(scenario), style: AppTextStyles.displaySm),
+            if (isClothingBaseOutfit(outfit)) ...[
+              const SizedBox(height: 8),
+              const Text(clothingBaseMessage, style: AppTextStyles.bodyMuted),
+            ],
             const SizedBox(height: 6),
             Text(reason, style: AppTextStyles.bodyMuted),
             const SizedBox(height: 16),

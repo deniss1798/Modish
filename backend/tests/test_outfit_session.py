@@ -59,8 +59,9 @@ class OutfitSessionTests(unittest.TestCase):
         with Session(self.engine, autoflush=False) as db:
             self.user_id = seed_outfit_refresh_catalogue(db)
 
-    def build(self, *, count=2):
-        return outfits.build_outfits_response(self.engine, self.user_id, count=count, scenario='daily')
+    def build(self, *, count=2, allow_clothing_base=True):
+        return outfits.build_outfits_response(self.engine, self.user_id, count=count, scenario='daily',
+            allow_clothing_base=allow_clothing_base)
 
     def test_deadline_after_rank_does_not_publish_any_outfit_history_cache_or_revision(self):
         with Session(self.engine) as db:
@@ -207,12 +208,12 @@ class OutfitSessionTests(unittest.TestCase):
                 {'prior-alias-a', 'prior-alias-b', 'prior-shared-shoe'})
             self.assertEqual(db.scalar(select(func.count()).select_from(MetricEvent)), 0)
 
-    def test_total_budget_rejects_one_kopeck_over_and_accepts_exact_sum(self):
+    def test_strict_complete_budget_rejects_one_kopeck_over_and_accepts_exact_sum(self):
         with Session(self.engine) as db:
             for product in db.scalars(select(Product).where(Product.id.like('good-%'))):
                 product.price = {'рубашки': Decimal('1000'), 'брюки': Decimal('2000'), 'обувь': Decimal('3000.01')}[product.category]
             db.commit()
-        self.assertEqual(self.build(), [])
+        self.assertEqual(self.build(allow_clothing_base=False), [])
         with Session(self.engine) as db:
             self.assertEqual(db.scalar(select(func.count()).select_from(Outfit)), 0)
             db.get(Product, 'good-shoes-0').price = Decimal('3000')
@@ -257,7 +258,7 @@ class OutfitSessionTests(unittest.TestCase):
             for model in (MetricEvent, RecommendationCandidatePool, UserRecommendationCache):
                 self.assertEqual(db.scalar(select(func.count()).select_from(model)), 0, model.__name__)
 
-    def test_missing_mandatory_role_preserves_current_outfits_and_rotation(self):
+    def test_strict_complete_request_preserves_outfits_when_footwear_is_missing(self):
         first = self.build(count=1)
         assert_complete_batch(self, first)
         with Session(self.engine) as db:
@@ -265,7 +266,7 @@ class OutfitSessionTests(unittest.TestCase):
             before_history = list(db.scalars(select(MetricEvent.id)))
             db.execute(delete(Product).where(Product.category == 'обувь'))
             db.commit()
-        self.assertEqual(self.build(), [])
+        self.assertEqual(self.build(allow_clothing_base=False), [])
         with Session(self.engine) as db:
             self.assertEqual(set(db.scalars(select(Outfit.id))), {row['id'] for row in first})
             self.assertEqual(list(db.scalars(select(MetricEvent.id))), before_history)

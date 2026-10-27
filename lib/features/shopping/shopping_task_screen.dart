@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../core/widgets/modish_widgets.dart';
 import '../../core/widgets/product_image.dart';
+import '../catalog/discovery_screen.dart';
 import '../products/models.dart';
 import '../products/product_detail_screen.dart';
 import 'visible_task_product.dart';
@@ -71,6 +72,89 @@ class _ShoppingTaskScreenState extends State<ShoppingTaskScreen> {
     if (_scroll.hasClients) _scroll.jumpTo(0);
   }
 
+  void _editRequest() {
+    setState(() {
+      _text.text = '${widget.controller.shoppingTask.result?['text'] ?? ''}';
+      _editing = true;
+    });
+    if (_scroll.hasClients) _scroll.jumpTo(0);
+  }
+
+  void _openCatalogue(String query) {
+    FocusScope.of(context).unfocus();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            DiscoveryScreen(controller: widget.controller, initialQuery: query),
+      ),
+    );
+  }
+
+  Widget _condition(String label) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+    decoration: BoxDecoration(
+      color: AppColors.chipBg,
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Text(label, style: AppTextStyles.bodyMuted),
+  );
+
+  Widget _requestAction({required String label, VoidCallback? onPressed}) =>
+      SizedBox(
+        width: double.infinity,
+        child: FilledButton(
+          onPressed: onPressed,
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.accent,
+            foregroundColor: AppColors.onAccent,
+            minimumSize: const Size(0, 54),
+            padding: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+          ),
+        ),
+      );
+
+  Widget _status({
+    required String title,
+    required List<String> messages,
+    bool error = false,
+    Widget? action,
+  }) => Padding(
+    padding: const EdgeInsets.only(top: 16),
+    child: Semantics(
+      liveRegion: true,
+      child: SoftCard(
+        key: const ValueKey('shopping-request-status'),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: AppTextStyles.sectionTitle.copyWith(
+                color: error ? AppColors.error : null,
+              ),
+            ),
+            for (final message in messages)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Text(message, style: AppTextStyles.bodyMuted),
+              ),
+            if (action != null) ...[const SizedBox(height: 16), action],
+          ],
+        ),
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final task = widget.controller.shoppingTask;
@@ -90,8 +174,27 @@ class _ShoppingTaskScreenState extends State<ShoppingTaskScreen> {
                     .cast<Map<String, dynamic>>(),
               );
         final serverMessage = '${result?['message'] ?? ''}'.trim();
+        final needsClarification = result?['state'] == 'needs_clarification';
+        final emptyReady =
+            result?['state'] == 'ready' && rows.isEmpty && outfits.isEmpty;
+        final unresolved = (constraints['unresolved'] as List? ?? [])
+            .map((value) => '$value'.trim())
+            .where((value) => value.isNotEmpty)
+            .toSet()
+            .toList();
+        final conditions = constraintLabels(constraints);
+        if (result?['effective_budget_max'] != null &&
+            result?['effective_budget_max'] != constraints['budget_max']) {
+          conditions.add(
+            'Бюджет профиля: до ${formatPriceAmount(result!['effective_budget_max'] as num)} ₽',
+          );
+        }
         final message = pending
             ? 'Подборка ещё готовится. Подождите немного и повторите тот же запрос.'
+            : needsClarification && serverMessage.isEmpty
+            ? unresolved.isEmpty
+                  ? 'Не удалось распознать все условия. Измените формулировку запроса.'
+                  : unresolved.join('\n')
             : serverMessage.isNotEmpty
             ? serverMessage
             : result?['state'] == 'ready' && rows.isEmpty && outfits.isEmpty
@@ -101,12 +204,20 @@ class _ShoppingTaskScreenState extends State<ShoppingTaskScreen> {
             : null;
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Ваш запрос', style: AppTextStyles.sectionTitle),
+            toolbarHeight: MediaQuery.textScalerOf(context).scale(16) > 24
+                ? 88
+                : kToolbarHeight,
+            title: const Text(
+              'Ваш запрос',
+              maxLines: 2,
+              style: AppTextStyles.sectionTitle,
+            ),
             actions: [
               if (result != null)
-                TextButton(
+                IconButton(
+                  tooltip: 'Завершить запрос',
                   onPressed: task.busy ? null : () => _closeTask('completed'),
-                  child: const Text('Готово'),
+                  icon: const Icon(Icons.check),
                 ),
               if (result != null)
                 PopupMenuButton<String>(
@@ -120,199 +231,292 @@ class _ShoppingTaskScreenState extends State<ShoppingTaskScreen> {
             ],
           ),
           body: SafeArea(
-            child: ListView(
-              controller: _scroll,
-              padding: const EdgeInsets.all(20),
-              children: [
-                if (result == null || _editing) ...[
-                  const Text('Что вы ищете?', style: AppTextStyles.screenTitle),
-                  const SizedBox(height: 12),
-                  TextField(
-                    key: const ValueKey('shopping-request'),
-                    controller: _text,
-                    maxLength: 500,
-                    minLines: 2,
-                    maxLines: 4,
-                    textInputAction: TextInputAction.search,
-                    decoration: const InputDecoration(
-                      hintText: 'Чёрные брюки в офис до 7 000 ₽',
-                    ),
-                    onSubmitted: (_) => task.busy ? null : _submit(),
-                  ),
-                  const SizedBox(height: 8),
-                  PrimaryButton(
-                    label: task.busy ? 'Подбираем…' : 'Найти подходящее',
-                    onPressed: task.busy ? null : () => _submit(),
-                  ),
-                  if (result != null)
-                    TextButton(
-                      onPressed: () {
-                        FocusScope.of(context).unfocus();
-                        setState(() {
-                          _text.text = '${result['text'] ?? ''}';
-                          _editing = false;
-                        });
-                        if (_scroll.hasClients) _scroll.jumpTo(0);
-                      },
-                      child: const Text('Отменить изменение'),
-                    ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Условия этого запроса не меняют ваши постоянные предпочтения.',
-                    style: AppTextStyles.caption,
-                  ),
-                ] else ...[
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '${result['text'] ?? _text.text}',
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: ListView(
+                  controller: _scroll,
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: const EdgeInsets.all(20),
+                  children: [
+                    if (result == null || _editing) ...[
+                      const Text(
+                        'Что вы ищете?',
+                        style: AppTextStyles.screenTitle,
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        key: const ValueKey('shopping-request'),
+                        controller: _text,
+                        maxLength: 500,
+                        minLines: 2,
+                        maxLines: 4,
+                        textInputAction: TextInputAction.search,
+                        decoration: const InputDecoration(
+                          hintText: 'Чёрные брюки в офис до 7 000 ₽',
+                        ),
+                        enabled: !task.busy,
+                        onSubmitted: (_) => task.busy ? null : _submit(),
+                      ),
+                      const SizedBox(height: 8),
+                      _requestAction(
+                        label: task.busy ? 'Подбираем…' : 'Найти подходящее',
+                        onPressed: task.busy ? null : () => _submit(),
+                      ),
+                      if (result != null)
+                        TextButton(
+                          onPressed: () {
+                            FocusScope.of(context).unfocus();
+                            setState(() {
+                              _text.text = '${result['text'] ?? ''}';
+                              _editing = false;
+                            });
+                            if (_scroll.hasClients) _scroll.jumpTo(0);
+                          },
+                          child: const Text('Отменить изменение'),
+                        ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Условия этого запроса не меняют ваши постоянные предпочтения.',
+                        style: AppTextStyles.caption,
+                      ),
+                    ] else ...[
+                      SoftCard(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Вы ищете',
+                              style: AppTextStyles.caption,
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '${result['text'] ?? _text.text}',
+                                    style: AppTextStyles.sectionTitle,
+                                  ),
+                                ),
+                                IconButton(
+                                  key: const ValueKey('edit-shopping-request'),
+                                  tooltip: 'Изменить запрос',
+                                  onPressed: task.busy ? null : _editRequest,
+                                  icon: const Icon(
+                                    Icons.edit_outlined,
+                                    size: 20,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (conditions.isNotEmpty) ...[
+                              const SizedBox(height: 16),
+                              const Text(
+                                'Условия подбора',
+                                style: AppTextStyles.caption,
+                              ),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  for (final label in conditions)
+                                    _condition(label),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                    if (task.error != null)
+                      _status(
+                        title: 'Не удалось обновить подборку',
+                        messages: [task.error!],
+                        error: true,
+                      ),
+                    if (result == null && !task.busy) ...[
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Попробуйте запрос',
+                        style: AppTextStyles.sectionTitle,
+                      ),
+                      const SizedBox(height: 8),
+                      for (final example in [
+                        'Брюки в офис до 7000',
+                        'Платье до 8000, желательно чёрное',
+                        'Образ на свадьбу до 20000 без платья и каблуков',
+                      ])
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(example),
+                          trailing: const Icon(Icons.north_west),
+                          onTap: () {
+                            _text.text = example;
+                            _submit();
+                          },
+                        ),
+                    ],
+                    if (task.busy)
+                      _status(
+                        title: 'Подбираем вещи',
+                        messages: const [
+                          'Проверяем условия запроса и наличие.',
+                        ],
+                        action: const LinearProgressIndicator(),
+                      ),
+                    if (result != null && !task.busy && !_editing) ...[
+                      if (message != null && task.error == null)
+                        _status(
+                          title: needsClarification
+                              ? 'Нужно уточнение'
+                              : pending
+                              ? 'Подборка ещё готовится'
+                              : 'Пока ничего не найдено',
+                          messages: needsClarification && unresolved.isNotEmpty
+                              ? unresolved
+                              : [message],
+                          action: needsClarification
+                              ? _requestAction(
+                                  label: 'Изменить запрос',
+                                  onPressed: _editRequest,
+                                )
+                              : pending
+                              ? _requestAction(
+                                  label: 'Повторить запрос',
+                                  onPressed: () => _submit(),
+                                )
+                              : emptyReady &&
+                                    widget.controller.supportsCatalogueDiscovery
+                              ? Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'В отдельном каталоге размер нужно уточнять у магазина.',
+                                      style: AppTextStyles.bodyMuted,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    TextButton.icon(
+                                      key: const ValueKey(
+                                        'shopping-request-open-catalogue',
+                                      ),
+                                      onPressed: () => _openCatalogue(
+                                        '${result['text'] ?? _text.text}',
+                                      ),
+                                      icon: const Icon(
+                                        Icons.storefront_outlined,
+                                      ),
+                                      label: const Text(
+                                        'Посмотреть в каталоге',
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : null,
+                        ),
+                      if (result['state'] == 'ready') ...[
+                        const SizedBox(height: 16),
+                        if (_showRefinement)
+                          SoftCard(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Уточнить подборку',
+                                  style: AppTextStyles.sectionTitle,
+                                ),
+                                const SizedBox(height: 12),
+                                TextField(
+                                  key: const ValueKey(
+                                    'refine-shopping-request',
+                                  ),
+                                  controller: _refinement,
+                                  maxLength: 500,
+                                  minLines: 1,
+                                  maxLines: 3,
+                                  textInputAction: TextInputAction.search,
+                                  decoration: const InputDecoration(
+                                    hintText:
+                                        'Например: дешевле или другого цвета',
+                                  ),
+                                  onSubmitted: (value) =>
+                                      _submit(refinement: value),
+                                ),
+                                const SizedBox(height: 12),
+                                _requestAction(
+                                  label: 'Обновить подборку',
+                                  onPressed: () =>
+                                      _submit(refinement: _refinement.text),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              key: const ValueKey('expand-shopping-refinement'),
+                              onPressed: () =>
+                                  setState(() => _showRefinement = true),
+                              icon: const Icon(Icons.tune, size: 18),
+                              label: const Text('Уточнить запрос'),
+                            ),
+                          ),
+                        const SizedBox(height: 6),
+                      ],
+                      if (rows.isNotEmpty) ...[
+                        Text(
+                          _countLabel(
+                            rows.length,
+                            'подходящая вещь',
+                            'подходящие вещи',
+                            'подходящих вещей',
+                          ),
                           style: AppTextStyles.sectionTitle,
                         ),
-                      ),
-                      IconButton(
-                        key: const ValueKey('edit-shopping-request'),
-                        tooltip: 'Изменить запрос',
-                        onPressed: task.busy
-                            ? null
-                            : () => setState(() => _editing = true),
-                        icon: const Icon(Icons.edit_outlined, size: 20),
-                      ),
-                    ],
-                  ),
-                ],
-                if (task.error != null)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Text(
-                      task.error!,
-                      style: const TextStyle(color: AppColors.error),
-                    ),
-                  ),
-                if (result == null && !task.busy) ...[
-                  const SizedBox(height: 20),
-                  for (final example in [
-                    'Брюки в офис до 7000',
-                    'Платье до 8000, желательно чёрное',
-                    'Образ на свадьбу до 20000 без платья и каблуков',
-                  ])
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(example),
-                      trailing: const Icon(Icons.north_west),
-                      onTap: () {
-                        _text.text = example;
-                        _submit();
-                      },
-                    ),
-                ],
-                if (task.busy)
-                  const Padding(
-                    padding: EdgeInsets.all(32),
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-                if (result != null && !task.busy) ...[
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 6,
-                    children: [
-                      for (final label in constraintLabels(constraints))
-                        Text(label, style: AppTextStyles.bodyMuted),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  if (message != null)
-                    Text(message, style: AppTextStyles.bodyMuted),
-                  if (result['effective_budget_max'] != null &&
-                      result['effective_budget_max'] !=
-                          constraints['budget_max'])
-                    Text(
-                      'Бюджет профиля: до ${result['effective_budget_max']} ₽',
-                      style: AppTextStyles.caption,
-                    ),
-                  if (result['state'] == 'ready' ||
-                      result['state'] == 'needs_clarification') ...[
-                    if (_showRefinement ||
-                        result['state'] == 'needs_clarification')
-                      TextField(
-                        key: const ValueKey('refine-shopping-request'),
-                        controller: _refinement,
-                        maxLength: 500,
-                        decoration: InputDecoration(
-                          labelText: 'Уточнить запрос',
-                          hintText: result['state'] == 'needs_clarification'
-                              ? 'Например: платье до 8 000 ₽'
-                              : 'Например: дешевле',
-                          suffixIcon: IconButton(
-                            tooltip: 'Уточнить',
-                            icon: const Icon(Icons.arrow_forward),
-                            onPressed: () =>
-                                _submit(refinement: _refinement.text),
-                          ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            for (final label in [
+                              'Дешевле',
+                              'Только не оверсайз',
+                            ])
+                              ActionChip(
+                                label: Text(label),
+                                onPressed: () => _submit(refinement: label),
+                              ),
+                          ],
                         ),
-                        onSubmitted: (value) => _submit(refinement: value),
-                      )
-                    else
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton.icon(
-                          key: const ValueKey('expand-shopping-refinement'),
-                          onPressed: () =>
-                              setState(() => _showRefinement = true),
-                          icon: const Icon(Icons.tune, size: 18),
-                          label: const Text('Уточнить запрос'),
-                        ),
-                      ),
-                    const SizedBox(height: 6),
-                  ],
-                  if (rows.isNotEmpty) ...[
-                    Text(
-                      _countLabel(
-                        rows.length,
-                        'подходящая вещь',
-                        'подходящие вещи',
-                        'подходящих вещей',
-                      ),
-                      style: AppTextStyles.sectionTitle,
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      children: [
-                        for (final label in ['Дешевле', 'Только не оверсайз'])
-                          ActionChip(
-                            label: Text(label),
-                            onPressed: () => _submit(refinement: label),
-                          ),
                       ],
-                    ),
+                      for (final row in rows)
+                        VisibleTaskProduct(
+                          key: ValueKey(
+                            '${result['version']}:${row['product']['id']}',
+                          ),
+                          task: task,
+                          productId: '${row['product']['id']}',
+                          child: _product(FeedCard.fromApi(row)),
+                        ),
+                      if (outfits.isNotEmpty)
+                        Text(
+                          _countLabel(
+                            outfits.length,
+                            'полный образ',
+                            'полных образа',
+                            'полных образов',
+                          ),
+                          style: AppTextStyles.sectionTitle,
+                        ),
+                      for (final outfit in outfits) _outfit(outfit),
+                    ],
                   ],
-                  for (final row in rows)
-                    VisibleTaskProduct(
-                      key: ValueKey(
-                        '${result['version']}:${row['product']['id']}',
-                      ),
-                      task: task,
-                      productId: '${row['product']['id']}',
-                      child: _product(FeedCard.fromApi(row)),
-                    ),
-                  if (outfits.isNotEmpty)
-                    Text(
-                      _countLabel(
-                        outfits.length,
-                        'полный образ',
-                        'полных образа',
-                        'полных образов',
-                      ),
-                      style: AppTextStyles.sectionTitle,
-                    ),
-                  for (final outfit in outfits) _outfit(outfit),
-                ],
-              ],
+                ),
+              ),
             ),
           ),
         );
@@ -754,6 +958,21 @@ List<String> constraintLabels(Map constraints) {
     'wide': 'широкий крой',
     'straight': 'прямой крой',
     'heels': 'каблуки',
+    'pumps': 'туфли',
+    'loafers': 'лоферы',
+    'moccasins': 'мокасины',
+    'sneakers': 'кроссовки',
+    'canvas_shoes': 'кеды',
+    'ankle_boots': 'ботильоны',
+    'boots': 'ботинки',
+    'tall_boots': 'сапоги',
+    'sandals': 'сандалии',
+    'dress_sandals': 'босоножки',
+    'ballet_flats': 'балетки',
+    'mules': 'мюли',
+    'clogs': 'сабо',
+    'slip_ons': 'слипоны',
+    'espadrilles': 'эспадрильи',
     'cotton': 'хлопок',
     'linen': 'лён',
     'wool': 'шерсть',

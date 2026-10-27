@@ -132,6 +132,47 @@ class OutfitEngineV2Tests(unittest.TestCase):
     self.assertGreater(first.score, 0.0)
     self.assertIn(OUTFIT_ENGINE_VERSION, first.reason)
 
+  def test_unconfirmed_footwear_yields_honest_clothing_base(self) -> None:
+    from app.api.outfits import visible_outfits
+    from app.services.fit_size_profile import submitted_sizes, update_size_profile
+    fit = self.db.scalar(select(FitProfile).where(FitProfile.user_id == self.user.id))
+    update_size_profile(fit, sizes=submitted_sizes(clothing_size='M', shoe_size='38', shoe_system='EU'))
+    for item in self.products:
+      if item.category == 'обувь':
+        item.available_sizes = ['38']  # Unlabelled merchant number is not EU proof.
+    self.db.flush()
+    rows = generate_outfits_v2(self.db, self.user, count=1)
+    self.assertEqual(len(rows), 1)
+    self.assertEqual(set(rows[0].items_json), {'top', 'bottom'})
+    response = visible_outfits(self.db, self.user, rows)
+    self.assertEqual(len(response), 1)
+    self.assertEqual(response[0]['completeness'], 'clothing_base')
+    self.assertEqual(response[0]['missing_slots'], ['shoes'])
+    self.assertIn('Обувь не подобрана', response[0]['completion_message'])
+    self.assertNotIn('одежда и обувь в одном образе', rows[0].reason)
+    self.assertNotIn('..', rows[0].reason)
+    rows[0].items_json = {**rows[0].items_json, 'accessory': 'obsolete-slot'}
+    canonical = visible_outfits(self.db, self.user, rows)[0]
+    self.assertEqual(set(canonical['items']), {'top', 'bottom'})
+    self.assertEqual(canonical['completeness'], 'clothing_base')
+
+  def test_clothing_base_does_not_relax_clothing_size_or_stock(self) -> None:
+    for item in self.products:
+      if item.category == 'обувь':
+        item.is_active = 0
+      elif item.category == 'брюки':
+        item.available_sizes = ['XL']
+    self.db.flush()
+    self.assertEqual(generate_outfits_v2(self.db, self.user, count=1), [])
+
+  def test_complete_outfit_has_priority_over_higher_scoring_clothing_base(self) -> None:
+    from app.api.outfits import visible_outfits
+    rows = generate_outfits_v2(self.db, self.user, count=1)
+    response = visible_outfits(self.db, self.user, rows)
+    self.assertEqual(response[0]['completeness'], 'complete')
+    self.assertEqual(response[0]['missing_slots'], [])
+    self.assertIn('shoes', response[0]['products'])
+
   def test_generate_outfits_wrapper_uses_v2_when_possible(self) -> None:
     outfits = generate_outfits(self.db, self.user, count=1, scenario="daily")
 
@@ -174,12 +215,18 @@ class OutfitEngineV2Tests(unittest.TestCase):
     self.assertEqual(metric.meta_json["fallback_engine"], "legacy_outfit_service")
     self.assertEqual(metric.meta_json["error_type"], "RuntimeError")
 
-  def test_empty_v2_does_not_fall_back_to_incomplete_outfit(self) -> None:
+  def test_missing_footwear_returns_labelled_base_instead_of_unsafe_shoes(self) -> None:
     for p in self.products:
       if p.category == "обувь":
         p.is_active = 0
     self.db.flush()
-    self.assertEqual(generate_outfits(self.db, self.user, count=4), [])
+    from app.api.outfits import visible_outfits
+    rows = generate_outfits(self.db, self.user, count=4)
+    self.assertTrue(rows)
+    response = visible_outfits(self.db, self.user, rows)
+    self.assertTrue(response)
+    self.assertTrue(all(row['completeness'] == 'clothing_base' for row in response))
+    self.assertTrue(all(set(row['products']) == {'top', 'bottom'} for row in response))
 
   def test_outfits_change_at_least_two_items_and_have_no_accessory(self) -> None:
     from app.services.product_identity import product_identity_keys

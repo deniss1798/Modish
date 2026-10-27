@@ -17,12 +17,11 @@ from ..schemas.api_product import product_to_api
 from .activation_policy import product_ok
 from .candidate_retrieval_service import _fit_gender_condition
 from .catalog.stock_freshness import fresh_stock_conditions
-from .garment_roles import product_role
-from .outfit_engine_v2 import _hard_ok, _scenario_product_ok
-from .outfit_quality import is_sports_item, pair_compatible
-from .product_complements import COMPLEMENT_ROLES, complementary_products
+from .outfit_engine_v2 import _hard_ok
+from .complement_policy import complements_anchor
+from .product_complements import complementary_products
 from .product_identity import product_identity_keys
-from .product_search import personalized_search, search_conditions
+from .product_search import personalized_search, search_conditions, matches_search_product
 from .profile_repository import ensure_style_profile, ensure_taste_profile
 from .recommendation_budget import (RecommendationRankingTimeout, TIMEOUT_MESSAGE,
     begin_ranking, check_ranking_budget)
@@ -133,7 +132,7 @@ def _prepare(sessions, user_id, request):
         if request.operation == 'search':
             fit = db.scalar(select(FitProfile).where(FitProfile.user_id == user_id))
             rows = personalized_search(db, user, activation, _search_query(request, fit, as_of=as_of),
-                limit=request.limit, offset=request.offset)
+                limit=request.limit, offset=request.offset, q=request.q)
         else:
             anchor = _anchor(db, request)
             evidence[anchor.id] = ProductEvidence(anchor.id, anchor.source_id, product_evidence(anchor))
@@ -186,14 +185,13 @@ def _publish(sessions, user_id, proposal):
                 else:
                     valid = _hard_ok(product, fit=fit, rules_by_source=catalogue.rules)
                 if request.operation == 'complements':
-                    roles = COMPLEMENT_ROLES.get(product_role(anchor), ())
-                    valid = (valid and product_role(product) in roles and pair_compatible(anchor, product)
+                    valid = (valid and complements_anchor(anchor, product)
                         and not (product_identity_keys(product) & keys))
                     if activation is not None:
                         valid = (valid and product_ok(anchor, fit, activation, rules=catalogue.rules)
                             and as_rubles(product.price) + as_rubles(anchor.price) <= as_rubles(fit.budget_max))
-                    else:
-                        valid = valid and _scenario_product_ok(product, 'gym' if is_sports_item(anchor) else 'daily')
+                else:
+                    valid = valid and matches_search_product(product, request.q)
                 if not valid:
                     raise RecommendationSnapshotChanged()
                 result.append(product_to_api(product))

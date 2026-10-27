@@ -176,6 +176,61 @@ class CatalogueDiscoveryTests(unittest.TestCase):
     self.assertEqual(self.ids(self.get(category='обувь', q='50%_')), [])
     self.assertEqual(self.ids(self.get(source='demo')), [])
 
+  def _seed_precise_shoe_search(self):
+    # All rows satisfy broad SQL retrieval; only the two explicit, consistent
+    # sold nouns may reach a page. Equal timestamps make legacy order stable.
+    now = datetime.now(timezone.utc)
+    common = dict(color_original='blue', category_name='туфли и мокасины', created_at=now,
+        available_sizes=['EU39'], feed_raw_json={'size_system': 'EU'})
+    cases = [('a-moccasins', {'title': 'мокасины кожаные'}),
+        ('b-conflict', {'title': 'туфли кожаные', 'subcategory': 'мокасины'}),
+        ('c-ambiguous', {'title': 'модель Adelia'}),
+        ('d-good', {'title': 'туфли кожаные'}),
+        ('e-moccasins', {'title': 'мокасины кожаные'}),
+        ('f-good', {'title': 'туфли кожаные'})]
+    for pid, changes in cases:
+      self.product(pid, **common, **changes)
+    return ['d-good', 'f-good']
+
+  def test_footwear_search_filters_before_discovery_cursor_and_has_more(self):
+    expected = self._seed_precise_shoe_search()
+    first = self.get(q='синие туфли', limit=1)
+    self.assertEqual(self.ids(first), expected[:1])
+    self.assertTrue(first.json()['has_more'])
+    second = self.get(q='синие туфли', limit=1, cursor=first.json()['next_cursor'])
+    self.assertEqual(self.ids(second), expected[1:])
+    self.assertFalse(second.json()['has_more'])
+    self.assertIsNone(second.json()['next_cursor'])
+
+  def test_footwear_search_filters_before_legacy_http_offset_and_limit(self):
+    from app.services.fit_size_profile import update_size_profile
+    expected = self._seed_precise_shoe_search()
+    self.fit.budget_max = 10000
+    update_size_profile(self.fit, sizes={'shoes': {'value': '39', 'system': 'EU'}})
+    self.db.commit()
+    self.assertIsNone(self.db.get(ActivationSession, self.user.id))
+    for offset, ids in ((0, expected[:1]), (1, expected[1:]), (2, [])):
+      response = self.client.get('/products', headers=self.headers,
+          params={'q': 'синие туфли', 'limit': 1, 'offset': offset})
+      self.assertEqual(response.status_code, 200, response.text)
+      self.assertEqual([row['id'] for row in response.json()], ids)
+
+  def test_footwear_search_filters_before_personalized_http_ranking_and_offset(self):
+    from app.services.activation_service import configure
+    expected = list(reversed(self._seed_precise_shoe_search()))
+    activation = configure(self.db, self.user, gender_target='womenswear', age_group='25-34',
+        height=170, clothing_size='M', clothing_size_system='LETTER', shoe_size='39',
+        shoe_size_system='EU', styles=['casual', 'minimalism'], price_segment='mass')
+    activation.completed_at = datetime.now(timezone.utc)
+    self.db.commit()
+    before = self.count_snapshot()
+    for offset, ids in ((0, expected[:1]), (1, expected[1:]), (2, [])):
+      response = self.client.get('/products', headers=self.headers,
+          params={'q': 'синие туфли', 'limit': 1, 'offset': offset})
+      self.assertEqual(response.status_code, 200, response.text)
+      self.assertEqual([row['id'] for row in response.json()], ids)
+    self.assertEqual(self.count_snapshot(), before)
+
   def test_server_ceiling_never_expands_with_request_or_premium_profile(self):
     self.fit.budget_max = 100000
     self.db.commit()
