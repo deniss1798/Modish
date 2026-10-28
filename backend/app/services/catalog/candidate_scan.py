@@ -4,10 +4,60 @@ This is a negative-only retrieval optimization. Every returned ORM product
 still needs the caller's full eligibility and source rules. Preserve SQL order,
 query scope and live identity-map values; never cap the candidate catalogue.
 """
+from functools import lru_cache
+
 from ...models import Product
-from ..fit_size_profile import requested_size_for_product
-from .size_resolver import may_match_flat_size
+from ..fit_size_profile import SLOT_CATEGORIES, requested_size_for_product
+from .size_resolver import _flat_sizes_may_match, may_match_flat_size, resolve_size
 from ..recommendation_budget import check_ranking_budget
+
+
+def _confirmed_size_choices(fit):
+    stored = getattr(fit, 'size_profile_json', None) or {}
+    if not isinstance(stored, dict):
+        return None
+    sizes = stored.get('sizes') or {}
+    if not isinstance(sizes, dict):
+        return None
+    choices = []
+    for slot in SLOT_CATEGORIES:
+        selected = sizes.get(slot) or {}
+        if not isinstance(selected, dict):
+            return None
+        if selected.get('state') != 'confirmed':
+            continue
+        value, system = selected.get('value'), selected.get('system')
+        if not all(item is None or isinstance(item, str) for item in (value, system)):
+            return None
+        choices.append((value, system))
+    return tuple(choices)
+
+
+@lru_cache(maxsize=128)
+def _requested_tokens(choices):
+    # Omitting category is deliberately more permissive for waist sizes. This
+    # probe can reject only a token absent from every confirmed personal slot.
+    resolved = (resolve_size(value, size_system=system) for value, system in choices)
+    return tuple(sorted({size.normalized_size for size in resolved if size.known}))
+
+
+@lru_cache(maxsize=4096)
+def _flat_list_matches_any(values: tuple[str, ...], tokens: tuple[str, ...]):
+    return any(_flat_sizes_may_match(values, token) for token in tokens)
+
+
+def _may_match_any_confirmed_size(product, fit):
+    choices = _confirmed_size_choices(fit)
+    if choices is None:
+        return True  # Preserve the existing path for malformed legacy profiles.
+    values = product.available_sizes
+    if isinstance(values, str):
+        values = (values,)
+    if not isinstance(values, (list, tuple)):
+        return True  # Do not consume or reinterpret other legacy containers.
+    # Key current values rather than list identity: untracked in-place JSON
+    # mutations must be as visible as they are to the full ORM admission path.
+    return _flat_list_matches_any(tuple(str(value) for value in values), _requested_tokens(choices))
 
 
 def iter_size_candidates(db, query, fit, *, batch_size=200):
@@ -48,6 +98,8 @@ def iter_size_candidates(db, query, fit, *, batch_size=200):
         for row in rows:
             check_ranking_budget(db)
             evidence = loaded.get(row.id, row)
+            if not _may_match_any_confirmed_size(evidence, fit):
+                continue
             requested, system = requested_size_for_product(fit, evidence)
             if not may_match_flat_size(evidence, requested, requested_system=system):
                 continue

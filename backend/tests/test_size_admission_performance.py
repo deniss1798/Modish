@@ -97,9 +97,7 @@ class SizeAdmissionPerformanceTests(unittest.TestCase):
             with self.subTest(flat=flat, fields=fields, requested=requested):
                 product = self.product(flat, **fields)
                 self.assertFalse(full_size_match(product, requested, requested_system=system))
-                with patch.object(sizes, 'resolve_product_sizes', wraps=sizes.resolve_product_sizes) as resolver:
-                    self.assertFalse(sizes.exact_size_match(product, requested, requested_system=system))
-                resolver.assert_called_once_with(product)
+                self.assertFalse(sizes.exact_size_match(product, requested, requested_system=system))
 
     def test_original_aliases_and_falsey_numeric_values_keep_positive_matches(self):
         cases = [(['M'], {'sizes': ['М']}, 'M', 'LETTER'),
@@ -127,9 +125,7 @@ class SizeAdmissionPerformanceTests(unittest.TestCase):
             feed_raw_json={'sizes': ['M/L', 'eu 38']},
             available_sizes_detailed=[{'raw_size': 'EU38', 'availability': 'in_stock'}])
         self.assertTrue(full_size_match(product, '38', requested_system='EU'))
-        with patch.object(sizes, 'resolve_product_sizes', wraps=sizes.resolve_product_sizes) as resolver:
-            self.assertTrue(sizes.exact_size_match(product, '38', requested_system='EU'))
-        resolver.assert_called_once_with(product)
+        self.assertTrue(sizes.exact_size_match(product, '38', requested_system='EU'))
 
     def test_read_probe_preserves_aliased_evidence_and_sees_subsequent_changes(self):
         flat = ['S']
@@ -157,12 +153,13 @@ class SizeAdmissionPerformanceTests(unittest.TestCase):
             product = SimpleNamespace(category='брюки', category_name='', source='legacy',
                 available_sizes=factory())
             self.assertEqual(full_size_match(reference, 'M', requested_system='LETTER'), expected)
-            with patch.object(sizes, 'resolve_product_sizes', wraps=sizes.resolve_product_sizes) as resolver:
-                self.assertEqual(sizes.exact_size_match(product, 'M', requested_system='LETTER'), expected)
             if expected:
-                resolver.assert_called_once_with(product)
+                self.assertEqual(sizes.exact_size_match(product, 'M', requested_system='LETTER'), expected)
             else:
-                resolver.assert_not_called()
+                # Invalid flat containers still reject before raw resolution.
+                with patch.object(sizes, 'resolve_product_sizes',
+                        side_effect=AssertionError('Invalid flat sizes cannot resolve')):
+                    self.assertFalse(sizes.exact_size_match(product, 'M', requested_system='LETTER'))
 
 
 if __name__ == '__main__':

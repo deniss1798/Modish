@@ -137,6 +137,40 @@ class SizeCandidateScanTests(unittest.TestCase):
         self.assertEqual(self.ids(), ['changed'])
         self.assertEqual(changed.available_sizes, ['S', 'M'])
 
+    def test_late_in_place_profile_edit_changes_the_next_projected_candidate(self):
+        self.seed([self.row('a', sizes=['M']), self.row('b', sizes=['L'])])
+        scan = iter_size_candidates(self.db, self.query, self.fit, batch_size=1)
+        try:
+            self.assertEqual(next(scan).id, 'a')
+            self.fit.size_profile_json['sizes']['top']['value'] = 'L'
+            self.assertEqual([product.id for product in scan], ['b'])
+        finally:
+            scan.close()
+
+    def test_size_only_prefilter_preserves_role_specific_reference_for_variant_sizes(self):
+        variants = ['XS', 'M', 'L', 'RU48', 'EU39', 'W28', 'W28L30', '7,5', 'М', ' M ']
+        rows = []
+        for index, (title, category) in enumerate((('Рубашка', 'рубашки'),
+                ('Брюки', 'брюки'), ('Платье', 'платья'), ('Куртка', 'верхний_слой'),
+                ('Лоферы', 'обувь'), ('BAON model', 'обувь'))):
+            for variant_index, variant in enumerate(variants):
+                rows.append(self.row(f'{index}-{variant_index:02}', title=title,
+                    category=category, sizes=[variant]))
+        self.seed(rows)
+        profiles = (self.profile(), self.profile(top=('48', 'RU'), bottom=('W28', 'WAIST'),
+            one_piece=('L', 'LETTER'), shoes=('39', 'EU')),
+            self.profile(shoes=('7.5', 'UK')))
+        for fit in profiles:
+            with self.subTest(fit=fit.size_profile_json):
+                expected = []
+                for product in self.db.scalars(self.query):
+                    wanted, system = requested_size_for_product(fit, product)
+                    if candidate_scan.may_match_flat_size(product, wanted, requested_system=system):
+                        expected.append(product.id)
+                self.db.expunge_all()
+                self.assertEqual(self.ids(fit=fit, batch_size=7), expected)
+                self.db.expunge_all()
+
     def test_dirty_role_change_uses_full_orm_path_with_autoflush_disabled(self):
         self.seed([self.row('changed', title='Платье', category='платья', sizes=['39'])])
         changed = self.db.get(Product, 'changed')

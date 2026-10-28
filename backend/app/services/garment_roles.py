@@ -1,5 +1,6 @@
 """Classify the sold garment; cross-selling words and photographs are not roles."""
 import re
+from functools import lru_cache
 
 from ..catalog_normalize import normalize_category
 
@@ -31,7 +32,16 @@ _CATEGORY_ROLES = (
 
 
 def product_role(product) -> str | None:
-    title = str(getattr(product, 'title', '') or '').lower().replace('ё', 'е')
+    # Cache only immutable source fields, never an ORM object. A live title or
+    # category edit therefore gets its own classification immediately.
+    fields = tuple(str(getattr(product, name, '') or '') for name in
+                   ('title', 'subcategory', 'category_name', 'category'))
+    return _role_from_fields(fields)
+
+
+@lru_cache(maxsize=4096)
+def _role_from_fields(fields: tuple[str, ...]) -> str | None:
+    title = fields[0].lower().replace('ё', 'е')
     matches = [(match.start(), role) for role, pattern in _ROLE_NOUNS
                if (match := pattern.search(title)) is not None]
     # "Dress shoes" is footwear, while "DC Shoes Tank" still sells a tank.
@@ -56,8 +66,8 @@ def product_role(product) -> str | None:
     # When a title is only a merchant/model name, prefer the most specific
     # category leaf to a stale broad parent. Explicit sold nouns above always
     # win (a "Майка DC Shoes" cannot become footwear from its subcategory).
-    for name in ('subcategory', 'category_name', 'category'):
-        category = normalize_category(str(getattr(product, name, '') or ''))
+    for raw_category in fields[1:]:
+        category = normalize_category(raw_category)
         if category in {'костюмы', 'комбинезоны'}:
             return None
         for role, values in _CATEGORY_ROLES:

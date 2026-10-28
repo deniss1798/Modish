@@ -130,6 +130,10 @@ def may_match_flat_size(product, requested, *, requested_system=None) -> bool:
 
 
 def resolve_product_sizes(product) -> tuple[ResolvedSize, ...]:
+    return _resolve_product_sizes(product)
+
+
+def _resolve_product_sizes(product, *, normalized_size=None) -> tuple[ResolvedSize, ...]:
     values = product.available_sizes or []
     if isinstance(values, str):
         values = (values,)
@@ -148,16 +152,21 @@ def resolve_product_sizes(product) -> tuple[ResolvedSize, ...]:
         return ()
     out = []
     for value in values:
-        raw_value = original_values.get(_size_identity(value), value)
+        identity = _size_identity(value)
+        if normalized_size is not None:
+            prefix = _SYSTEM_PREFIX.fullmatch(identity)
+            if (prefix.group(2) if prefix else identity) != normalized_size:
+                continue
+        raw_value = original_values.get(identity, value)
         size = resolve_size(raw_value, size_system=system,
             category=product.category or product.category_name or '',
             merchant_id=getattr(product, 'source_id', None) or product.source or '', availability='available')
         if conflict:
             size = replace(size, reason='conflicting_size_system')
-        elif compounds and _size_identity(value) not in original_tokens:
+        elif compounds and identity not in original_tokens:
             size = replace(size, reason='ambiguous_compound_size')
         matching_details = [d for d in details if isinstance(d, dict)
-            and _size_identity(d.get('raw_size', d.get('size', ''))) == _size_identity(value)]
+            and _size_identity(d.get('raw_size', d.get('size', ''))) == identity]
         if matching_details:
             aliases = {'in_stock': 'available', 'out_of_stock': 'unavailable'}
             states = {aliases.get(state, state) for d in matching_details
@@ -182,6 +191,15 @@ def exact_size_match(product, requested, *, requested_system=None) -> bool:
     # unit, compound-token and per-size stock check below.
     if not _flat_sizes_may_match(product.available_sizes, wanted.normalized_size):
         return False
+    # Only the requested flat token can resolve to the requested size. Reusable
+    # JSON containers let us skip constructing unrelated variant records while
+    # preserving all original evidence checks. Legacy iterators keep the full
+    # path: skipping a variant must not change how their evidence is consumed.
+    values = product.available_sizes
+    details = getattr(product, 'available_sizes_detailed', None) or []
+    sizes = (_resolve_product_sizes(product, normalized_size=wanted.normalized_size)
+        if isinstance(values, (str, list, tuple)) and isinstance(details, (list, tuple))
+        else resolve_product_sizes(product))
     return any(size.known and size.availability == 'available'
         and size.size_system == wanted.size_system and size.normalized_size == wanted.normalized_size
-        for size in resolve_product_sizes(product))
+        for size in sizes)

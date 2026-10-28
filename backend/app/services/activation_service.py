@@ -191,22 +191,29 @@ def candidate_pool(db, user, session, *, exclude_ids=(), restrict_categories=Fal
     ).group_by(RecommendationEventV2.product_id).subquery()
     # Legacy feeds store merchant category paths, not just canonical labels.
     # Resolve the small category vocabulary first, without a recency cutoff.
-    base_conditions = [
-        *fresh_stock_conditions(), Product.is_deleted_from_feed == 0,
+    stable_conditions = [
+        Product.is_deleted_from_feed == 0,
         Product.is_active == 1, Product.is_available == 1,
         Product.gender_target == fit.gender_target,
         Product.price.between(300, min(25000, int(fit.budget_max))),
         func.lower(Product.source).notin_(EXCLUDED_SOURCES),
     ]
     if source:
-        base_conditions.append(Product.source == source)
+        stable_conditions.append(Product.source == source)
     if filters and filters.active:
-        base_conditions.extend(filters.sql_conditions())
+        stable_conditions.extend(filters.sql_conditions())
+    base_conditions = [*fresh_stock_conditions(), *stable_conditions]
     if probe_roles and not _required_roles_available(db, required_roles=probe_roles,
             conditions=base_conditions, hidden=hidden, hidden_keys=keys, fit=fit, session=session,
             rules=rules, filters=filters, context=context):
         return []
-    vocabulary = db.execute(select(Product.category, Product.category_name).where(*base_conditions).distinct()).all()
+    from .wow_candidate_replay import candidate_replay_plan, capture_candidate_replay, finish_candidate_replay
+    replay, capture = candidate_replay_plan(db, user, scenario=outfit_scenario,
+        context=context, hidden=hidden, keys=keys, stable_conditions=stable_conditions,
+        restrict_categories=restrict_categories, filters=filters, source=source,
+        required_roles=required_roles, scorer=scorer)
+    vocabulary = ([] if replay is not None else
+        db.execute(select(Product.category, Product.category_name).where(*base_conditions).distinct()).all())
     category_values = {category: (set(), set()) for category in CATEGORIES}
     for raw_category, raw_name in vocabulary:
         for i, raw in enumerate((raw_category, raw_name)):
@@ -218,7 +225,7 @@ def candidate_pool(db, user, session, *, exclude_ids=(), restrict_categories=Fal
     for category in CATEGORIES:
         if restrict_categories and category not in interests:
             continue
-        if not any(category_values[category]):
+        if replay is None and not any(category_values[category]):
             continue
         conditions = [*base_conditions,
                       or_(Product.category.in_(category_values[category][0]), Product.category_name.in_(category_values[category][1]))]
@@ -229,8 +236,12 @@ def candidate_pool(db, user, session, *, exclude_ids=(), restrict_categories=Fal
         best = []
         affordable = AffordableCandidates(limit=50) if outfit_scenario is not None else None
         # Close the thin cursor even when the nonsemantic category is full.
-        with closing(iter_size_candidates(db, query, fit)) as candidates:
+        candidates = ((product for product in replay.rows.get(category, ())) if replay is not None
+            else iter_size_candidates(db, query, fit))
+        with closing(candidates) as candidates:
             for product in candidates:
+                check_ranking_budget(db)
+                if product.id in hidden: continue
                 if not product_ok(product, fit, session, rules=rules): continue
                 if restrict_categories and not (features(product)['category'] & interests): continue
                 if filters and filters.active and not filters.matches(product): continue
@@ -240,6 +251,10 @@ def candidate_pool(db, user, session, *, exclude_ids=(), restrict_categories=Fal
                     if (product_role(product) not in {'top', 'bottom', 'one_piece', 'shoes'}
                             or not scenario_product_ok(product, outfit_scenario)):
                         continue
+                # Capture the complete admitted traversal before identity
+                # deduplication, so later exclusions can expose an alias.
+                if capture is not None:
+                    capture_candidate_replay(db, capture, category, product)
                 # Rejected garments never reserve an identity. Avoid URL/image
                 # normalization until all admission gates have passed.
                 identity = product_identity_keys(product)
@@ -249,7 +264,13 @@ def candidate_pool(db, user, session, *, exclude_ids=(), restrict_categories=Fal
                     # Score before the category cutoff. A matching fabric/fit beyond
                     # the first 50 IDs must be able to enter the candidate pool.
                     if affordable is not None:
-                        evaluation = scorer.evaluate(product)
+                        evaluation = (replay.evaluations.get(product.id) if replay is not None else None)
+                        if evaluation is None:
+                            evaluation = scorer.evaluate(product)
+                        if capture is not None and not capture[1].overflow:
+                            capture[1].evaluations[product.id] = evaluation
+                        if replay is not None:
+                            replay.evaluations[product.id] = evaluation
                         affordable.add((product, evaluation), key=product.id,
                             score=evaluation.affinity, price=as_rubles(product.price))
                     else:
@@ -272,6 +293,7 @@ def candidate_pool(db, user, session, *, exclude_ids=(), restrict_categories=Fal
     # At most 50 finalists per category; do not reparse early winners after
     # the request's bounded scorer cache has evicted them during the full scan.
     pool.sort(key=lambda p: (-finalist_scores[p] if p in finalist_scores else -scorer.score(p), p.id))
+    finish_candidate_replay(db, capture)
     return pool
 
 

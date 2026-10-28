@@ -1,5 +1,6 @@
 """Non-negotiable catalogue checks for wearable, scenario-appropriate outfits."""
 import re
+from functools import lru_cache
 
 from ..models import Product
 from ..money import as_rubles
@@ -11,10 +12,19 @@ FORMAL_SCENARIOS = {"office", "evening", "restaurant", "wedding", "date", "party
 
 
 def garment_text(product: Product) -> str:
+  # Exact field values keep cached text current after live catalogue edits.
+  # No Product, descriptions or merchant JSON are retained by the cache.
+  fields = tuple(str(getattr(product, name, '') or '') for name in
+    ('title', 'category', 'category_name', 'subcategory', 'merchant_category', 'merchant_subcategory'))
+  return _garment_text_from_fields(fields)
+
+
+@lru_cache(maxsize=4096)
+def _garment_text_from_fields(fields: tuple[str, ...]) -> str:
   # Descriptions often cross-sell other categories; use the actual item fields.
-  parts = [str(product.title or '')]
-  for name in ('category','category_name','subcategory','merchant_category','merchant_subcategory'):
-    value = str(getattr(product,name,'') or '').lower()
+  parts = [fields[0]]
+  for raw_value in fields[1:]:
+    value = raw_value.lower()
     # Shared navigation is not a garment attribute. Keep all other context
     # (children, beach, sport, homewear) for the existing strict exclusions.
     value = re.sub(r'обувь[ _]+и[ _]+аксессуары', 'обувь', value)

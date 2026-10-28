@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from uuid import uuid4
+from collections import Counter
 
 from fastapi import HTTPException
 from sqlalchemy import text
@@ -20,6 +21,7 @@ from .recommendation_publication import (ProductEvidence, identity_projection,
     identity_rows_signature, lock_catalogue, product_evidence)
 from .recommendation_revision import (RecommendationOwnerMissing, RecommendationSnapshotChanged,
     owner_mutation, profile_input_signature)
+from .wow_candidate_replay import wow_candidate_replay_scope
 
 
 @dataclass(frozen=True)
@@ -83,24 +85,26 @@ def _prepare(sessions, user_id):
         specs = [('daily', 'На каждый день'), ('evening', 'На выход'),
             ('daily', 'Похоже на ваши лайки')]
         batches, staged, used, products, dependencies = [], [], set(), {}, set()
-        for scenario, title in specs:
-            check_ranking_budget(db)
-            batch = engine.prepare_outfit_batch(db, user, count=1, scenario=scenario, extra_existing=staged)
-            dependencies.update(batch.dependency_ids)
-            for choice in batch.selected:
-                selected = [item.product for item in choice.items.values()]
-                keys = set().union(*(product_identity_keys(p) for p in selected))
-                if used & keys:
-                    continue
-                used.update(keys)
-                products.update((p.id, p) for p in selected)
-                if title == 'Похоже на ваши лайки' and not any(
-                        any(float((taste.category_weights or {}).get(cat, 0)) > 0
-                            for cat in activation.features(p)['category']) for p in selected):
-                    title = 'Ваш стиль'
-                batches.append(WowBatch(scenario, title, freeze_choice(choice), batch.previous_history_ids))
-                staged.append(SimpleNamespace(style_direction=scenario,
-                    items_json={slot: item.product.id for slot, item in choice.items.items()}))
+        repeated = tuple(scenario for scenario, n in Counter(scenario for scenario, _ in specs).items() if n > 1)
+        with wow_candidate_replay_scope(db, user_id, signature, scenarios=repeated):
+            for scenario, title in specs:
+                check_ranking_budget(db)
+                batch = engine.prepare_outfit_batch(db, user, count=1, scenario=scenario, extra_existing=staged)
+                dependencies.update(batch.dependency_ids)
+                for choice in batch.selected:
+                    selected = [item.product for item in choice.items.values()]
+                    keys = set().union(*(product_identity_keys(p) for p in selected))
+                    if used & keys:
+                        continue
+                    used.update(keys)
+                    products.update((p.id, p) for p in selected)
+                    if title == 'Похоже на ваши лайки' and not any(
+                            any(float((taste.category_weights or {}).get(cat, 0)) > 0
+                                for cat in activation.features(p)['category']) for p in selected):
+                        title = 'Ваш стиль'
+                    batches.append(WowBatch(scenario, title, freeze_choice(choice), batch.previous_history_ids))
+                    staged.append(SimpleNamespace(style_direction=scenario,
+                        items_json={slot: item.product.id for slot, item in choice.items.items()}))
         dependencies.update(products)
         with db.execute(identity_projection(dependencies)) as identities:
             identities_signature = identity_rows_signature(identities)
