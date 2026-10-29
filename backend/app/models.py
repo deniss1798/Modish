@@ -233,6 +233,22 @@ class CatalogSyncRun(Base):
   finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class CatalogRefreshRun(Base):
+  """Private progress for the resumable catalogue writer, migrated with the API."""
+  __tablename__ = "catalog_refresh_runs"
+  id: Mapped[str] = mapped_column(String(36), primary_key=True)
+  snapshot_sha256: Mapped[str] = mapped_column(String(64))
+  operation_count: Mapped[int] = mapped_column(Integer)
+  cursor: Mapped[int] = mapped_column(Integer)
+  finalized_sources: Mapped[int] = mapped_column(Integer)
+  last_batch_sha256: Mapped[str] = mapped_column(String(64))
+  status: Mapped[str] = mapped_column(String(32))
+  counts_json: Mapped[dict] = mapped_column(JSON)
+  source_states_json: Mapped[dict] = mapped_column(JSON)
+  started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+  updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class AffiliateClick(Base):
   __tablename__ = "affiliate_clicks"
   id: Mapped[str] = mapped_column(String(36), primary_key=True)

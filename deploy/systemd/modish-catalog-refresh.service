@@ -1,0 +1,30 @@
+[Unit]
+Description=Modish pinned catalogue refresh17
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+ExecStart=/usr/bin/python3 -B /opt/modish/scripts/catalog_refresh17_host.py --config /etc/modish/catalog-refresh17.json
+ExecStopPost=/usr/bin/python3 -B /opt/modish/scripts/catalog_refresh17_host.py --config /etc/modish/catalog-refresh17.json --cleanup
+TimeoutStartSec=9500
+TimeoutStopSec=180
+KillMode=control-group
+KillSignal=SIGTERM
+SendSIGKILL=yes
+Restart=no
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/modish/catalog-refresh17
+RestrictAddressFamilies=AF_UNIX
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

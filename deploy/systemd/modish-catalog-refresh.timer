@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh Modish catalogue every twelve hours
+
+[Timer]
+OnCalendar=*-*-* 00,12:00:00
+RandomizedDelaySec=15min
+Persistent=true
+Unit=modish-catalog-refresh.service
+
+[Install]
+WantedBy=timers.target
