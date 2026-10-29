@@ -1,0 +1,73 @@
+{
+  "all_31_smoke_hashes_and_counts_equal": true,
+  "all_running_runtime_settings_equal": true,
+  "api_version": "1.0.2-build16",
+  "archive_sha256": "dbd31adc98bc47413eb6f774597b7d036e0fd030bbe60e62a5944eac1712c088",
+  "automatic_database_restore": false,
+  "backend_id": "b1b070269cd34f724759dbcb5a2c9aa021ae9eceb0bba915a7fd3636ad2b497f",
+  "commit": "1fa7d251fecf82cfcd40a3b1bddd687aa9e40abe",
+  "driver_sha256": "c12951c17a30a0e5c8053f8e37a94bb30f119272458a18e67faf06105b4d22e4",
+  "environment_and_jwt_preserved": true,
+  "final_backup_report_sha256": "8918f81f355227b2084cac1a879c166d32875f5df18bd04f1012b491fffca6c3",
+  "final_backup_sha256": "e28eba7a42c241df2f594df02171f2d1da4a4986b0bf5beb1679bdc6e52399d5",
+  "finished_at": "2026-10-29T17:57:17.614427+00:00",
+  "image_id": "sha256:61d94e0ab68c7a9342b1676a9179ea554e7e5940bf5e67622d783a8767b02a3a",
+  "import_replayed": false,
+  "import_report_sha256": "610f77f6e9ab1a69b9aedb9c04d90218acbbbe0f1315702c15a2f10e58a32470",
+  "input_rows": 70811,
+  "migration_executed": false,
+  "production_commit_sha256": "05c7075ba1d3f54dd2e206379b41c15ec9b9d98170f01c4062e94da15354ecad",
+  "production_pg_and_redis_unchanged": true,
+  "public_writes_open": true,
+  "qa_report_sha256": "24a0cdae1c4a43ee681b7692890c8672eb15a191fafc6b9abcf9a78e6fdda164",
+  "run_id": "4fcbd1e0e142424c94c07e90896fcdb4",
+  "schema": "20261015_0028",
+  "smoke": {
+    "api_version": "1.0.2-build16",
+    "brands": 10,
+    "catalogue_status": "ready",
+    "production_user_fixtures_created": false,
+    "real_sku_price_exact": true,
+    "status": "passed",
+    "unauthenticated": {
+      "/catalog/discovery": 401,
+      "/feed": 401,
+      "/users/me": 401
+    }
+  },
+  "status": "build16_production_activated_and_verified",
+  "tls_status": 200,
+  "activation_report_sha256": "ceae990d7197747dc96e28d2fcb31cfab7500aa6eedd286c32991c7488ebcc92",
+  "apk": {
+    "filename": "Modish-1.0.2-build16-release-20261029.apk",
+    "bytes": 62919067,
+    "sha256": "2683e80ed8b0603f6fe2f0cbe470953356caf09352088e2782621667a1f7d434",
+    "version_code": 16,
+    "version_name": "1.0.2",
+    "certificate_sha256": "7808c4020872e0d662adf3b7aa4ba9eb31ec5d11411a16aa07d2649eb345a50e",
+    "client_commit": "15a7ee6a11b2acbaa358d560f570f05526eb6cc0",
+    "client_sources_unchanged": true
+  },
+  "verification": {
+    "backend_tests_total": 996,
+    "postgres_tests_passed": 55,
+    "flutter_tests_passed": 523,
+    "android_emulator_api": 36,
+    "physical_android_tested": false,
+    "release_signature_verified": true
+  },
+  "public_observation": {
+    "/health/ready": {
+      "status": "ok",
+      "database": "ok",
+      "version": "1.0.2-build16"
+    },
+    "/catalog/status": {
+      "status": "ready",
+      "personalized": false
+    }
+  },
+  "recorded_at": "2026-10-29T17:59:52.035507+00:00",
+  "scheduled_catalogue_refresh_installed": false,
+  "store_publication_performed": false
+}
